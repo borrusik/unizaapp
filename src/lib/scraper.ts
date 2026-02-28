@@ -270,10 +270,10 @@ export async function getUserInfo(explicitSessionId?: string, explicitEmail?: st
       const numberMatch = indexHtml.match(/id="desk-menu-lng39"[^>]*>Osobné číslo:\s*<\/span>\s*([^<]+)<\/span>/i);
       if (numberMatch && numberMatch[1]) personalNumber = numberMatch[1].trim();
 
-      // Better name parsing, from: <b id="mch-name-desk"> BORYS CHERKASHYN</b>
+      // Better name parsing from the profile page header
       const nameMatch = indexHtml.match(/id="mch-name-desk"[^>]*>\s*([^<]+)<\/b>/i);
       if (nameMatch && nameMatch[1]) {
-        // Just title case it "Borys Cherkashyn"
+        // Title case the name
         name = nameMatch[1].trim().toLowerCase().split(' ').map((s: string) => s.charAt(0).toUpperCase() + s.substring(1)).join(' ');
       }
 

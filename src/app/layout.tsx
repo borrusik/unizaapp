@@ -44,28 +44,7 @@ export default function RootLayout({
             }}
           />
         )}
-        {process.env.NODE_ENV === "production" && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                document.addEventListener('contextmenu', event => event.preventDefault());
-                document.onkeydown = function(e) {
-                  if (e.key == "F12" || (e.ctrlKey && e.shiftKey && (e.key == "I" || e.key == "J" || e.key == "C")) || (e.ctrlKey && e.key == "U")) {
-                    return false;
-                  }
-                };
-                setInterval(function() {
-                  const before = new Date().getTime();
-                  debugger;
-                  const after = new Date().getTime();
-                  if (after - before > 100) {
-                    document.body.innerHTML = "Inspector detected. Nice try.";
-                  }
-                }, 1000);
-              `,
-            }}
-          />
-        )}
+
       </head>
       <body>
         <div id="app-wrapper">
