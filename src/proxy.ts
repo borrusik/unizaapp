@@ -106,7 +106,7 @@ export function proxy(request: NextRequest) {
 
   // ── Check if IP is blocked ──
   const blockExpiry = blockedIPs.get(ip);
-  if (blockExpiry && Date.now() < blockExpiry) {
+  if (blockExpiry && Date.now() < blockExpiry && process.env.NODE_ENV !== "development") {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
@@ -144,7 +144,7 @@ export function proxy(request: NextRequest) {
 
   // ── General rate limiting ──
   const isLimited = checkRate(ipRequestMap, ip, MAX_REQUESTS_PER_MINUTE, WINDOW_MS);
-  if (isLimited) {
+  if (isLimited && process.env.NODE_ENV !== "development") {
     // If they keep hitting the limit, block them
     const overLimitKey = `over_${ip}`;
     const isRepeated = checkRate(ipRequestMap, overLimitKey, 3, 5 * 60 * 1000);
