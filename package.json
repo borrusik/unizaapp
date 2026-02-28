@@ -27,5 +27,14 @@
     "svgo": "^4.0.0",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "browserslist": [
+    "last 2 versions",
+    "not dead",
+    "not IE 11",
+    "not op_mini all",
+    "not safari < 14",
+    "not ios_saf < 14",
+    "not and_uc < 13"
+  ]
 }
