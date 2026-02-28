@@ -81,8 +81,10 @@ export default function SubjectsPage() {
         </div>
 
         {loading ? (
-          <div className="fullscreen-loader">
-            <div className="spinner"></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="card skeleton" style={{ height: "90px" }} />
+            ))}
           </div>
         ) : (
           <div className="stagger animate-slide-up" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

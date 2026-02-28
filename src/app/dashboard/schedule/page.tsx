@@ -252,8 +252,10 @@ export default function SchedulePage() {
         </div>
 
         {loading ? (
-          <div className="fullscreen-loader">
-            <div className="spinner"></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="card skeleton" style={{ height: "100px" }} />
+            ))}
           </div>
         ) : dayItems.length === 0 ? (
           <div style={{

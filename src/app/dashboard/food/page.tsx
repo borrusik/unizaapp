@@ -117,8 +117,16 @@ export default function StravaPage() {
 
       <div className="container">
         {loading ? (
-          <div className="fullscreen-loader">
-            <div className="spinner"></div>
+          <div>
+            <div className="skeleton" style={{ height: "180px", borderRadius: "16px", marginBottom: "32px", width: "100%" }} />
+
+            <div className="skeleton" style={{ height: "24px", width: "140px", marginBottom: "16px", borderRadius: "8px" }} />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="card skeleton" style={{ height: "76px" }} />
+              ))}
+            </div>
           </div>
         ) : (
           <div className="animate-slide-up">

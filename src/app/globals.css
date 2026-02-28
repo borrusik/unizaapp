@@ -773,3 +773,33 @@ select {
   border-color: transparent;
   box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3);
 }
+
+/* Skeleton Loading Animation */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-secondary) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: var(--radius-sm);
+  color: transparent !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, #2a2a26 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+  }
+}
+
+.skeleton * {
+  visibility: hidden;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}

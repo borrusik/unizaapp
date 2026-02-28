@@ -114,8 +114,17 @@ export default function GradesPage() {
         </div>
 
         {loading ? (
-          <div className="fullscreen-loader">
-            <div className="spinner"></div>
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "24px" }}>
+              <div className="stat-card skeleton" style={{ height: "84px" }} />
+              <div className="stat-card skeleton" style={{ height: "84px" }} />
+              <div className="stat-card skeleton" style={{ height: "84px" }} />
+            </div>
+            <div className="card-group content">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="card-row skeleton" style={{ height: "72px" }} />
+              ))}
+            </div>
           </div>
         ) : (
           <div className="animate-slide-up">

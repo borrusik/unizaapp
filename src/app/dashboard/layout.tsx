@@ -112,23 +112,36 @@ export default function DashboardLayout({
     boot();
   }, []);
 
-  if (isBooting) {
-    return (
-      <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", background: "var(--background-base)" }}>
-        <h2 style={{ fontSize: "28px", fontWeight: 800, marginBottom: "32px", color: "var(--primary)", letterSpacing: "-0.5px" }}>UNIZA Student</h2>
-        <div style={{ width: "100%", maxWidth: "300px", height: "8px", background: "var(--surface-secondary)", borderRadius: "4px", overflow: "hidden" }}>
-          <div style={{ width: `${bootProgress}%`, height: "100%", background: "var(--primary)", transition: "width 0.5s ease" }} />
-        </div>
-        <div style={{ marginTop: "16px", color: "var(--text-tertiary)", fontSize: "14px", fontWeight: 500, opacity: 0.8 }}>
-          {bootProgress < 100 ? "Sťahujem dáta zo servera..." : "Pripravené!"}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="page-with-nav">
-      <main>{children}</main>
+      <main>
+        {isBooting ? (
+          <div>
+            <div className="top-bar">
+              <div className="skeleton" style={{ width: "140px", height: "28px", borderRadius: "8px" }} />
+            </div>
+            <div className="container">
+              <div className="segment-control skeleton" style={{ height: "42px", display: "flex", gap: "4px", padding: "4px" }}>
+                <div style={{ flex: 1, borderRadius: "8px" }} />
+                <div style={{ flex: 1, borderRadius: "8px" }} />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px", padding: "0 4px" }}>
+                <div className="skeleton" style={{ width: "80px", height: "16px" }} />
+                <div className="skeleton" style={{ width: "100px", height: "22px", borderRadius: "12px" }} />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="card skeleton" style={{ height: "90px" }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          children
+        )}
+      </main>
 
       <nav className="bottom-nav">
         {tabs.map((tab) => {
