@@ -76,6 +76,7 @@ export default function LoginPage() {
         className="animate-fade-in"
         style={{ animationDelay: "0.15s", opacity: 0 }}
         onSubmit={handleLogin}
+        method="post"
       >
         <div style={{
           background: "var(--surface)",
