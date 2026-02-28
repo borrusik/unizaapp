@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { headers } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 
 const inter = Inter({
@@ -37,12 +38,15 @@ export default async function RootLayout({
   const nonce = headersList.get("x-nonce") || "";
 
   return (
-    <html lang="sk" className={inter.variable}>
+    <html lang="sk" className={inter.variable} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         {process.env.NODE_ENV === "development" && (
-          <script
+          <Script
+            id="sw-unregister"
             nonce={nonce}
+            strategy="beforeInteractive"
+            suppressHydrationWarning={true}
             dangerouslySetInnerHTML={{
               __html: `
                 if ('serviceWorker' in navigator) {
@@ -57,18 +61,23 @@ export default async function RootLayout({
           />
         )}
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <div id="app-wrapper">
           {children}
         </div>
         {/* Google Analytics with nonce for CSP compliance */}
-        <script
+        <Script
+          id="gtag-script"
           nonce={nonce}
-          async
+          strategy="afterInteractive"
+          suppressHydrationWarning={true}
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
         />
-        <script
+        <Script
+          id="gtag-init"
           nonce={nonce}
+          strategy="afterInteractive"
+          suppressHydrationWarning={true}
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];

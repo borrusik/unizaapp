@@ -127,6 +127,7 @@ export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = useState(() => getTodayDayName(t));
   const [now, setNow] = useState(new Date());
   const [mounted, setMounted] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetcher = async () => {
     const data = await getSchedule();
@@ -136,7 +137,7 @@ export default function SchedulePage() {
     return data;
   };
 
-  const { data, isLoading } = useSWR("uniza_schedule", fetcher, {
+  const { data, isLoading, mutate } = useSWR("uniza_schedule", fetcher, {
     fallbackData: typeof window !== "undefined"
       ? (() => {
         try {
@@ -151,7 +152,14 @@ export default function SchedulePage() {
     revalidateOnReconnect: false,
   });
 
-  const loading = !mounted || (isLoading && (!data || data.length === 0));
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    await mutate();
+    setIsRefreshing(false);
+  };
+
+  const loading = !mounted || ((isLoading || isRefreshing) && (!data || data.length === 0));
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 0);
@@ -186,8 +194,30 @@ export default function SchedulePage() {
   const dayNames = isWeekend ? [...REGULAR_DAYS, t("schedule_weekend_tab") as string] : REGULAR_DAYS;
   return (
     <div>
-      <div className="top-bar">
+      <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title">{t("schedule_title")}</div>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          style={{
+            background: "var(--surface-secondary)",
+            border: "none",
+            padding: "8px",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            opacity: isRefreshing ? 0.5 : 1
+          }}
+        >
+          <svg className={isRefreshing ? "spin" : ""} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 2v6h-6"></path>
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+            <path d="M3 22v-6h6"></path>
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+          </svg>
+        </button>
       </div>
 
       <div className="container">
@@ -267,6 +297,15 @@ export default function SchedulePage() {
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }

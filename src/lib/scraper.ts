@@ -557,14 +557,23 @@ export async function getSchedule(): Promise<ScheduleItem[]> {
         } else if (className !== "rozvrh_bloky") {
           let type: "lecture" | "exercise" | "lab" = "lecture";
           const blockText = $(block).text().trim();
+          const blockTitle = ($(block).attr("title") || "").toLowerCase();
 
           if (blockText.startsWith("C") || className.match(/-(c|c-c)\b(-\w+)?/)) type = "exercise";
           else if (blockText.startsWith("L") || className.match(/-(l|l-c)\b(-\w+)?/)) type = "lab";
           else if (blockText.startsWith("P") || className.match(/-(p|p-c)\b(-\w+)?/)) type = "lecture";
 
           let color = "#f97316"; // povinný - oranžová
-          if (className.includes("pvol")) color = "#0ea5e9"; // povinne voliteľný - modrá
-          else if (className.includes("vyb")) color = "#22c55e"; // výberový - zelená
+          if (className.includes("-pv") || className.includes("pvol") || blockTitle.includes("povinne volit")) {
+            color = "#0ea5e9"; // povinne voliteľný - modrá
+          } else if (className.includes("-v") || className.includes("vyb") || blockTitle.includes("výberov") || blockTitle.includes("vyberov")) {
+            // we use "-v" because "rozvrh_bloky-p-v" is sometimes used for výberový
+            if (!className.includes("-pv") && !className.includes("-pov")) {
+              color = "#22c55e"; // výberový - zelená
+            }
+          }
+
+          if (className.includes("-vyb")) color = "#22c55e";
 
           let teacher = "";
           let room = "";
