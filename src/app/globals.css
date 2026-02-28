@@ -6,8 +6,8 @@
   --surface-hover: #fef9c3;
   --border: rgba(234, 179, 8, 0.12);
   --text-primary: #1a1a19;
-  --text-secondary: #8c8980;
-  --text-tertiary: #aeaeb2;
+  --text-secondary: #5a574c;
+  --text-tertiary: #929296;
   --primary: #eab308;
   /* Yellow 500 */
   --primary-light: rgba(234, 179, 8, 0.15);
@@ -43,8 +43,8 @@
     --surface-hover: #312e22;
     --border: rgba(250, 204, 21, 0.08);
     --text-primary: #f5f5f7;
-    --text-secondary: #9c9990;
-    --text-tertiary: #636366;
+    --text-secondary: #b0ac9f;
+    --text-tertiary: #717175;
     --primary: #facc15;
     /* Yellow 400 */
     --primary-light: rgba(250, 204, 21, 0.18);

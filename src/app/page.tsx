@@ -40,7 +40,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
+    <main style={{
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
@@ -161,6 +161,6 @@ export default function LoginPage() {
           to { transform: rotate(360deg); }
         }
       `}</style>
-    </div>
+    </main>
   );
 }
