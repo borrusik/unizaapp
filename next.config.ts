@@ -54,6 +54,10 @@ const nextConfig: NextConfig = {
             key: "Cross-Origin-Resource-Policy",
             value: "same-origin",
           },
+          {
+            key: "Access-Control-Allow-Origin",
+            value: "https://unizaapp.vercel.app",
+          },
         ],
       },
     ];
