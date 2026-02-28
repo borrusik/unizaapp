@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import * as cheerio from "cheerio";
+import { rateLimit } from "@/lib/rate-limit";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
 
@@ -142,11 +143,26 @@ async function fetchPage(sessionId: string, page: string): Promise<string> {
 // ─────────────────────────────────────────────
 
 export async function login(formData: FormData) {
-  const email = formData.get("email")?.toString();
+  const email = formData.get("email")?.toString()?.trim();
   const password = formData.get("password")?.toString();
 
   if (!email || !password) {
     return { error: "Zadajte email a heslo" };
+  }
+
+  // Input validation: email format
+  if (email.length > 100 || password.length > 200) {
+    return { error: "Neplatné údaje" };
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "Neplatný formát emailu" };
+  }
+
+  // Rate limit login by email (5 attempts per 2 minutes)
+  const { limited } = rateLimit(`login_${email}`, 5, 2 * 60 * 1000);
+  if (limited) {
+    return { error: "Príliš veľa pokusov. Skúste znova o 2 minúty." };
   }
 
   const sessionId = await getPhpSession(email, password);
