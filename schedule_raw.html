@@ -1,0 +1,1571 @@
+
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=windows-1250">
+	<meta name="robots" content="nofollow">
+  <meta http-equiv="Content-language" content="sk" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no">
+
+  <link rel="stylesheet" href="font/font-open-sans.css" type="text/css">
+  <link rel="stylesheet" href="font/font-awesome.min.css" type="text/css">
+  <link rel="StyleSheet" href="styles.css" type="text/css">
+  <link rel="StyleSheet" href="vzdelavanie.css" type="text/css">
+
+  <link rel="StyleSheet" href="js/css_base/jquery.ui.all.css" type="text/css">
+	<title>Vzdelávanie</title>
+	<link rel="shortcut icon" href="/favicon.ico">
+	<script type="text/javascript" src="js/jquery-1.10.1.js"></script>
+  <script type="text/javascript" src="js/jquery_ui.min.js"></script>
+  </head>
+
+
+
+
+
+<script language="javascript" src="js/rozvrh2.js"></script>
+
+<body id="id-web" onresize="resizing_()" onload="complet_page()"> 
+
+  <noscript>
+    <meta http-equiv="refresh" content="0; url = nojs.html" />
+  </noscript>
+
+  <script>
+  var lang_; 
+
+  function zmen_parameter_lng_v_url_full(par_url) { 
+    var s1 = window.location.href; 
+    var s2 = s1.replace('&lng=sk', par_url).replace('&lng=en', par_url); 
+    return s2;
+  }
+
+  function get_last_segment_url() {
+    var seg = window.location.pathname.split('/').pop();
+    return seg;
+  }
+
+  function setCookie_expdays(cname, cvalue, exdays) {
+    var d = new Date();
+    d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+    var expires = "expires="+d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/; SameSite=None; Secure;";
+  }
+
+  function setCookie(cname, cvalue) {
+    document.cookie = cname + "=" + cvalue + ";path=/; SameSite=None; Secure;";  
+  }
+
+  function getCookie(cname) {
+    var name = cname + "=";
+    var decodedCookie = decodeURIComponent(document.cookie);
+    var ca = decodedCookie.split(';');
+    for(var i = 0; i < ca.length; i++) {
+      var c = ca[i];
+      while (c.charAt(0) == ' ') {
+        c = c.substring(1);
+      }
+      if (c.indexOf(name) == 0) {
+        return c.substring(name.length, c.length);
+      }
+    }
+    return "";
+  }
+
+  function get_lang() {
+    var ck_lang = getCookie("mch_language");
+    if (ck_lang == '' || ck_lang == 'slovak') {
+      lang_ = 0;  //nastaveny jazyk SK
+    }
+    else if (ck_lang == 'english') {
+      lang_ = 1; //nastaveny jazyk EN
+    }
+  }</script>
+  <script>
+    var mch_plpr = 0; //bolo predtym 20+20=40; pre padding-left + padding-right v triede .stlpec
+  </script>
+
+  
+  <div id="id-cela-stranka">
+
+  <div id="id-vsetko-nad-patou">  
+
+
+
+  
+
+  
+  <div id="id-vypis-suradnic"></div>
+
+  <script>
+    function ajax_cookies_ok_suhlasim() {
+      $.ajax({
+        type: "POST",
+        url: 'mch_cookies_ok_suhlasim.php',
+        data: {action:'mch_call_this'},
+        success:function() {
+        var hlaska_cookies_ = document.getElementById("hlaska-cookies");
+        hlaska_cookies_.style.display = "none";
+      }
+
+      });
+    }
+  </script>
+  
+      <div id="hlaska-cookies">
+        <a href="#" class="btn-ok-cookies tien" onclick="ajax_cookies_ok_suhlasim()">Súhlasím</a>
+        s uchovávaním cookies na mojom zariadení pre web vzdelavanie.uniza.sk, ktoré sú nutné pre úplnú funkčnosť tohto webu.
+        &nbsp;
+        <a href="cookies_info.php" style="color:#fff !important; text-decoration: underline;">Zistiť viac</a>
+        &emsp;<span style="cursor: pointer; border: 1px solid #fff;" onclick="btn_close_msg_cookies('hlaska-cookies');">&nbsp<b>X</b>&nbsp</span>
+      </div>
+      
+  <script>
+    /*
+    function ajax_OOU_ok_suhlasim() {
+      $.ajax({
+        type: "POST",
+        url: 'mch_oou_ok_suhlasim.php',
+        data: {action1:'mch_call_this1'},
+        success:function() {
+        var hlaska_oou_ = document.getElementById("hlaska-oou");
+        hlaska_oou_.style.display = "none";
+      }
+      });
+    }
+    */
+  </script>
+  
+
+  <span id="id-hamburger" onclick="mobile_menu()" onmouseenter="hmbg_hover_enter()" onmouseleave="hmbg_hover_leave()"><i class="fa fa-bars"></i></span>
+
+  <div class="hlavicka">
+    <div class="centruj">
+
+      <div class="obal-logo-a-horne-menu">
+
+
+
+        <!--
+        <div id="txm-lng21" class="testovanie-xxx" style="display: none;">
+          <span class="test-hlaska-mobil" style="text-align: center; margin-right: 50px;">
+            <span style="cursor: pointer; border: 1px solid red;" onclick="btn_close_top_msg('txm-lng21');">&nbsp<b>X</b>&nbsp</span>&nbsp;&nbsp;
+            Staré e-vzdelavanie je dostupné do začiatku letného semestra&nbsp;<span style="font-size: 13px;"><a href="https://vzdelavanie.uniza.sk/vzdelavanie5">tu</a></span>
+          </span>
+          <span class="test-hlaska-desktop" style="text-align: center;">
+            <span style="cursor: pointer; border: 1px solid red;" onclick="btn_close_top_msg('txm-lng21');">&nbsp<b>X</b>&nbsp</span>&nbsp;&nbsp;
+            Staré e-vzdelavanie je dostupné do začiatku letného semestra&nbsp;<span style="font-size: 13px;"><a href="https://vzdelavanie.uniza.sk/vzdelavanie5">tu</a></span>
+          </span>
+        </div>
+        <script>
+          if (getCookie('mch_close_btn_top_msg') == '') { //cookie este nie je nastavene
+            document.getElementById('txm-lng21').style.display = "block";
+          }
+          if (getCookie('mch_close_btn_top_msg') == 'ano') { //cookie je nastavene, ma hodnotu ano - > t.j kliklo sa na X (btn_close_top_msg)
+            document.getElementById('txm-lng21').style.display = "none";
+          }
+        </script>
+        -->
+        
+
+        
+
+        <a target="_blank" href="https://uniza.sk/"><div id="lng-logo-uniza" class="logo-uniza"></div></a>  
+
+        <div class="horne-menu-obal">
+        <div class="horne-menu">
+          
+
+<div id="display-vseobecne-info-desk" class="dropdown">
+<div class="dropbtn" id="id2-dropbtn" onmouseenter="odsadenie_dropbtn_('id2-dropbtn', 'id2-dropdown-content')"><span id="desk-menu-lng2">VŠEOBECNÉ INFORMÁCIE</span>&nbsp;<i class="fa fa-chevron-down sipka"></i></div>
+<div class="dropdown-content" id="id2-dropdown-content">
+  <a id="display-plany-desk" href="plany.php"><span id="desk-menu-lng7a">Učebné plány</span></a>
+  <a id="display-rozvrh-desk" href="rozvrh.php"><span id="desk-menu-lng7b">Rozvrh, zoznam učební</span></a>
+  <a id="display-edis-desk" target="_blank" href="http://edis.uniza.sk"><span id="desk-menu-lng7">EDIS - vydavateľské centrum Žilinskej univerzity</span></a>
+</div>
+</div>
+
+
+    <div class="dropdown">  
+      <div class="dropbtn" id="id3-dropbtn" onmouseenter="odsadenie_dropbtn_('id3-dropbtn', 'id3-dropdown-content')"><span id="desk-menu-lng17">HLAVNÁ PONUKA</span>&nbsp;<i class="fa fa-chevron-down sipka"></i></div>
+      <div class="dropdown-content" id="id3-dropdown-content"><a id="desk-menu-lng18t" href="predmety_s.php" title="Zapísané predmety"><span id="desk-menu-lng18">Zapísané predmety</span></a><a id="desk-menu-lng18t" href="idotaznik.php" title="Dotazníky"><span id="desk-menu-lng18">Dotazníky</span></a><a id="desk-menu-lng19t" href="svysledky.php" title="Študijné výsledky"><span id="desk-menu-lng19">Študijné výsledky</span></a><a id="desk-menu-lng20t" href="zaverecnep.php" title="Záverečné práce"><span id="desk-menu-lng20">Záverečné práce</span></a><a id="desk-menu-lng21t" href="sporty.php" title="Športy a telovýchovné sústredenia"><span id="desk-menu-lng21">Športy a sústredenia</span></a>   
+      </div>
+    </div>
+    
+  <div class="dropdown">  
+    <div class="dropbtn" id="id4-dropbtn" onmouseenter="odsadenie_dropbtn_('id4-dropbtn', 'id4-dropdown-content')"><span><b id="mch-name-desk"> BORYS CHERKASHYN</b></span>&nbsp;<i class="fa fa-chevron-down sipka"></i></div>
+    <div class="dropdown-content" id="id4-dropdown-content"><span class="dropdown-content1-modif dropdown-content1"><span><span id="desk-menu-lng38">Študijná skupina: </span>5ZYI14</span></span><span class="dropdown-content1-modif dropdown-content1"><span><span id="desk-menu-lng39">Osobné číslo: </span>563561</span></span><a id="desk-menu-lng14t" href="https://nic.uniza.sk/nms/" title="Zmena hesla" target="_blank"><span id="desk-menu-lng14">Zmena hesla</span></a><a id="desk-menu-lng41t" href="ubytovanie.php" title="Výber ubytovania"><span id="desk-menu-lng41">Ubytovanie</span></a><a id="desk-menu-lng42t" href="profil.php" title="Úprava profilových údajov študenta"><span id="desk-menu-lng42">Profilové údaje</span></a><a id="desk-menu-lng43t" href="https://webmail.stud.uniza.sk/roundcubemail/" title="Elektronická pošta študentov UNIZA" target="_blank"><span id="desk-menu-lng43">Študentský poštový server</span></a><a id="desk-menu-lng15t" href="http://vzdelavanie.uniza.sk/vzdelavanie/logout.php" title="Odhlásiť používateľa"><span id="desk-menu-lng15">Odhlásiť</span></a>   
+    </div>
+  </div>
+  
+  <span id="id-vlajky-jazykov-desk">
+  &nbsp;
+  <a href="javascript:swlang_SK();" title="Slovenská verzia"><img style="border: 1px solid #000; position: relative; top: 2px;" src="img/flag_sk.png" alt="" width="auto" height="13"></a>
+  &nbsp;
+  <a id="evzd-desk-flag-en-href" href="javascript:swlang_EN();" title="English version"><img id="evzd-desk-flag-en" style="border: 1px solid #000; position: relative; top: 2px;" src="img/flag_en.png" alt="" width="auto" height="13"></a>
+  </span>
+
+
+
+<script>
+
+  function odsadenie_dropbtn_(id1, id2) { 
+    if (typeof odsadenie_dropbtn === 'function') {
+      odsadenie_dropbtn(id1, id2);
+    }
+  }
+
+  var mch_name_desk_obj = [
+    {id:'mch-name-desk', EN:'BORYS CHERKASHYN', SK:'BORYS CHERKASHYN', typ:'i'},
+  ];
+
+</script>        </div> <!--horne-menu-->
+        </div>
+      </div> <!--obal-logo-a-horne-menu-->
+
+    </div> <!--centruj-->
+
+    <div class="hl-nadpis-obal zobraz tien">
+      <div class="centruj">
+        <h2 class="e-vzdelavanie">
+          <a id="txm-lng2" href="index.php">E-VZDELÁVANIE&nbsp;&nbsp;<i class="fa fa-home ikonka-home"></i></a>
+        </h2>  
+
+        <div class="ak-rok-obal">
+          <span class="ak-rok-text">
+            <strong id="txm-lng3">Akademický rok:</strong>
+          </span>
+
+          <script>
+            function akrok_hover_enter() {
+              var akrok = document.getElementById("ar-custom-select");
+              akrok.style.backgroundColor = "rgb(0,131,149)";
+              akrok.style.color = "#fff";
+            }
+            function akrok_hover_leave() {
+              var akrok = document.getElementById("ar-custom-select");
+              akrok.style.backgroundColor = "rgb(0,169,190)";
+              akrok.style.color = "#fff";
+            }
+          </script>
+          
+          <form class="form-akrok" method="get" action="index.php" name="akrk">
+          <span id="ar-custom-select" class="akrok" onmouseenter="akrok_hover_enter()" onmouseleave="akrok_hover_leave()"  onclick="akrok_hover_leave()" onmouseup="akrok_hover_leave()"><select name="ra" onChange="akrk.submit()"><option value="2026">2026 / 2027</option><option value="2025" selected>2025 / 2026</option><option value="2024">2024 / 2025</option><option value="2023">2023 / 2024</option><option value="2022">2022 / 2023</option><option value="2021">2021 / 2022</option><option value="2020">2020 / 2021</option><option value="2019">2019 / 2020</option><option value="2018">2018 / 2019</option><option value="2017">2017 / 2018</option><option value="2016">2016 / 2017</option></select></span>          </form>
+
+        </div> 
+      </div>
+    </div>  <!--hl-nadpis-obal-->
+
+  </div> <!--hlavicka-->
+
+  <div id="hlavicka-fixed"></div>
+
+  <div class="obr-hlavicka zobraz tien">
+     
+  </div>
+
+  <div class="stred">
+
+     
+
+    
+    <div class="zobraz">
+
+     
+      <div class="kontajner">
+        <div class="stlpec stlpec-modif-for-table sirka1 tien">          
+          <div class="overflow-visible" style="text-align: left;">
+      <div class="main"><style>.tabulka-rozvrh::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+.tabulka-rozvrh::-webkit-scrollbar {
+  width: 0;
+  height: 10px;
+}
+.tabulka-rozvrh::-webkit-scrollbar-thumb {
+  background: silver; 
+}
+.tabulka-rozvrh::-webkit-scrollbar-thumb:hover {
+  background: gray; 
+}
+.tabulka-rozvrh {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: auto; 
+}
+#tabulka-rozvrh-horny-scrollbar {
+   height: 20px; 
+}
+.rozvrh-obal {
+  width: 100%;
+  text-align: center;
+}
+.rozvrh-center {
+  width: 100%;
+  display: inline-block;
+  text-align: left;
+}
+.msgClass {
+  margin-left: 30px;
+}
+.msgClass ul {
+  margin: 10px;
+  margin-left: 30px;
+}
+#id-tabulka-rozvrh {
+  width: 100%;
+}
+#id-tabulka-rozvrh p {
+  margin-bottom: 10px;
+}
+#id-tabulka-rozvrh #schedule {
+  font-size: 8pt;
+}
+#id-tabulka-rozvrh input[type=text],
+#id-tabulka-rozvrh textarea,
+#id-tabulka-rozvrh select {
+  padding: 5px;
+  background-color: #f8f8e8;
+  border: 1px solid #a0a0a0; 
+  margin-bottom: 5px;
+  font-size: 100%;
+}
+#id-tabulka-rozvrh textarea {
+  font-size: 16px;
+}
+.rozvrh_tyzden,
+.rozvrh_nazov,
+.rozvrh_bloky,
+.rozvrh_bloky-all,
+.rozvrh_bloky-out,
+.rozvrh_bloky-out-all,
+.rozvrh_bloky-p,       
+.rozvrh_bloky-p-all,   
+.rozvrh_bloky-p-c,     
+.rozvrh_bloky-p-c-all, 
+.rozvrh_bloky-pv,       
+.rozvrh_bloky-pv-all,   
+.rozvrh_bloky-pv-c,     
+.rozvrh_bloky-pv-c-all, 
+.rozvrh_bloky-v,       
+.rozvrh_bloky-v-all,   
+.rozvrh_bloky-v-c,     
+.rozvrh_bloky-v-c-all {height:100px;} 
+</style>
+  <div onscroll="scroller('scroller', 'scrollme');" class="tabulka-rozvrh" id="scroller">
+    <div id="tabulka-rozvrh-horny-scrollbar"></div>
+  </div>
+  <div onscroll="scroller('scrollme', 'scroller');" class="tabulka-rozvrh" id="scrollme"> 
+  
+  <div class="rozvrh-obal">
+  <div class="rozvrh-center">
+
+  <table id="id-tabulka-rozvrh" border="0" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+<table style="width:100%;">
+  <tr>
+    <td style="width:70%; vertical-align: text-top;">
+    
+<div id="scheduleMenu" class="displayNo formatdiv7">
+ <ul class="menuUl">
+ <li class="Textborder2"><a class="linkview" href="rozvrh2.php?rid=1">Fakulta prevádzky a ekonomiky dopravy a spojov</a></li><li class="Textborder2"><a class="linkview" href="rozvrh2.php?rid=2">Strojnícka fakulta</a></li><li class="Textborder2"><a class="linkview" href="rozvrh2.php?rid=3">Fakulta elektrotechniky a informačných technológií</a></li><li class="Textborder2"><a class="linkview" href="rozvrh2.php?rid=4">Stavebná fakulta</a></li><li class="Textborder2"><a class="linkview" href="rozvrh2.php?rid=5">Fakulta riadenia a informatiky</a></li><li class="Textborder2"><a class="linkview" href="rozvrh2.php?rid=8">Ústav mediamatiky a kultúrneho dedičstva</a></li><li class="Textborder2"><a class="linkview" href="rozvrh2.php?rid=9">Fakulta bezpečnostného inžinierstva</a></li> </ul>
+</div>
+<div style="padding-bottom: 40px;">
+ <a href="rozvrh2.php?rid=r" class="showLeft">denné štúdium</a> <span class="showLeft">&nbsp;|&nbsp;</span>
+ <span id="scheduleMenuLink">
+  <span class="linkview showLeft">externé štúdium</span>
+  <span class="float-left-icon"><span class="ui-icon ui-icon-triangle-1-s"></span></span>
+ </span>
+</div>
+<div><b>Rozvrh</b> - 
+ Letný semester 2025/2026, denné štúdium 
+ <br><br>
+</div>
+<div> 
+  <div>
+    <div class="silver" id="searchLink">
+    <a id="1" class="linkactive">učiteľ</a> | <a id="2" class="linkview">štud. skupina</a> | <a id="3" class="linkview">miestnosť</a> | <a id="4" class="linkview">predmet</a> |     </div>
+    <form id="search" class="cssform" name="search">
+    <input id="searchParamtype" name="searchParamtype" type="hidden" value="1">
+    <input id="searchText" name="searchText" type="text" value="" size="50" autocomplete="off" placeholder="vyhľadávanie ..." class="formatInputtext">
+    <div style="width:345px; display: inline-table;" class="autocomplete" id="search-suggest"></div>  
+    </form>
+  </div>
+</div>
+
+<div> 
+   <div class="schedule">
+   <div class="formatdiv4">
+    <span class="SRH_bold">Môj rozvrh</span>     | <a href="rozvrh-tlac.php" title="Tlačiť rozvrh" target="rozvrh">tlač</a> 
+   </div>	 
+   <div>
+          <div id="schedule">
+     <div id="infoMore" class="displayNo formatdiv"></div>
+     <div class="scheduleheader"><div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">1</p>7:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">2</p>8:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">3</p>9:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">4</p>10:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">5</p>11:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">6</p>12:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">7</p>13:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">8</p>14:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">9</p>15:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">10</p>16:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">11</p>17:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">12</p>18:00</div>
+<div class="scheduleheader-blok" style="width: 61px;"><p class="SRH_bold">13</p>19:00</div>
+</div><div id="miestnost_bloky" class=""><div class="rozvrh_tyzden">
+<div class="rozvrh_nazov">Pondelok</div>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">P</span><br><a href="rozvrh2.php?sq=1&id=1001120" name="511001120" class="linkview">Ján Janech</a><br><a href="rozvrh2.php?sq=3&id=199" class="linkview" name="61199">AR1A3</a><br><a href="rozvrh2.php?sq=4&id=6BI0012%2C5%2C2%2C1" class="linkactive" name="71297082">INF2</a><br><a href="rozvrh2.php?sq=2&id=5ZYI11" class="" name="81297082">5ZYI11...</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">P</span><br><a href="rozvrh2.php?sq=1&id=30265" name="5130265" class="linkview">Juraj Smieško</a><br><a href="rozvrh2.php?sq=3&id=199" class="linkview" name="61199">AR1A3</a><br><a href="rozvrh2.php?sq=4&id=6BA0005%2C5%2C2%2C1" class="linkactive" name="71295808">DPrav</a><br><a href="rozvrh2.php?sq=2&id=5ZYI11" class="" name="81295808">5ZYI11...</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">L</span><br><a href="rozvrh2.php?sq=1&id=1001120" name="511001120" class="linkview">Ján Janech</a><br><a href="rozvrh2.php?sq=3&id=239" class="linkview" name="61239">RA013</a><br><a href="rozvrh2.php?sq=4&id=6BI0012%2C5%2C2%2C1" class="linkactive" name="71297106">INF2</a><br><a href="rozvrh2.php?sq=2&id=5ZYI14" class="" name="81297106">5ZYI14...</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-all" style="width: 61px;"></span>
+</div>
+<div class="rozvrh_tyzden">
+<div class="rozvrh_nazov">Utorok</div>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">P</span><br><a href="rozvrh2.php?sq=1&id=30310" name="5130310" class="linkview">Mária Ďurišová</a><br><a href="rozvrh2.php?sq=3&id=37" class="linkview" name="6137">AF1A1</a><br><a href="rozvrh2.php?sq=4&id=6BL0001%2C5%2C2%2C1" class="linkactive" name="71296773">EaPAP</a><br><a href="rozvrh2.php?sq=2&id=5ZYI11" class="" name="81296773">5ZYI11...</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">C</span><br><a href="rozvrh2.php?sq=1&id=30182" name="5130182" class="linkview">Zuzana Staníková</a><br><a href="rozvrh2.php?sq=3&id=347" class="linkview" name="61347">RA320</a><br><a href="rozvrh2.php?sq=4&id=6BL0001%2C5%2C2%2C1" class="linkactive" name="71295298">EaPAP</a><br><a href="rozvrh2.php?sq=2&id=5ZYI14" class="" name="80295298">5ZYI14</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-all" style="width: 61px;"></span>
+</div>
+<div class="rozvrh_tyzden">
+<div class="rozvrh_nazov">Streda</div>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">L</span><br><a href="rozvrh2.php?sq=1&id=1001454" name="511001454" class="linkview">Zuzana Borčinová</a><br><a href="rozvrh2.php?sq=3&id=326" class="linkview" name="61326">RB053</a><br><a href="rozvrh2.php?sq=4&id=6BA0002%2C5%2C2%2C1" class="linkactive" name="71292225">ATG</a><br><a href="rozvrh2.php?sq=2&id=5ZYI14" class="" name="80292225">5ZYI14</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">P</span><br><a href="rozvrh2.php?sq=1&id=99185" name="5199185" class="linkview">Tomáš Majer</a><br><a href="rozvrh2.php?sq=3&id=199" class="linkview" name="61199">AR1A3</a><br><a href="rozvrh2.php?sq=4&id=6BA0002%2C5%2C2%2C1" class="linkactive" name="71292215">ATG</a><br><a href="rozvrh2.php?sq=2&id=5ZYI11" class="" name="81292215">5ZYI11...</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">P</span><br><a href="rozvrh2.php?sq=1&id=99060" name="5199060" class="linkview">Jana Uramová</a><br><a href="rozvrh2.php?sq=3&id=199" class="linkview" name="61199">AR1A3</a><br><a href="rozvrh2.php?sq=4&id=6BI0034%2C5%2C2%2C1" class="linkactive" name="71295930">PIKS</a><br><a href="rozvrh2.php?sq=2&id=5ZYP11" class="" name="81295930">5ZYP11...</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">L</span><br><a href="rozvrh2.php?sq=1&id=1002967" name="511002967" class="linkview">Dalibor Kafka</a><br><a href="rozvrh2.php?sq=3&id=239" class="linkview" name="61239">RA013</a><br><a href="rozvrh2.php?sq=4&id=6BI0034%2C5%2C2%2C1" class="linkactive" name="71295942">PIKS</a><br><a href="rozvrh2.php?sq=2&id=5ZYI13" class="" name="81295942">5ZYI13...</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-all" style="width: 61px;"></span>
+</div>
+<div class="rozvrh_tyzden">
+<div class="rozvrh_nazov">Štvrtok</div>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">C</span><br><a href="rozvrh2.php?sq=1&id=1002257" name="511002257" class="linkview">Monika Smiešková</a><br><a href="rozvrh2.php?sq=3&id=237" class="linkview" name="61237">RA009</a><br><a href="rozvrh2.php?sq=4&id=6BA0005%2C5%2C2%2C1" class="linkactive" name="71295823">DPrav</a><br><a href="rozvrh2.php?sq=2&id=5ZYI14" class="" name="80295823">5ZYI14</a></span>
+<span class="rozvrh_bloky-p-c" style="width: 61px;"></span>
+<span class="rozvrh_bloky-p" style="width: 61px;"><span class="SRH_bold">L</span><br><a href="rozvrh2.php?sq=1&id=1002257" name="511002257" class="linkview">Monika Smiešková</a><br><a href="rozvrh2.php?sq=3&id=252" class="linkview" name="61252">RB002</a><br><a href="rozvrh2.php?sq=4&id=6BA0005%2C5%2C2%2C1" class="linkactive" name="71295853">DPrav</a><br><a href="rozvrh2.php?sq=2&id=5ZYI14" class="" name="80295853">5ZYI14</a></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-v" style="width: 61px;"><span class="SRH_bold">L</span><br><a href="rozvrh2.php?sq=1&id=1002623" name="511002623" class="linkview">Veronika Šalgová</a><br><a href="rozvrh2.php?sq=3&id=252" class="linkview" name="61252">RB002</a><br><a href="rozvrh2.php?sq=4&id=6BI0033%2C5%2C2%2C1" class="linkactive" name="71293745">PrzPr2</a><br><a href="rozvrh2.php?sq=2&id=5ZYI14" class="" name="81293745">5ZYI14...</a></span>
+<span class="rozvrh_bloky-v-c-all" style="width: 61px;"></span>
+</div>
+<div class="rozvrh_tyzden">
+<div class="rozvrh_nazov">Piatok</div>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky" style="width: 61px;"></span>
+<span class="rozvrh_bloky-all" style="width: 61px;"></span>
+</div>
+</div>
+<br><br><br><br><br><br><br>     </div>
+     <div>
+      
+
+   </div>
+  </div></div>
+
+        </td>
+
+    <td style="width:30%; vertical-align: text-top;">
+    
+<div style="min-width: 450px;"> 
+  <div class="msgClass" id="infoText" style="margin: 0;">    
+    <ul type="square">
+          
+<li><a target="_blank" href="download/doc/ziadost-zmena-rozvrhu.pdf"><b>Tlačivo na zmenu rozvrhu</b></a><br>
+      
+      <br>
+      <!--
+      <li><b>Žiadosti o zmenu v rozvrhu</b> bude rozvrhové oddelenie prijímať na vyplnenom formulári.
+          <ul type="square">
+          <li><a href="download/doc/Formular_na_zmenu_rozvrhu.docx">Formulár na zmenu rozvrhu</a><br>
+          <li><a href="download/doc/zaznam_jednorazove_zmeny_evzdelavanie.docx">Záznam o jednorazových zmenách v rozvrhu</a><br>
+          <li><a href="download/doc/prikaz-rektora-05-2019.pdf">Príkaz rektora č. 5/2019</a>
+          </ul>
+       -->
+      <li>Po zobrazení rozvrhu získate podrobné informácie presunom kurzoru na daný blok (miestnosť, predmet, pedagóg, študijná skupina)
+      <li>Predmet môžete vyhľadávať podľa názvu, alebo kódu napr. 5BI006.
+
+      <li>Zmeny budú platné po zaevidovaní na oddelení pre vzdelávanie - rozvrhy (p. Zuzana Hlušková, Ing. Jana Sičová)<br> AA20 rektorát-prízemie, kontakt:
+      <a href="mailto:rozvrhy@uniza.sk">rozvrhy@uniza.sk</a>
+
+      <br><br>
+      <li><b>Archív rozvrhov</b>
+      <p>
+      <a href="rozvrh2.php?list=2025Z">2025/2026, zimný semester</a><br><a href="rozvrh2.php?list=2024L">2024/2025, letný semester</a><br><a href="rozvrh2.php?list=2024Z">2024/2025, zimný semester</a><br><a href="rozvrh2.php?list=2023L">2023/2024, letný semester</a><br><a href="rozvrh2.php?list=2023Z">2023/2024, zimný semester</a><br><a href="rozvrh2.php?list=2022L">2022/2023, letný semester</a><br><a href="rozvrh2.php?list=2022Z">2022/2023, zimný semester</a><br><a href="rozvrh2.php?list=2021L">2021/2022, letný semester</a><br>      </p>
+
+      <p class="SRH_bold">Predmety</p>
+      <p><span class="block-fae2a8"></span> povinný</p>
+      <p><span class="block-bfe9fc"></span> povinne voliteľný</p>
+      <p><span class="block-c7f9b2"></span> výberový</p>
+      
+           </div>
+        </ul>
+
+      
+  </div>
+</div>
+
+
+    </td>
+  </tr>  
+</table> 
+
+
+
+
+
+
+
+
+
+    </td>
+  </tr>
+  </table>
+  <br>
+  
+  </div>
+  </div>
+
+  </div> 
+  <script>var arescrolling_rozvrh = 0;
+function scroller(from,to) {
+  if (arescrolling_rozvrh) return; 
+  arescrolling_rozvrh = 1;
+  document.getElementById(to).scrollLeft = document.getElementById(from).scrollLeft;
+  arescrolling_rozvrh = 0;
+}
+function zisti_sirku_tabulky() {
+  var x1_ = document.getElementById("tabulka-rozvrh-horny-scrollbar");
+  var x2_ = document.getElementById("id-tabulka-rozvrh").clientWidth; 
+  x1_.style.width = x2_ + 0 +  "px"; 
+  var c = document.getElementsByClassName("stlpec"); 
+  var d = document.getElementById("scroller"); 
+  var e = c[0].offsetWidth-mch_plpr; 
+  if (e <= x2_) {
+   d.style.overflowX = "scroll"; 
+  } else d.style.overflowX = "auto"; 
+}</script>  </div>
+          </div>
+        </div>
+      </div>
+      
+    </div> <!--zobraz-->
+
+    <div id="id-zobraz-mobile-menu" class="kontajner">
+      <div class="stlpec-mobile-menu tien">
+
+                <div style="text-align: left; position: relative; top: -10px;" id="id-vlajky-jazykov-mobil">
+          <a href="javascript:swlang_SK();" title="Slovenská verzia"><img style="border: 1px solid #000; position: relative; top: 0;" src="img/flag_sk.png" alt="" width="auto" height="13"></a>
+          &nbsp;&nbsp;
+          <a id="evzd-mobil-flag-en-href" href="javascript:swlang_EN();" title="English version"><img id="evzd-mobil-flag-en" style="border: 1px solid #000; position: relative; top: 0;" src="img/flag_en.png" alt="" width="auto" height="13"></a>
+        </div>
+
+        <div class="hl-nadpis-mobile tien">
+          <h2 class="e-vzdelavanie-mm">
+            <a id="txm-lng1" href="index.php" style="white-space: nowrap;">&nbsp;E-VZDELÁVANIE&nbsp;&nbsp;<i class="fa fa-home ikonka-home"></i></a>
+          </h2>
+        </div>
+              
+        <div id="display-vseobecne-info-mobil" class="accordion"><h4 class="accord-hl-polozka" id="mobil-menu-lng2">VŠEOBECNÉ INFORMÁCIE</h4></div>        
+        <div class="accord-panel">
+          <a id="display-plany-mobil" href="plany.php" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng7a">Učebné plány</p></a>
+          <a id="display-rozvrh-mobil" href="rozvrh.php" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng7b">Rozvrh, zoznam učební</p></a>
+          <a id="display-edis-mobil" target="_blank" href="http://edis.uniza.sk" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng7">EDIS - vydavateľské centrum Žilinskej univerzity</p></a>          
+          <p></p>
+        </div>
+
+        
+                <div class="accordion"><h4 class="accord-hl-polozka" id="mobil-menu-lng17">HLAVNÁ PONUKA</h4></div>
+                <div class="accord-panel"><a id="mobil-menu-lng18t" href="predmety_s.php" title="Zapísané predmety" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng18">Zapísané predmety</p></a><a id="mobil-menu-lng19t" href="svysledky.php" title="Študijné výsledky" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng19">Študijné výsledky</p></a><a id="mobil-menu-lng20t" href="zaverecnep.php" title="Záverečné práce" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng20">Záverečné práce</p></a><a id="mobil-menu-lng21t" href="sporty.php" title="Športy a telovýchovné sústredenia" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng21">Športy a sústredenia</p></a>    
+                <p></p>
+              </div>
+              
+              <div class="accordion"><h4 class="accord-hl-polozka" id="mch-name-mobil"> BORYS CHERKASHYN</h4></div>
+              <div class="accord-panel"><span style="font-style: italic;" class="tlacitko1 color2 accord-sub-polozka"><p><span id="mobil-menu-lng38">Študijná skupina: </span>5ZYI14</p></span><span style="font-style: italic;" class="tlacitko1 color2 accord-sub-polozka"><p><span id="mobil-menu-lng39">Osobné číslo: </span>563561</p></span><a id="mobil-menu-lng14t" href="https://nic.uniza.sk/nms/" title="Zmena hesla" target="_blank" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng14">Zmena hesla</p></a><a id="mobil-menu-lng41t" href="ubytovanie.php" title="Výber ubytovania" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng41">Ubytovanie</p></a><a id="mobil-menu-lng42t" href="profil.php" title="Úprava profilových údajov študenta" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng42">Profilové údaje</p></a><a id="mobil-menu-lng43t" href="https://webmail.stud.uniza.sk/roundcubemail/" title="Elektronická pošta študentov UNIZA" target="_blank" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng43">Študentský poštový server</p></a><a id="mobil-menu-lng15t" href="http://vzdelavanie.uniza.sk/vzdelavanie/logout.php" title="Odhlásiť používateľa" class="tlacitko1 color2 accord-sub-polozka"><p id="mobil-menu-lng15">Odhlásiť</p></a>    
+                <p></p>
+              </div>
+            <a href="kontakt.php" title="" class="tlacitko1 color1"><h4 id="mobil-menu-lng55">KONTAKT</h4></a>
+        <script>
+
+        var mch_name_mobil_obj = [
+          {id:'mch-name-mobil', EN:'BORYS CHERKASHYN', SK:'BORYS CHERKASHYN', typ:'i'},
+        ];
+
+        </script>        <div class="pata-mm"></div>
+      </div>
+    </div>
+
+  </div> <!--stred--> 
+  </div> <!--id-vsetko-nad-patou-->
+
+  <div class="pata-celkova">
+
+  <div class="pata0 zobraz">
+    <div class="social-icons-obal">
+      <a id="txm-lng4t" href="index.php" title="E-vzdelávanie" class="soc-icon"><i class="fa fa-teacher"></i></a> 
+      <a id="txm-lng5t" href="http://ukzu.uniza.sk" target="_blank" title="Univerzitná knižnica" class="soc-icon"><i class="fa fa-ukuniza"></i></a> 
+      <a id="txm-lng6t" href="https://shportal1.uniza.sk/unizadocs/WikiPage/Domov.aspx" target="_blank" title="Intranet" class="soc-icon"><i class="fa fa-institution"></i></a>
+      <a id="txm-lng7t" href="https://sofiafiori.iedu.sk/sap/bc/ui2/flp?sap-client=110&sap-language=SK" target="_blank" title="Zamestnanecký portál" class="soc-icon"><i class="fa fa-uniza"></i></a> 
+      <a id="txm-lng8t" href="https://uniza.sk/index.php/zamestnanci/vseobecne-informacie/adresar-zamestnancov" target="_blank" title="Adresár zamestnancov" class="soc-icon"><i class="fa fa-journal"></i></a>
+      <a id="txm-lng9t" href="https://www.facebook.com/uniza.sk?fref=ts" target="_blank" title="Facebook" class="soc-icon"><i class="fa fa-facebook"></i></a> 
+      <a id="txm-lng10t" href="http://twitter.com/UNIZA_ZILINA" target="_blank" title="Twitter" class="soc-icon"><i class="fa fa-twitter"></i></a> 
+      <a id="txm-lng11t" href="https://www.instagram.com/zilinska.univerzita/?hl=en" target="_blank" title="Instagram" class="soc-icon"><i class="fa fa-instagram"></i></a>  
+      <a id="txm-lng12t" href="https://www.youtube.com/channel/UCLE1gf9emVISc6FCmbgSCFA" target="_blank" title="Youtube kanál" class="soc-icon"><i class="fa fa-youtube"></i></a> 
+      <a id="txm-lng13t" href="https://nic.uniza.sk/zuwiki/zu:net:wifi" target="_blank" title="Prístup na Wi-Fi sieť UNIZA" class="soc-icon"><i class="fa fa-wifi"></i></a> 
+    </div>  
+  </div> 
+
+  <div class="pata1 zobraz">
+    <div class="font0">
+      <div class="stlpec1 sirka5 medzera">
+        <a href="kontakt.php"><strong id="txm-lng14" class="padding-pata1">Kontakt</strong></a><span id="txm-lng14a"><br><br>
+        Pripomienky, návrhy,<br> hlásenie poruchy</span>
+      </div>
+      <div class="stlpec1 sirka5 medzera">
+        <a href="http://helpdesk.uniza.sk" target="_blank"><strong id="txm-lng15" class="padding-pata1">Podpora IKT UNIZA</strong></a><span id="txm-lng15a"><br><br>
+        Tikety + onlinechat<br> Centrum IKT, AA018, kl.1717</span>
+      </div>
+      <div class="stlpec1 sirka5 medzera">
+        <a href="mailto:kurimska@dorm.uniza.sk"><strong id="txm-lng16" class="padding-pata1">Univerzitný lekár</strong></a><span id="txm-lng16a"><br><br>        
+        MUDr. Daniela Podolinská<br>
+        041 56 27 035<br> 041 56 52 611<br><br></span>
+      </div>
+      <div class="stlpec1 sirka5 medzera">
+        <a href="https://docs.moodle.org/archive/sk/Hlavn%C3%A1_str%C3%A1nka" target="_blank"><strong id="txm-lng17" class="padding-pata1">Návod na prácu s LMS Moodle</strong></a><span id="txm-lng17a"><br><br>
+        O Moodle, dokumentácia pre učiteľov, správcov a vývojárov</span> 
+      </div>
+      <div class="stlpec1 sirka5 medzera">
+        <a id="link-txm-lng18" href="https://www.uniza.sk/flexpapers/sprievodca-prvaka/" target="_blank"><strong id="txm-lng18" class="padding-pata1">Sprievodca prváka</strong></a><span id="txm-lng18a"><br><br>
+        Praktický pomocník pri objavovaní možností, ktoré ponuka naše univerzitné štúdium</span>
+      </div>
+      <div class="dorovnanie1 stlpec1 sirka5 medzera"></div>
+    </div>
+  </div>  <!--pata1-->
+
+  <div class="pata2-obal">
+    <div id="txm-lng22" class="pata2 zobraz">
+      &copy; 2016-2022 Žilinská univerzita v Žiline, Centrum informačných a komunikačných technológií.<br>
+      <span style="line-height: 30px;">
+        <a href="cookies_info.php" style="color:#fff !important; text-decoration: underline; white-space: nowrap;">Použitie cookies</a>&emsp;
+        <a id="link-txm-lng19" target="_blank" href="https://www.uniza.sk/index.php/univerzita/vseobecne-informacie/ochrana-osobnych-udajov" style="color:#fff !important; text-decoration: underline; white-space: nowrap;">Ochrana osobných údajov</a>
+      </span>
+    </div>  
+  </div>
+
+  </div> <!--pata-celkova-->
+
+  
+  
+        <style>
+          .obr-hlavicka {
+            padding-bottom: 0;
+            border-bottom: 0; 
+          }
+          @media all and (max-width: 1600px) {
+            .obr-hlavicka {
+              min-height: 0;
+            }
+          }
+        </style>
+      <script>  if (navigator.userAgent.match(/IEMobile\/10\.0/)) {
+    var msViewportStyle = document.createElement("style");
+    msViewportStyle.appendChild(
+        document.createTextNode(
+        "@-ms-viewport{width:auto!important}"
+    )
+    );
+    document.getElementsByTagName("head")[0].appendChild(msViewportStyle);
+  }  
+  function ar_custom_select() {
+    if ("createEvent" in document) {
+      var ar_event = document.createEvent("HTMLEvents");
+      ar_event.initEvent("change", false, true);   
+    }
+    var x, j, selElmnt, a, b, c;
+    x = document.getElementById("ar-custom-select");
+    selElmnt = x.getElementsByTagName("select")[0];
+    a = document.createElement("DIV");
+    a.setAttribute("class", "ar-select-selected");
+    a.innerHTML = selElmnt.options[selElmnt.selectedIndex].innerHTML;
+    x.appendChild(a);
+    b = document.createElement("DIV");
+    b.setAttribute("class", "ar-select-items ar-select-hide");
+    for (j = 0; j < selElmnt.length; j++) {
+      c = document.createElement("DIV");
+      c.innerHTML = selElmnt.options[j].innerHTML;
+      c.addEventListener("click", function (e) {
+        var i, s, h;
+        s = this.parentNode.parentNode.getElementsByTagName("select")[0];
+        h = this.parentNode.previousSibling;
+        for (i = 0; i < s.length; i++) {
+          if (s.options[i].innerHTML == this.innerHTML) { 
+            s.selectedIndex = i;
+            h.innerHTML = this.innerHTML;
+            if (ar_event != null) { s.dispatchEvent(ar_event); }
+            break;
+          }
+        }
+        h.click();
+      });
+      b.appendChild(c);
+    }
+    x.appendChild(b);
+    a.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (typeof closeAllSelect === 'function') closeAllSelect(); 
+      ar_closeAllSelect(this);
+      this.nextSibling.classList.toggle("ar-select-hide");
+      this.classList.toggle("ar-select-arrow-active");
+    });
+  }
+  function ar_closeAllSelect(elmnt) {
+    var x, y, i, arrNo = [];
+    x = document.getElementsByClassName("ar-select-items");
+    y = document.getElementsByClassName("ar-select-selected");
+    for (i = 0; i < y.length; i++) {
+      if (elmnt == y[i]) {
+        arrNo.push(i)
+      } else {
+        y[i].classList.remove("ar-select-arrow-active");
+      }
+    }
+    for (i = 0; i < x.length; i++) {
+      if (arrNo.indexOf(i)) {
+        x[i].classList.add("ar-select-hide");
+      }
+    }
+  }
+  document.addEventListener("click", ar_closeAllSelect);
+  var hmbg_text = document.getElementsByClassName("fa");
+  var id_zobraz_mobile_menu = document.getElementById("id-zobraz-mobile-menu");
+  var kontajner = document.getElementsByClassName("kontajner");
+  var zobraz = document.getElementsByClassName("zobraz");
+  var p1 = 200;
+  var p2 = 200;
+  var aa = 0;
+  var ee = 1;
+  function mobile_menu() {
+    ee = 0;
+    if (aa == 0) {
+      p1 = document.body.scrollTop;
+      p2 = document.documentElement.scrollTop;
+      hmbg_text[0].classList.remove("fa-bars");
+      hmbg_text[0].classList.add("fa-remove");
+      id_zobraz_mobile_menu.style.display = "block";
+      for (i = 0; i < kontajner.length-1; i++) {  
+        kontajner[i].classList.add("prepinie-obsah-mobilne-menu");
+      }
+      for (i = 0; i < zobraz.length; i++) {
+        zobraz[i].style.display = "none";
+      }
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+      hamburger_color();
+      aa = 1;
+    }
+    else {cast(); ee = 1; }
+  }
+  function cast() { 
+    hmbg_text[0].classList.remove("fa-remove");
+    hmbg_text[0].classList.add("fa-bars");
+    id_zobraz_mobile_menu.style.display = "none";
+    for (i = 0; i < kontajner.length-1; i++) {
+      kontajner[i].classList.remove("prepinie-obsah-mobilne-menu");
+    }
+    for (i = 0; i < zobraz.length; i++) {
+      zobraz[i].style.display = "block";
+    }
+    document.body.scrollTop = p1;
+    document.documentElement.scrollTop = p2;
+    hamburger_color();
+    aa = 0;
+  }
+  var hlav = document.getElementsByClassName("hlavicka"); 
+  function resizing_() { 
+    if (typeof zisti_sirku_tabulky === 'function') zisti_sirku_tabulky();
+    var sirka_okna = window.innerWidth; 
+    if (aa == 1 && sirka_okna > 720) {cast();} 
+    posunutie();
+  }
+  var pth = 10; 
+  var hlavicka_fixed = document.getElementById("hlavicka-fixed");
+  var horne_menu_ = 4;
+  function posunutie() {  
+    var v_;
+    var el1 = document.getElementsByClassName("horne-menu");
+    var style1_ = window.getComputedStyle ? getComputedStyle(el1[0], null) : el1.currentStyle;
+    v_ = hlavicka[0].offsetHeight + pth + hl_nadpis_obal[0].offsetHeight;
+    var vyska_okna = window.innerHeight; 
+    if (vyska_okna < horne_menu_*v_) {
+      hlav[0].style.position = "static";
+      hlavicka_fixed.style.height = 0 + "px";
+    }
+    else {
+      hlav[0].style.position = "fixed";
+      hlavicka_fixed.style.height = v_ + 0 + "px";
+    }
+    if (style1_["display"] == "none") { 
+      hlav[0].style.position = "static";
+      hlavicka_fixed.style.height = 0 + "px";
+    }
+  }
+  var hlavicka = document.getElementsByClassName("obal-logo-a-horne-menu");
+  var hl_nadpis_obal = document.getElementsByClassName("hl-nadpis-obal");
+  var obr_hlavicka = document.getElementsByClassName("obr-hlavicka");
+  var id_hmbg = document.getElementById("id-hamburger");
+  var pozicia1;
+  var pozicia2;
+  var pozicia3;
+  var bb = 0;
+  var cc = 0;
+  function hamburger_color() {
+    var ii1 = document.body.scrollTop;
+    var ii2 = document.documentElement.scrollTop;
+    var v1 = hlavicka[0].offsetHeight + pth; 
+    var v2 = hlavicka[0].offsetHeight + pth + hl_nadpis_obal[0].offsetHeight; 
+    var v3 = hlavicka[0].offsetHeight + pth + hl_nadpis_obal[0].offsetHeight + obr_hlavicka[0].offsetHeight;
+    var a = id_hmbg.offsetHeight; 
+    var b = id_hmbg.offsetTop; 
+    var pozicia1 = (v1 - a - b) + a/2; 
+    var pozicia2 = (v2 - a - b) + a/2 - 8; 
+    var pozicia3 = (v3 - a - b) + a;
+    if (ii1 > pozicia1 || ii2 > pozicia1) {cc = 0;}  else {cc = 1;}
+    if (ii1 > pozicia2 || ii2 > pozicia2) {cc = 2;} 
+    if (ii1 > pozicia3 || ii2 > pozicia3) {cc = 3;} 
+    if ((cc == 1) || (cc == 2)) {
+      bb = 0;
+      if (ee == 0) {
+        id_hmbg.style.backgroundColor = "#2b3a64";
+        id_hmbg.style.color = "#fff";
+        id_hmbg.style.opacity = "1";
+        ee = 1;
+      }
+    }
+    if ((cc == 0) || (cc == 3)) {
+      bb = 1;
+      if (ee == 1) {
+        id_hmbg.style.backgroundColor = "#666666";
+        id_hmbg.style.color = "#fff";
+        id_hmbg.style.opacity = "0.6";
+        ee = 0;
+      }
+    }
+  }
+  function hmbg_hover_enter() {
+    if (bb == 0) {
+      id_hmbg.style.backgroundColor = "#888888";
+      id_hmbg.style.color = "#fff";
+    }
+    if (bb == 1) {
+      id_hmbg.style.backgroundColor = "#888888";
+      id_hmbg.style.color = "#fff";
+    }
+  }
+  function hmbg_hover_leave() {
+    if (bb == 0) {
+      id_hmbg.style.backgroundColor = "#2b3a64";
+      id_hmbg.style.color = "#fff";
+    }
+    if (bb == 1) {
+      id_hmbg.style.backgroundColor = "#666666";
+      id_hmbg.style.color = "#fff";
+    }
+  }
+  var acc = document.getElementsByClassName("accordion");
+  var iu = 0;          
+  for (iu = 0; iu < acc.length; iu++) {
+    acc[iu].addEventListener("click", function() {
+      this.classList.toggle("accordion-active");
+      var panel = this.nextElementSibling;
+      if (panel.style.maxHeight){
+        panel.style.maxHeight = null;
+      } else {
+        panel.style.maxHeight = panel.scrollHeight + "px";
+      } 
+    });
+  }
+  posunutie();
+  window.onscroll = hamburger_color;
+  function odsadenie_dropbtn(id1, id2) {    
+    var elm1 = document.getElementById(id1);
+    var elm2 = document.getElementById(id2);
+    var l1, s2;
+    l1 = elm1.offsetLeft; 
+    s2 = elm2.offsetWidth; 
+    var v = (window.innerWidth - (l1 + s2)) - 27;
+    if (v <= 0) {
+      elm2.style.cssText += "margin-left: "+v+"px;";
+    } else {
+      elm2.style.cssText += "margin-left: 0px;";
+    }
+  }
+  function complet_page() {
+    resizing_();      
+    ar_custom_select();
+  }
+  /*
+  function btn_close_top_msg(id) {
+    document.getElementById(id).style.display = "none";
+    setCookie('mch_close_btn_top_msg', 'ano');
+    resizing_();
+  }
+  */
+  function btn_close_msg_cookies(id) {
+    document.getElementById(id).style.display = "none";
+    resizing_();
+  }
+  function btn_close_msg_oou(id) {
+    document.getElementById(id).style.display = "none";
+    resizing_();
+  }
+function menu_and_main_lang() {
+  var slogo_SK_UNIZA = "url('images/logo_uniza_web_sk2x_new.png')";
+  var slogo_EN_UNIZA = "url('images/logo_uniza_web_en2x_new.png')";
+  if (lang_ == 1) {
+    document.getElementById('lng-logo-uniza').style.backgroundImage = slogo_EN_UNIZA;
+  }
+  else if (lang_ == 0) {
+    document.getElementById('lng-logo-uniza').style.backgroundImage = slogo_SK_UNIZA;
+  }
+  var mp1_en = 'LOGIN'; const mp1_sk = 'PRIHLÁSIŤ';
+  var mp1t_en = ''; const mp1t_sk = '';
+  const mp2_en = 'GENERAL INFORMATION'; const mp2_sk = 'VŠEOBECNÉ INFORMÁCIE';
+  const mp7_en = 'EDIS - publishing center of the University of Žilina'; const mp7_sk = 'EDIS - vydavateľské centrum Žilinskej univerzity';
+  const mp7a_en = 'Teaching plans'; const mp7a_sk = 'Učebné plány';
+  const mp7b_en = 'Schedule, list of schoolrooms'; const mp7b_sk = 'Rozvrh, zoznam učební';
+  const mp8_en = 'Group subjects'; const mp8_sk = 'Skupinové predmety';
+  const mp8t_en = ''; const mp8t_sk = '';
+  const mp9_en = 'Manage users'; const mp9_sk = 'Správa používateľov';
+  const mp9t_en = ''; const mp9t_sk = '';
+  const circl = '&emsp;';
+  const mp10_en = circl + ' students'; const mp10_sk = circl + ' študenti';
+  const mp10t_en = ''; const mp10t_sk = '';
+  const mp11_en = circl + ' PhD students'; const mp11_sk = circl + ' doktorandi';
+  const mp11t_en = ''; const mp11t_sk = '';
+  const mp12_en = circl + ' teachers'; const mp12_sk = circl + ' učitelia';
+  const mp12t_en = ''; const mp12t_sk = '';
+  const mp13_en = circl + ' departments'; const mp13_sk = circl + ' katedry';
+  const mp13t_en = ''; const mp13t_sk = '';
+  const mp14_en = 'Change password'; const mp14_sk = 'Zmena hesla';
+  const mp14t_en = ''; const mp14t_sk = '';
+  const mp15_en = 'Logout'; const mp15_sk = 'Odhlásiť';
+  const mp15t_en = ''; const mp15t_sk = '';
+  const mp16_en = 'BACK AS ADMIN'; const mp16_sk = 'SPÄŤ AKO ADMIN';
+  const mp16t_en = ''; const mp16t_sk = '';
+  const mp17_en = 'MAIN OFFER'; const mp17_sk = 'HLAVNÁ PONUKA';
+  const mp18_en = 'My subjects'; const mp18_sk = 'Zapísané predmety';
+  const mp18t_en = ''; const mp18t_sk = '';
+  const mp19_en = 'Study results'; const mp19_sk = 'Študijné výsledky';
+  const mp19t_en = ''; const mp19t_sk = '';
+  const mp20_en = 'Final theses'; const mp20_sk = 'Záverečné práce';
+  const mp20t_en = ''; const mp20t_sk = '';
+  const mp21_en = 'Sports and trainings'; const mp21_sk = 'Športy a sústredenia';
+  const mp21t_en = ''; const mp21t_sk = '';
+  const mp22_en = 'Teaching the Department'; const mp22_sk = 'Výučba katedry';
+  const mp22t_en = ''; const mp22t_sk = '';
+  const mp23_en = 'Realize subjects'; const mp23_sk = 'Zabezpečované predmety';
+  const mp23t_en = ''; const mp23t_sk = '';
+
+  const mp62_en = 'Questionnaires'; const mp62_sk = 'Dotazníky';
+  const mp62t_en = ''; const mp62t_sk = '';
+
+  const mp24_en = 'Staff evaluation'; const mp24_sk = 'Hodnotenie zamestnancov';
+  const mp24t_en = ''; const mp24t_sk = '';
+  const mp25_en = 'Final exams'; const mp25_sk = 'Záverečné skúšky';
+  const mp25t_en = ''; const mp25t_sk = '';
+  const mp26_en = 'Study success'; const mp26_sk = 'Úspešnosť štúdia';
+  const mp26t_en = ''; const mp26t_sk = '';
+  const mp27_en = 'Sent messages'; const mp27_sk = 'Odoslané správy';
+  const mp27t_en = ''; const mp27t_sk = '';
+  const mp28_en = 'Choosing on optional subjects'; const mp28_sk = 'Prihlasovanie na voliteľné predmety';
+  const mp28t_en = ''; const mp28t_sk = '';
+  const mp29_en = 'Subjects '; const mp29_sk = 'Predmety ';
+  const mp38_en = 'Study group: '; const mp38_sk = 'Študijná skupina: ';
+  const mp39_en = 'Personal number: '; const mp39_sk = 'Osobné číslo: ';
+  const mp40_en = 'Prolongation marks'; const mp40_sk = 'Prolongačné známky';
+  const mp40t_en = ''; const mp40t_sk = '';
+  const mp41_en = 'Accommodation'; const mp41_sk = 'Ubytovanie';
+  const mp41t_en = ''; const mp41t_sk = '';
+  const mp42_en = 'Profile data'; const mp42_sk = 'Profilové údaje';
+  const mp42t_en = ''; const mp42t_sk = '';
+  const mp43_en = 'Student mail server'; const mp43_sk = 'Študentský poštový server';
+  const mp43t_en = ''; const mp43t_sk = '';
+  const mp44_en = 'Selection of study - personal number'; const mp44_sk = 'Výber štúdia - osobného čísla';
+  const mp44t_en = ''; const mp44t_sk = '';
+  const mp45_en = 'Number of students enrolled'; const mp45_sk = 'Počty prihlásených študentov';
+  const mp45t_en = ''; const mp45t_sk = '';
+  const mp47_en = 'Editing evaluation'; const mp47_sk = 'Editácia Hodnotenia';
+  const mp47t_en = ''; const mp47t_sk = '';
+  const mp48_en = 'Additional subjects enrolling'; const mp48_sk = 'Dodatočné prihlasovanie na predmety';
+  const mp48t_en = ''; const mp48t_sk = '';
+  const mp49_en = 'Competition '; const mp49_sk = 'Konkurzy ';
+  const mp49t_en = ''; const mp49t_sk = '';
+  const mp50_en = 'Subjects per year '; const mp50_sk = 'Predmety na rok ';
+  const mp50t_en = ''; const mp50t_sk = '';
+  const mp52_en = 'Ordering subjects'; const mp52_sk = 'Objednávanie predmetov';
+  const mp52t_en = ''; const mp52t_sk = '';
+  const mp53_en = 'Orders overview'; const mp53_sk = 'Prehľad objednávok';
+  const mp53t_en = ''; const mp53t_sk = '';
+  const mp55_en = 'CONTACT'; const mp55_sk = 'KONTAKT';
+  const mp56_en = 'Top menu:'; const mp56_sk = 'Horné menu:';
+  const mp57_en = 'Fixed'; const mp57_sk = 'Fixné';
+  const mp58_en = 'Scroll'; const mp58_sk = 'Scroll';
+  const mp59_en = 'Auto'; const mp59_sk = 'Auto';
+  const mp60_en = 'Study regulations of Faculty PEDAS'; const mp60_sk = 'Študijný poriadok fakulty PEDAS';
+  const mp61_en = 'Academic calendar of Faculty PEDAS'; const mp61_sk = 'Akademický kalendár fakulty PEDAS';
+  //const mp61_en = 'Academic calendar of Faculty PEDAS 2019/2020'; const mp61_sk = 'Akademický kalendár fakulty PEDAS 2019/2020';
+  var lng_desk_menu = [
+    { id: 'desk-menu-lng1', EN: mp1_en, SK: mp1_sk, typ: 'i' },
+    { id: 'desk-menu-lng1t', EN: mp1t_en, SK: mp1t_sk, typ: 't' },
+    { id: 'desk-menu-lng2', EN: mp2_en, SK: mp2_sk, typ: 'i' },
+    { id: 'desk-menu-lng7', EN: mp7_en, SK: mp7_sk, typ: 'i' },
+    { id: 'desk-menu-lng7a', EN: mp7a_en, SK: mp7a_sk, typ: 'i' },
+    { id: 'desk-menu-lng7b', EN: mp7b_en, SK: mp7b_sk, typ: 'i' },
+    { id: 'desk-menu-lng8', EN: mp8_en, SK: mp8_sk, typ: 'i' },
+    { id: 'desk-menu-lng8t', EN: mp8t_en, SK: mp8t_sk, typ: 't' },
+    { id: 'desk-menu-lng9', EN: mp9_en, SK: mp9_sk, typ: 'i' },
+    { id: 'desk-menu-lng9t', EN: mp9t_en, SK: mp9t_sk, typ: 't' },
+    { id: 'desk-menu-lng10', EN: mp10_en, SK: mp10_sk, typ: 'i' },
+    { id: 'desk-menu-lng10t', EN: mp10t_en, SK: mp10t_sk, typ: 't' },
+    { id: 'desk-menu-lng11', EN: mp11_en, SK: mp11_sk, typ: 'i' },
+    { id: 'desk-menu-lng11t', EN: mp11t_en, SK: mp11t_sk, typ: 't' },
+    { id: 'desk-menu-lng12', EN: mp12_en, SK: mp12_sk, typ: 'i' },
+    { id: 'desk-menu-lng12t', EN: mp12t_en, SK: mp12t_sk, typ: 't' },
+    { id: 'desk-menu-lng13', EN: mp13_en, SK: mp13_sk, typ: 'i' },
+    { id: 'desk-menu-lng13t', EN: mp13t_en, SK: mp13t_sk, typ: 't' },
+    { id: 'desk-menu-lng14', EN: mp14_en, SK: mp14_sk, typ: 'i' },
+    { id: 'desk-menu-lng14t', EN: mp14t_en, SK: mp14t_sk, typ: 't' },
+    { id: 'desk-menu-lng15', EN: mp15_en, SK: mp15_sk, typ: 'i' },
+    { id: 'desk-menu-lng15t', EN: mp15t_en, SK: mp15t_sk, typ: 't' },
+    { id: 'desk-menu-lng16', EN: mp16_en, SK: mp16_sk, typ: 'i' },
+    { id: 'desk-menu-lng16t', EN: mp16t_en, SK: mp16t_sk, typ: 't' },
+    { id: 'desk-menu-lng17', EN: mp17_en, SK: mp17_sk, typ: 'i' },
+    { id: 'desk-menu-lng18', EN: mp18_en, SK: mp18_sk, typ: 'i' },
+    { id: 'desk-menu-lng18t', EN: mp18t_en, SK: mp18t_sk, typ: 't' },
+    { id: 'desk-menu-lng19', EN: mp19_en, SK: mp19_sk, typ: 'i' },
+    { id: 'desk-menu-lng19t', EN: mp19t_en, SK: mp19t_sk, typ: 't' },
+    { id: 'desk-menu-lng20', EN: mp20_en, SK: mp20_sk, typ: 'i' },
+    { id: 'desk-menu-lng20t', EN: mp20t_en, SK: mp20t_sk, typ: 't' },
+    { id: 'desk-menu-lng21', EN: mp21_en, SK: mp21_sk, typ: 'i' },
+    { id: 'desk-menu-lng21t', EN: mp21t_en, SK: mp21t_sk, typ: 't' },
+    { id: 'desk-menu-lng22', EN: mp22_en, SK: mp22_sk, typ: 'i' },
+    { id: 'desk-menu-lng22t', EN: mp22t_en, SK: mp22t_sk, typ: 't' },
+    { id: 'desk-menu-lng23', EN: mp23_en, SK: mp23_sk, typ: 'i' },
+    { id: 'desk-menu-lng23t', EN: mp23t_en, SK: mp23t_sk, typ: 't' },
+    { id: 'desk-menu-lng24', EN: mp24_en, SK: mp24_sk, typ: 'i' },
+    { id: 'desk-menu-lng24t', EN: mp24t_en, SK: mp24t_sk, typ: 't' },
+    { id: 'desk-menu-lng25', EN: mp25_en, SK: mp25_sk, typ: 'i' },
+    { id: 'desk-menu-lng25t', EN: mp25t_en, SK: mp25t_sk, typ: 't' },
+    { id: 'desk-menu-lng26', EN: mp26_en, SK: mp26_sk, typ: 'i' },
+    { id: 'desk-menu-lng26t', EN: mp26t_en, SK: mp26t_sk, typ: 't' },
+    { id: 'desk-menu-lng27', EN: mp27_en, SK: mp27_sk, typ: 'i' },
+    { id: 'desk-menu-lng27t', EN: mp27t_en, SK: mp27t_sk, typ: 't' },
+    { id: 'desk-menu-lng28', EN: mp28_en, SK: mp28_sk, typ: 'i' },
+    { id: 'desk-menu-lng28t', EN: mp28t_en, SK: mp28t_sk, typ: 't' },
+    { id: 'desk-menu-lng29', EN: mp28_en, SK: mp28_sk, typ: 'i' },
+    { id: 'desk-menu-lng29t', EN: mp28t_en, SK: mp28t_sk, typ: 't' },
+    { id: 'desk-menu-lng30', EN: mp28_en, SK: mp28_sk, typ: 'i' },
+    { id: 'desk-menu-lng30t', EN: mp28t_en, SK: mp28t_sk, typ: 't' },
+    { id: 'desk-menu-lng31', EN: mp28_en, SK: mp28_sk, typ: 'i' },
+    { id: 'desk-menu-lng31t', EN: mp28t_en, SK: mp28t_sk, typ: 't' },
+    { id: 'desk-menu-lng32', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'desk-menu-lng33', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'desk-menu-lng34', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'desk-menu-lng35', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'desk-menu-lng36', EN: mp22_en, SK: mp22_sk, typ: 'i' },
+    { id: 'desk-menu-lng36t', EN: mp22t_en, SK: mp22t_sk, typ: 't' },
+    { id: 'desk-menu-lng37', EN: mp23_en, SK: mp23_sk, typ: 'i' },
+    { id: 'desk-menu-lng37t', EN: mp23t_en, SK: mp23t_sk, typ: 't' },
+    { id: 'desk-menu-lng38', EN: mp38_en, SK: mp38_sk, typ: 'i' },
+    { id: 'desk-menu-lng39', EN: mp39_en, SK: mp39_sk, typ: 'i' },
+    { id: 'desk-menu-lng40', EN: mp40_en, SK: mp40_sk, typ: 'i' },
+    { id: 'desk-menu-lng40t', EN: mp40t_en, SK: mp40t_sk, typ: 't' },
+    { id: 'desk-menu-lng41', EN: mp41_en, SK: mp41_sk, typ: 'i' },
+    { id: 'desk-menu-lng41t', EN: mp41t_en, SK: mp41t_sk, typ: 't' },
+    { id: 'desk-menu-lng42', EN: mp42_en, SK: mp42_sk, typ: 'i' },
+    { id: 'desk-menu-lng42t', EN: mp42t_en, SK: mp42t_sk, typ: 't' },
+    { id: 'desk-menu-lng43', EN: mp43_en, SK: mp43_sk, typ: 'i' },
+    { id: 'desk-menu-lng43t', EN: mp43t_en, SK: mp43t_sk, typ: 't' },
+    { id: 'desk-menu-lng44', EN: mp44_en, SK: mp44_sk, typ: 'i' },
+    { id: 'desk-menu-lng44t', EN: mp44t_en, SK: mp44t_sk, typ: 't' },
+    { id: 'desk-menu-lng45', EN: mp45_en, SK: mp45_sk, typ: 'i' },
+    { id: 'desk-menu-lng45t', EN: mp45t_en, SK: mp45t_sk, typ: 't' },
+    { id: 'desk-menu-lng46', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'desk-menu-lng47', EN: mp47_en, SK: mp47_sk, typ: 'i' },
+    { id: 'desk-menu-lng47t', EN: mp47t_en, SK: mp47t_sk, typ: 't' },
+    { id: 'desk-menu-lng48', EN: mp48_en, SK: mp48_sk, typ: 'i' },
+    { id: 'desk-menu-lng48t', EN: mp48t_en, SK: mp48t_sk, typ: 't' },
+    { id: 'desk-menu-lng49', EN: mp49_en, SK: mp49_sk, typ: 'i' },
+    { id: 'desk-menu-lng49t', EN: mp49t_en, SK: mp49t_sk, typ: 't' },
+    { id: 'desk-menu-lng50', EN: mp50_en, SK: mp50_sk, typ: 'i' },
+    { id: 'desk-menu-lng50t', EN: mp50t_en, SK: mp50t_sk, typ: 't' },
+    { id: 'desk-menu-lng51', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'desk-menu-lng52', EN: mp52_en, SK: mp52_sk, typ: 'i' },
+    { id: 'desk-menu-lng52t', EN: mp52t_en, SK: mp52t_sk, typ: 't' },
+    { id: 'desk-menu-lng53', EN: mp53_en, SK: mp53_sk, typ: 'i' },
+    { id: 'desk-menu-lng53t', EN: mp53t_en, SK: mp53t_sk, typ: 't' },
+    { id: 'desk-menu-lng54', EN: mp26_en, SK: mp26_sk, typ: 'i' },
+    { id: 'desk-menu-lng54t', EN: mp26t_en, SK: mp26t_sk, typ: 't' },
+    { id: 'desk-menu-lng56', EN: mp56_en, SK: mp56_sk, typ: 'i' },
+    { id: 'desk-menu-lng57', EN: mp57_en, SK: mp57_sk, typ: 'i' },
+    { id: 'desk-menu-lng58', EN: mp58_en, SK: mp58_sk, typ: 'i' },
+    { id: 'desk-menu-lng59', EN: mp59_en, SK: mp59_sk, typ: 'i' },
+    { id: 'desk-menu-lng60', EN: mp60_en, SK: mp60_sk, typ: 'i' },
+    { id: 'desk-menu-lng61', EN: mp61_en, SK: mp61_sk, typ: 'i' },
+    { id: 'desk-menu-lng62', EN: mp62_en, SK: mp62_sk, typ: 'i' },
+    { id: 'desk-menu-lng62t', EN: mp62t_en, SK: mp62t_sk, typ: 't' },
+  ];
+  var lng_mobil_menu = [
+    { id: 'mobil-menu-lng1', EN: mp1_en, SK: mp1_sk, typ: 'i' },
+    { id: 'mobil-menu-lng1t', EN: mp1t_en, SK: mp1t_sk, typ: 't' },
+    { id: 'mobil-menu-lng2', EN: mp2_en, SK: mp2_sk, typ: 'i' },
+    { id: 'mobil-menu-lng7', EN: mp7_en, SK: mp7_sk, typ: 'i' },
+    { id: 'mobil-menu-lng7a', EN: mp7a_en, SK: mp7a_sk, typ: 'i' },
+    { id: 'mobil-menu-lng7b', EN: mp7b_en, SK: mp7b_sk, typ: 'i' },
+    { id: 'mobil-menu-lng8', EN: mp8_en, SK: mp8_sk, typ: 'i' },
+    { id: 'mobil-menu-lng8t', EN: mp8t_en, SK: mp8t_sk, typ: 't' },
+    { id: 'mobil-menu-lng9', EN: mp9_en, SK: mp9_sk, typ: 'i' },
+    { id: 'mobil-menu-lng9t', EN: mp9t_en, SK: mp9t_sk, typ: 't' },
+    { id: 'mobil-menu-lng10', EN: mp10_en, SK: mp10_sk, typ: 'i' },
+    { id: 'mobil-menu-lng10t', EN: mp10t_en, SK: mp10t_sk, typ: 't' },
+    { id: 'mobil-menu-lng11', EN: mp11_en, SK: mp11_sk, typ: 'i' },
+    { id: 'mobil-menu-lng11t', EN: mp11t_en, SK: mp11t_sk, typ: 't' },
+    { id: 'mobil-menu-lng12', EN: mp12_en, SK: mp12_sk, typ: 'i' },
+    { id: 'mobil-menu-lng12t', EN: mp12t_en, SK: mp12t_sk, typ: 't' },
+    { id: 'mobil-menu-lng13', EN: mp13_en, SK: mp13_sk, typ: 'i' },
+    { id: 'mobil-menu-lng13t', EN: mp13t_en, SK: mp13t_sk, typ: 't' },
+    { id: 'mobil-menu-lng14', EN: mp14_en, SK: mp14_sk, typ: 'i' },
+    { id: 'mobil-menu-lng14t', EN: mp14t_en, SK: mp14t_sk, typ: 't' },
+    { id: 'mobil-menu-lng15', EN: mp15_en, SK: mp15_sk, typ: 'i' },
+    { id: 'mobil-menu-lng15t', EN: mp15t_en, SK: mp15t_sk, typ: 't' },
+    { id: 'mobil-menu-lng16', EN: mp16_en, SK: mp16_sk, typ: 'i' },
+    { id: 'mobil-menu-lng16t', EN: mp16t_en, SK: mp16t_sk, typ: 't' },
+    { id: 'mobil-menu-lng17', EN: mp17_en, SK: mp17_sk, typ: 'i' },
+    { id: 'mobil-menu-lng18', EN: mp18_en, SK: mp18_sk, typ: 'i' },
+    { id: 'mobil-menu-lng18t', EN: mp18t_en, SK: mp18t_sk, typ: 't' },
+    { id: 'mobil-menu-lng19', EN: mp19_en, SK: mp19_sk, typ: 'i' },
+    { id: 'mobil-menu-lng19t', EN: mp19t_en, SK: mp19t_sk, typ: 't' },
+    { id: 'mobil-menu-lng20', EN: mp20_en, SK: mp20_sk, typ: 'i' },
+    { id: 'mobil-menu-lng20t', EN: mp20t_en, SK: mp20t_sk, typ: 't' },
+    { id: 'mobil-menu-lng21', EN: mp21_en, SK: mp21_sk, typ: 'i' },
+    { id: 'mobil-menu-lng21t', EN: mp21t_en, SK: mp21t_sk, typ: 't' },
+    { id: 'mobil-menu-lng22', EN: mp22_en, SK: mp22_sk, typ: 'i' },
+    { id: 'mobil-menu-lng22t', EN: mp22t_en, SK: mp22t_sk, typ: 't' },
+    { id: 'mobil-menu-lng23', EN: mp23_en, SK: mp23_sk, typ: 'i' },
+    { id: 'mobil-menu-lng23t', EN: mp23t_en, SK: mp23t_sk, typ: 't' },
+    { id: 'mobil-menu-lng24', EN: mp24_en, SK: mp24_sk, typ: 'i' },
+    { id: 'mobil-menu-lng24t', EN: mp24t_en, SK: mp24t_sk, typ: 't' },
+    { id: 'mobil-menu-lng25', EN: mp25_en, SK: mp25_sk, typ: 'i' },
+    { id: 'mobil-menu-lng25t', EN: mp25t_en, SK: mp25t_sk, typ: 't' },
+    { id: 'mobil-menu-lng26', EN: mp26_en, SK: mp26_sk, typ: 'i' },
+    { id: 'mobil-menu-lng26t', EN: mp26t_en, SK: mp26t_sk, typ: 't' },
+    { id: 'mobil-menu-lng27', EN: mp27_en, SK: mp27_sk, typ: 'i' },
+    { id: 'mobil-menu-lng27t', EN: mp27t_en, SK: mp27t_sk, typ: 't' },
+    { id: 'mobil-menu-lng28', EN: mp28_en, SK: mp28_sk, typ: 'i' },
+    { id: 'mobil-menu-lng28t', EN: mp28t_en, SK: mp28t_sk, typ: 't' },
+    { id: 'mobil-menu-lng29', EN: mp28_en, SK: mp28_sk, typ: 'i' },
+    { id: 'mobil-menu-lng29t', EN: mp28t_en, SK: mp28t_sk, typ: 't' },
+    { id: 'mobil-menu-lng30', EN: mp28_en, SK: mp28_sk, typ: 'i' },
+    { id: 'mobil-menu-lng30t', EN: mp28t_en, SK: mp28t_sk, typ: 't' },
+    { id: 'mobil-menu-lng31', EN: mp28_en, SK: mp28_sk, typ: 'i' },
+    { id: 'mobil-menu-lng31t', EN: mp28t_en, SK: mp28t_sk, typ: 't' },
+    { id: 'mobil-menu-lng32', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'mobil-menu-lng33', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'mobil-menu-lng34', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'mobil-menu-lng35', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'mobil-menu-lng36', EN: mp22_en, SK: mp22_sk, typ: 'i' },
+    { id: 'mobil-menu-lng36t', EN: mp22t_en, SK: mp22t_sk, typ: 't' },
+    { id: 'mobil-menu-lng37', EN: mp23_en, SK: mp23_sk, typ: 'i' },
+    { id: 'mobil-menu-lng37t', EN: mp23t_en, SK: mp23t_sk, typ: 't' },
+    { id: 'mobil-menu-lng38', EN: mp38_en, SK: mp38_sk, typ: 'i' },
+    { id: 'mobil-menu-lng39', EN: mp39_en, SK: mp39_sk, typ: 'i' },
+    { id: 'mobil-menu-lng40', EN: mp40_en, SK: mp40_sk, typ: 'i' },
+    { id: 'mobil-menu-lng40t', EN: mp40t_en, SK: mp40t_sk, typ: 't' },
+    { id: 'mobil-menu-lng41', EN: mp41_en, SK: mp41_sk, typ: 'i' },
+    { id: 'mobil-menu-lng41t', EN: mp41t_en, SK: mp41t_sk, typ: 't' },
+    { id: 'mobil-menu-lng42', EN: mp42_en, SK: mp42_sk, typ: 'i' },
+    { id: 'mobil-menu-lng42t', EN: mp42t_en, SK: mp42t_sk, typ: 't' },
+    { id: 'mobil-menu-lng43', EN: mp43_en, SK: mp43_sk, typ: 'i' },
+    { id: 'mobil-menu-lng43t', EN: mp43t_en, SK: mp43t_sk, typ: 't' },
+    { id: 'mobil-menu-lng44', EN: mp44_en, SK: mp44_sk, typ: 'i' },
+    { id: 'mobil-menu-lng44t', EN: mp44t_en, SK: mp44t_sk, typ: 't' },
+    { id: 'mobil-menu-lng45', EN: mp45_en, SK: mp45_sk, typ: 'i' },
+    { id: 'mobil-menu-lng45t', EN: mp45t_en, SK: mp45t_sk, typ: 't' },
+    { id: 'mobil-menu-lng46', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'mobil-menu-lng47', EN: mp47_en, SK: mp47_sk, typ: 'i' },
+    { id: 'mobil-menu-lng47t', EN: mp47t_en, SK: mp47t_sk, typ: 't' },
+    { id: 'mobil-menu-lng48', EN: mp48_en, SK: mp48_sk, typ: 'i' },
+    { id: 'mobil-menu-lng48t', EN: mp48t_en, SK: mp48t_sk, typ: 't' },
+    { id: 'mobil-menu-lng49', EN: mp49_en, SK: mp49_sk, typ: 'i' },
+    { id: 'mobil-menu-lng49t', EN: mp49t_en, SK: mp49t_sk, typ: 't' },
+    { id: 'mobil-menu-lng50', EN: mp50_en, SK: mp50_sk, typ: 'i' },
+    { id: 'mobil-menu-lng50t', EN: mp50t_en, SK: mp50t_sk, typ: 't' },
+    { id: 'mobil-menu-lng51', EN: mp29_en, SK: mp29_sk, typ: 'i' },
+    { id: 'mobil-menu-lng52', EN: mp52_en, SK: mp52_sk, typ: 'i' },
+    { id: 'mobil-menu-lng52t', EN: mp52t_en, SK: mp52t_sk, typ: 't' },
+    { id: 'mobil-menu-lng53', EN: mp53_en, SK: mp53_sk, typ: 'i' },
+    { id: 'mobil-menu-lng53t', EN: mp53t_en, SK: mp53t_sk, typ: 't' },
+    { id: 'mobil-menu-lng54', EN: mp26_en, SK: mp26_sk, typ: 'i' },
+    { id: 'mobil-menu-lng54t', EN: mp26t_en, SK: mp26t_sk, typ: 't' },
+    { id: 'mobil-menu-lng55', EN: mp55_en, SK: mp55_sk, typ: 'i' },
+    { id: 'mobil-menu-lng60', EN: mp60_en, SK: mp60_sk, typ: 'i' },
+    { id: 'mobil-menu-lng61', EN: mp61_en, SK: mp61_sk, typ: 'i' }
+  ];
+  var s1_lang_text;
+  for (i = 0; i < lng_desk_menu.length; i += 1) {
+    if (lang_ == 0) s1_lang_text = lng_desk_menu[i].SK;
+    else if (lang_ == 1) s1_lang_text = lng_desk_menu[i].EN;
+    var id_ = document.getElementById(lng_desk_menu[i].id);
+    switch (lng_desk_menu[i].typ) {
+      case 'i':
+        if (id_ != null) { id_.innerHTML = s1_lang_text; }
+        break;
+      case 't':
+        if (id_ != null) { id_.title = s1_lang_text; }
+        break;
+    }
+  }
+  var s2_lang_text;
+  for (i = 0; i < lng_mobil_menu.length; i += 1) {
+    if (lang_ == 0) s2_lang_text = lng_mobil_menu[i].SK;
+    else if (lang_ == 1) s2_lang_text = lng_mobil_menu[i].EN;
+    var id_ = document.getElementById(lng_mobil_menu[i].id);
+    switch (lng_mobil_menu[i].typ) {
+      case 'i':
+        if (id_ != null) { id_.innerHTML = s2_lang_text; }
+        break;
+      case 't':
+        if (id_ != null) { id_.title = s2_lang_text; }
+        break;
+    }
+  }
+  const txm_lng1_en = 'E-LEARNING&nbsp;&nbsp;<i class="fa fa-home ikonka-home"></i>';
+  const txm_lng1_sk = 'E-VZDELÁVANIE&nbsp;&nbsp;<i class="fa fa-home ikonka-home"></i>';
+  //const s_btn_close_top_msg = '<span style="cursor: pointer; border: 1px solid red;" onclick="btn_close_top_msg(\'txm-lng21\');">&nbsp<b>X</b>&nbsp</span>&nbsp;&nbsp;';
+  var lng_main_texts = [
+    { id: 'txm-lng1', EN: txm_lng1_en, SK: txm_lng1_sk, typ: 'i' },
+    { id: 'txm-lng2', EN: txm_lng1_en, SK: txm_lng1_sk, typ: 'i' },
+    { id: 'txm-lng3', EN: 'Academic year:', SK: 'Akademický rok:', typ: 'i' },
+    { id: 'txm-lng4t', EN: 'E-learning', SK: 'E-vzdelávanie', typ: 't' },
+    { id: 'txm-lng5t', EN: 'University Library', SK: 'Univerzitná knižnica', typ: 't' },
+    { id: 'txm-lng6t', EN: 'Intranet', SK: 'Intranet', typ: 't' },
+    { id: 'txm-lng7t', EN: 'Employee portal', SK: 'Zamestnanecký portál', typ: 't' },
+    { id: 'txm-lng8t', EN: 'Employee Directory', SK: 'Adresár zamestnancov', typ: 't' },
+    { id: 'txm-lng9t', EN: 'Facebook', SK: 'Facebook', typ: 't' },
+    { id: 'txm-lng10t', EN: 'Twitter', SK: 'Twitter', typ: 't' },
+    { id: 'txm-lng11t', EN: 'Instagram', SK: 'Instagram', typ: 't' },
+    { id: 'txm-lng12t', EN: 'Youtube channel', SK: 'Youtube kanál', typ: 't' },
+    { id: 'txm-lng13t', EN: 'Access to Wi-Fi UNIZA network', SK: 'Prístup na Wi-Fi sieť UNIZA', typ: 't' },
+    { id: 'txm-lng14', EN: 'Contact', SK: 'Kontakt', typ: 'i' },
+    { id: 'txm-lng15', EN: 'Support IKT UNIZA', SK: 'Podpora IKT UNIZA', typ: 'i' },
+    { id: 'txm-lng16', EN: 'University doctor', SK: 'Univerzitný lekár', typ: 'i' },
+    { id: 'txm-lng17', EN: 'Instructions for working with LMS Moodle', SK: 'Návod na prácu s LMS Moodle', typ: 'i' },
+    { id: 'txm-lng18', EN: 'Welcome guide', SK: 'Sprievodca prváka', typ: 'i' },
+    { id: 'txm-lng14a', EN: '<br><br>Comments, suggestions,<br> failure report', SK: '<br><br>Pripomienky, návrhy,<br> hlásenie poruchy', typ: 'i' },
+    { id: 'txm-lng15a', EN: '<br><br>Tickets + onlinechat<br> CeIKT, AA018, ext.1717', SK: '<br><br>Tikety + onlinechat<br> CeIKT, AA018, kl.1717', typ: 'i' },
+    {
+      id: 'txm-lng16a',
+      EN: '<br><br>MUDr. Daniela Podolinská <br>\
+      041 56 52 611<br> 041 56 27 035<br><br>',
+      SK: '<br><br>MUDr. Daniela Podolinská<br>\
+      041 56 52 611<br> 041 56 27 035<br><br>', typ: 'i'
+    },
+    {
+      id: 'txm-lng17a',
+      EN: '<br><br>About Moodle, documentation for teachers, administrators, and developers',
+      SK: '<br><br>O Moodle, dokumentácia pre učiteľov, správcov a vývojárov', typ: 'i'
+    },
+    {
+      id: 'txm-lng18a',
+      EN: '<br><br>A practical assistant in discovering the opportunities that offer our university study',
+      SK: '<br><br>Praktický pomocník pri objavovaní možností, ktoré ponuka naše univerzitné štúdium', typ: 'i'
+    },
+
+    /*
+    {id:'txm-lng21', 
+    EN:'<span class="test-hlaska-mobil" style="text-align: center; margin-right: 50px;">' + s_btn_close_top_msg +
+      'Old e-learning is available until the beginning of the summer term&nbsp;<span style="font-size: 13px;"><a href="https://vzdelavanie.uniza.sk/vzdelavanie5">here</a></span>\
+    </span>\
+    <span class="test-hlaska-desktop" style="text-align: center;">' + s_btn_close_top_msg +
+      'Old e-learning is available until the beginning of the summer term&nbsp;<span style="font-size: 13px;"><a href="https://vzdelavanie.uniza.sk/vzdelavanie5">here</a></span>\
+    </span>', 
+    SK:'<span class="test-hlaska-mobil" style="text-align: center; margin-right: 50px;">' + s_btn_close_top_msg +
+      'Staré e-vzdelavanie je dostupné do začiatku letného semestra&nbsp;<span style="font-size: 13px;"><a href="https://vzdelavanie.uniza.sk/vzdelavanie5">tu</a></span>\
+    </span>\
+    <span class="test-hlaska-desktop" style="text-align: center;">' + s_btn_close_top_msg +
+      'Staré e-vzdelavanie je dostupné do začiatku letného semestra&nbsp;<span style="font-size: 13px;"><a href="https://vzdelavanie.uniza.sk/vzdelavanie5">tu</a></span>\
+    </span>', typ:'i'},
+    */
+
+    {
+      id: 'txm-lng22', EN: '&copy; 2016-2022 University of Žilina, Center of Information and Communication Technologies.<br>\
+                            <span style="line-height: 30px;">\
+                              <a href="cookies_info.php" style="color:#fff !important; text-decoration: underline; white-space: nowrap;">Using cookies</a>&emsp;\
+                              <a id="link-txm-lng19" target="_blank" href="https://www.uniza.sk/index.php/univerzita/vseobecne-informacie/ochrana-osobnych-udajov" style="color:#fff !important; text-decoration: underline; white-space: nowrap;">GDPR</a>\
+                            </span>\
+                            ',
+      SK: '&copy; 2016-2022 Žilinská univerzita v Žiline, Centrum informačných a komunikačných technológií.<br>\
+                            <span style="line-height: 30px;">\
+                              <a href="cookies_info.php" style="color:#fff !important; text-decoration: underline; white-space: nowrap;">Použitie cookies</a>&emsp;\
+                              <a id="link-txm-lng19" target="_blank" href="https://www.uniza.sk/index.php/univerzita/vseobecne-informacie/ochrana-osobnych-udajov" style="color:#fff !important; text-decoration: underline; white-space: nowrap;">Ochrana osobných údajov</a>\
+                            </span>\
+                            ', typ: 'i'
+    }
+
+  ];
+  var s3_lang_text;
+  for (i = 0; i < lng_main_texts.length; i += 1) {
+    if (lang_ == 0) s3_lang_text = lng_main_texts[i].SK;
+    else if (lang_ == 1) s3_lang_text = lng_main_texts[i].EN;
+    switch (lng_main_texts[i].typ) {
+      case 'i':
+        document.getElementById(lng_main_texts[i].id).innerHTML = s3_lang_text;
+        break;
+      case 't':
+        document.getElementById(lng_main_texts[i].id).title = s3_lang_text;
+        break;
+    }
+  }
+
+  var mchname_desk_s;
+  if (lang_ == 0) mchname_desk_s = mch_name_desk_obj[0].SK;
+  else if (lang_ == 1) mchname_desk_s = mch_name_desk_obj[0].EN;
+  var id_kat_desk = document.getElementById(mch_name_desk_obj[0].id);
+  switch (mch_name_desk_obj[0].typ) {
+    case 'i':
+      if (id_kat_desk != null) { id_kat_desk.innerHTML = mchname_desk_s; }
+      break;
+  }
+
+  var mchname_mobil_s;
+  if (lang_ == 0) mchname_mobil_s = mch_name_mobil_obj[0].SK;
+  else if (lang_ == 1) mchname_mobil_s = mch_name_mobil_obj[0].EN;
+  var id_kat_mobil = document.getElementById(mch_name_mobil_obj[0].id);
+  switch (mch_name_mobil_obj[0].typ) {
+    case 'i':
+      if (id_kat_mobil != null) { id_kat_mobil.innerHTML = mchname_mobil_s; }
+      break;
+  }
+
+}
+function ungray_flag() {
+  document.getElementById('evzd-desk-flag-en-href').href = 'javascript:swlang_EN();';
+  document.getElementById('evzd-desk-flag-en').src = 'img/flag_en.png';
+  document.getElementById('evzd-desk-flag-en-href').title = 'English version e-learning';
+  document.getElementById('evzd-mobil-flag-en-href').href = 'javascript:swlang_EN();';
+  document.getElementById('evzd-mobil-flag-en').src = 'img/flag_en.png';
+  document.getElementById('evzd-mobil-flag-en-href').title = 'English version e-learning';
+}
+function apl_lang() {
+  var sc = get_last_segment_url();
+  menu_and_main_lang();
+  switch (sc.toLowerCase()) {
+    case '':
+    case 'index.php':
+      ungray_flag();
+      if (typeof vykonaj_news_lang === 'function')
+        vykonaj_news_lang();
+      break;
+    case 'heslo.php':
+      ungray_flag();
+      vykonaj_hesloform2_lang();
+      break;
+    case 'isic.php':
+      ungray_flag();
+      vykonaj_isic_lang();
+      break;
+    case 'ubytovanie.php':
+      ungray_flag();
+      vykonaj_ubytovanie_lang();
+      break;
+    case 'covid_2021_otp.php':
+      ungray_flag();
+      vykonaj_covid_2021_OTP_lang();
+      break;
+    case 'profil.php':
+      ungray_flag();
+      vykonaj_profil_lang();
+      break;
+    case 'multi.php':
+      ungray_flag();
+      vykonaj_multi_lang();
+      vykonaj_multi_lang_dalsie();
+      break;
+    case 'predmety_s.php':
+      ungray_flag();
+      vykonaj_predmety_s_lang();
+      if (typeof vykonaj_predmety_s_lang_dalsie === 'function')
+        vykonaj_predmety_s_lang_dalsie();
+      break;
+    case 'eval_s.php':
+      ungray_flag();
+      vykonaj_eval_s_lang();
+      if (typeof vykonaj_eval_s_lang_dalsie === 'function')
+        vykonaj_eval_s_lang_dalsie();
+      break;
+    case 'login.php':
+      ungray_flag();
+      window.location.href = window.location.href;
+      break;
+    case 'kontakt.php':
+      ungray_flag();
+      window.location.href = window.location.href;
+      break;
+    case 'terminy_s.php':
+      ungray_flag();
+      window.location.href = window.location.href; //refresh
+      break;
+    case 'svysledky.php':
+      ungray_flag();
+      window.location.href = window.location.href;
+      break;
+    case 'sporty.php':
+      ungray_flag();
+      window.location.href = window.location.href;
+      break;
+    case 'predmety.php':
+      ungray_flag();
+      window.location.href = window.location.href;
+      break;
+    case 'vyucbak.php':
+      ungray_flag();
+      window.location.href = window.location.href;
+      break;
+    case 'eval_stat.php':
+      ungray_flag();
+      window.location.href = window.location.href;
+      break;
+    case 'zaverecnep.php':
+      ungray_flag();
+      window.location.href = window.location.href;
+      break;
+    case 'planinfo.php':
+      ungray_flag();
+      ilisty.lang();
+      var p_url;
+      if (lang_ == 1) { //EN
+        p_url = '&lng=en';
+      }
+      else if (lang_ == 0) { //SK
+        p_url = '&lng=sk';
+      }
+      history.replaceState(null, null, zmen_parameter_lng_v_url_full(p_url));
+      break;
+    case 'plany.php':
+      ungray_flag();
+      vykonaj_plany_lang();
+      plany.zmena(0);
+      break;
+    default:
+      gray_flag();
+  }
+
+  apl_lang_cast();
+}
+
+
+function gray_flag() {
+  document.getElementById('evzd-desk-flag-en-href').removeAttribute('href');
+  document.getElementById('evzd-desk-flag-en').src = 'img/flag_en_gray.png';
+  document.getElementById('evzd-desk-flag-en-href').title = 'This page is not yet translated to English';
+  document.getElementById('evzd-mobil-flag-en-href').removeAttribute('href');
+  document.getElementById('evzd-mobil-flag-en').src = 'img/flag_en_gray.png';
+  document.getElementById('evzd-mobil-flag-en-href').title = 'This page is not yet translated to English';
+  if (lang_ == 1) {
+    lang_ = 0; //nastaveny je jazyk SK
+    setCookie('mch_language', 'slovak');
+    menu_and_main_lang();
+  }
+}
+
+function apl_lang_cast() {
+  if (lang_ == 1) { //EN
+    var link_ukuzu = 'http://ukzu.uniza.sk/en/elementor-171';
+    var link_sprievodca_prvaka = '/vzdelavanie/download/doc/UNIZA_welcome_2019_2020_web.pdf';
+    var link_oou = 'https://www.uniza.sk/index.php/en/university/general-information/protection-of-personal-data';
+    var displ = 'none';
+    var displ_vsinf = 'none';
+  }
+  if (lang_ == 0) { //SK  
+    var link_ukuzu = 'http://ukzu.uniza.sk';
+    var link_sprievodca_prvaka = 'https://www.uniza.sk/flexpapers/sprievodca-prvaka/';
+    var link_oou = 'https://www.uniza.sk/index.php/univerzita/vseobecne-informacie/ochrana-osobnych-udajov';
+    var displ = 'block';
+    var displ_vsinf = 'inline-block';
+  }
+  document.getElementById('txm-lng5t').href = link_ukuzu;
+  document.getElementById('link-txm-lng18').href = link_sprievodca_prvaka;
+  document.getElementById('link-txm-lng19').href = link_oou;
+  document.getElementById('display-vseobecne-info-desk').style.display = displ_vsinf;
+  document.getElementById('display-vseobecne-info-mobil').style.display = displ_vsinf;
+  document.getElementById('display-rozvrh-desk').style.display = displ;
+  document.getElementById('display-rozvrh-mobil').style.display = displ;
+  document.getElementById('display-edis-desk').style.display = displ;
+  document.getElementById('display-edis-mobil').style.display = displ;
+  document.getElementById('display-plany-desk').style.display = displ;
+  document.getElementById('display-plany-mobil').style.display = displ;
+}
+
+function swlang_EN() {
+  lang_ = 1;
+  setCookie('mch_language', 'english');
+  apl_lang();
+  resizing_();
+}
+function swlang_SK() {
+  lang_ = 0;
+  setCookie('mch_language', 'slovak');
+  apl_lang();
+  resizing_();
+}
+
+get_lang();
+
+apl_lang();</script>
+    
+  </div> <!-- id-cela-stranka -->
+
+</body>
+</html>
