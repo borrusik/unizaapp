@@ -17,9 +17,9 @@ const nextConfig: NextConfig = {
     const cspHeader = `
       default-src 'self';
       script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""} https://www.googletagmanager.com;
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      style-src 'self' 'unsafe-inline';
       img-src 'self' blob: data: https: https://www.google-analytics.com https://www.googletagmanager.com;
-      font-src 'self' https://fonts.gstatic.com;
+      font-src 'self';
       connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://*.google-analytics.com;
       object-src 'none';
       base-uri 'self';
