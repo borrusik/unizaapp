@@ -41,6 +41,7 @@ export default async function RootLayout({
   return (
     <html lang="sk" className={inter.variable}>
       <head>
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
         {process.env.NODE_ENV === "development" && (
           <script
             nonce={nonce}
