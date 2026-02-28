@@ -4,6 +4,7 @@ import { getUserInfo, getGrades } from "@/lib/scraper";
 import { LogoutButton } from "./LogoutButton";
 import { ClientText } from "@/components/ClientText";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -166,6 +167,7 @@ export default function ProfilePage() {
         </div>
 
         <LanguageSwitcher />
+        <ThemeSwitcher />
 
         <LogoutButton />
 

@@ -60,6 +60,22 @@ export default async function RootLayout({
             }}
           />
         )}
+        <Script
+          id="theme-init"
+          nonce={nonce}
+          strategy="beforeInteractive"
+          suppressHydrationWarning={true}
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var theme = localStorage.getItem('uniza_theme');
+                if (theme === 'dark' || theme === 'light') {
+                  document.documentElement.setAttribute('data-theme', theme);
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
       </head>
       <body suppressHydrationWarning>
         <div id="app-wrapper">
