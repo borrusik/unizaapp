@@ -502,10 +502,6 @@ export async function getGrades(): Promise<{ winter: Grade[]; summer: Grade[] }>
 // Parse Schedule
 // ─────────────────────────────────────────────
 
-const SUBJECT_COLORS = [
-  "#007aff", "#ff9500", "#34c759", "#af52de",
-  "#5ac8fa", "#ff6b35", "#ff2d55", "#00c7be",
-];
 
 export async function getSchedule(): Promise<ScheduleItem[]> {
   const sessionId = await getSession();
@@ -524,8 +520,6 @@ export async function getSchedule(): Promise<ScheduleItem[]> {
       "Piatok": { full: "Piatok", short: "Pi" },
     };
 
-    const subjectColorMap: Record<string, string> = {};
-    let colorIdx = 0;
     let id = 0;
 
     const formatTime = (totalMins: number, isEnd = false) => {
@@ -562,9 +556,15 @@ export async function getSchedule(): Promise<ScheduleItem[]> {
           }
         } else if (className !== "rozvrh_bloky") {
           let type: "lecture" | "exercise" | "lab" = "lecture";
-          if (className.includes("-c") && !className.includes("-p-c") && !className.includes("-l-c")) type = "exercise";
-          else if (className.includes("-l")) type = "lab";
-          else if (className.includes("-p")) type = "lecture";
+          const blockText = $(block).text().trim();
+
+          if (blockText.startsWith("C") || className.match(/-(c|c-c)\b(-\w+)?/)) type = "exercise";
+          else if (blockText.startsWith("L") || className.match(/-(l|l-c)\b(-\w+)?/)) type = "lab";
+          else if (blockText.startsWith("P") || className.match(/-(p|p-c)\b(-\w+)?/)) type = "lecture";
+
+          let color = "#f97316"; // povinný - oranžová
+          if (className.includes("pvol")) color = "#0ea5e9"; // povinne voliteľný - modrá
+          else if (className.includes("vyb")) color = "#22c55e"; // výberový - zelená
 
           let teacher = "";
           let room = "";
@@ -579,11 +579,6 @@ export async function getSchedule(): Promise<ScheduleItem[]> {
           });
 
           if (subject) {
-            if (!subjectColorMap[subject]) {
-              subjectColorMap[subject] = SUBJECT_COLORS[colorIdx % SUBJECT_COLORS.length];
-              colorIdx++;
-            }
-
             items.push({
               id: `sch${id++}`,
               day: dayInfo.full,
@@ -593,7 +588,7 @@ export async function getSchedule(): Promise<ScheduleItem[]> {
               room,
               subject,
               type,
-              color: subjectColorMap[subject],
+              color,
               teacher,
               timeInfo: "",
             });

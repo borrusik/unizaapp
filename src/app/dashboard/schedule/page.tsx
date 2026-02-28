@@ -9,7 +9,7 @@ import useSWR from "swr";
 // Internal standard days
 const REGULAR_DAYS = ["Pondelok", "Utorok", "Streda", "Štvrtok", "Piatok"];
 
-function getTodayDayName(t: (key: any) => any): string {
+function getTodayDayName(t: (key: keyof typeof import("@/hooks/useTranslation").dictionary.sk) => unknown): string {
   const jsDay = new Date().getDay(); // 0=Sun, 1=Mon...
   if (jsDay === 0 || jsDay === 6) return t("schedule_weekend_tab") as string; // weekend -> show Víkend
   return REGULAR_DAYS[jsDay - 1];
@@ -19,15 +19,11 @@ const ScheduleCard = memo(({
   item,
   now,
   typeLabel,
-  typeBg,
-  typeColor,
   t
 }: {
   item: ScheduleItem;
   now: Date;
   typeLabel: (t: string) => string;
-  typeBg: (t: string) => string;
-  typeColor: (t: string) => string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: (k: any) => any;
 }) => {
@@ -103,7 +99,7 @@ const ScheduleCard = memo(({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
           <span
             className="schedule-type-badge"
-            style={{ background: typeBg(item.type), color: typeColor(item.type) }}
+            style={{ background: item.color + "26", color: item.color }}
           >
             {typeLabel(item.type)}
           </span>
@@ -176,24 +172,6 @@ export default function SchedulePage() {
       case "exercise": return t("schedule_exercise" as DictKey) as string;
       case "lab": return t("schedule_lab" as DictKey) as string;
       default: return type;
-    }
-  };
-
-  const typeBg = (type: string) => {
-    switch (type) {
-      case "lecture": return "var(--primary-light)";
-      case "exercise": return "var(--warning-light)";
-      case "lab": return "var(--success-light)";
-      default: return "var(--surface-secondary)";
-    }
-  };
-
-  const typeColor = (type: string) => {
-    switch (type) {
-      case "lecture": return "var(--primary)";
-      case "exercise": return "var(--warning)";
-      case "lab": return "var(--success)";
-      default: return "var(--text-secondary)";
     }
   };
 
@@ -283,8 +261,6 @@ export default function SchedulePage() {
                 item={item}
                 now={now}
                 typeLabel={typeLabel}
-                typeBg={typeBg}
-                typeColor={typeColor}
                 t={t}
               />
             ))}

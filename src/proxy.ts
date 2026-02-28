@@ -95,7 +95,7 @@ const BLOCKED_USER_AGENTS = [
   "havij", "acunetix", "nessus", "openvas",
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   cleanupMaps();
 
   const ip =

@@ -64,7 +64,6 @@ export default function DashboardLayout({
   ];
 
   const [isBooting, setIsBooting] = useState(true);
-  const [bootProgress, setBootProgress] = useState(0);
 
   useEffect(() => {
     const boot = async () => {
@@ -76,11 +75,8 @@ export default function DashboardLayout({
       }
 
       // If missing, show loading bar and warm up all caches concurrently!
-      setBootProgress(10);
       const { getSubjects, getSchedule, getGrades, getUserInfo } = await import("@/lib/scraper");
       const { getStravaInfo, getStravaMenu, getStravaHistory } = await import("@/lib/strava");
-
-      setBootProgress(35);
 
       try {
         const [subjects, schedule, grades, userInfo, stravaInfo, stravaMenu, stravaHist] = await Promise.all([
@@ -93,7 +89,7 @@ export default function DashboardLayout({
           getStravaHistory()
         ]);
 
-        setBootProgress(85);
+
 
         localStorage.setItem("uniza_subjects_cache", JSON.stringify(subjects));
         localStorage.setItem("uniza_schedule_cache", JSON.stringify(schedule));
@@ -106,7 +102,6 @@ export default function DashboardLayout({
         console.error("Bootload failed", e);
       }
 
-      setBootProgress(100);
       setTimeout(() => setIsBooting(false), 600);
     };
     boot();

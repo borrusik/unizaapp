@@ -4,11 +4,10 @@ import { getUserInfo, getGrades } from "@/lib/scraper";
 import { LogoutButton } from "./LogoutButton";
 import { ClientText } from "@/components/ClientText";
 import { LanguageSwitcher } from "./LanguageSwitcher";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 
 export default function ProfilePage() {
-  const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetcher = async () => {
@@ -23,7 +22,7 @@ export default function ProfilePage() {
     return res;
   };
 
-  const { data, isLoading, mutate } = useSWR("uniza_user_profile", fetcher, {
+  const { data, mutate } = useSWR("uniza_user_profile", fetcher, {
     fallbackData: typeof window !== "undefined"
       ? (() => {
         try {
@@ -52,10 +51,6 @@ export default function ProfilePage() {
     setIsRefreshing(false);
   };
 
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 0);
-    return () => clearTimeout(t);
-  }, []);
 
   const user = data?.user || {
     name: "Načítavam...",
