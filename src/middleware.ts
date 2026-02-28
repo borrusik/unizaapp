@@ -112,8 +112,32 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // ── Generate CSP nonce ──
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+
+  // ── Build CSP header with nonce (no unsafe-inline) ──
+  const cspHeader = [
+    `default-src 'self'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com`,
+    `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
+    `img-src 'self' blob: data: https: https://www.google-analytics.com https://www.googletagmanager.com`,
+    `font-src 'self'`,
+    `connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://*.google-analytics.com`,
+    `object-src 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    `frame-ancestors 'none'`,
+    `upgrade-insecure-requests`,
+  ].join("; ");
+
   // ── Add security headers to response ──
-  const response = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set("Content-Security-Policy", cspHeader);
   response.headers.set("X-DNS-Prefetch-Control", "off");
   response.headers.set("X-Download-Options", "noopen");
   response.headers.set("X-Permitted-Cross-Domain-Policies", "none");

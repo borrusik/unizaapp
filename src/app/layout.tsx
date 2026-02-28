@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Inter } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 
 const inter = Inter({
@@ -28,16 +29,20 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const nonce = headersList.get("x-nonce") || "";
+
   return (
     <html lang="sk" className={inter.variable}>
       <head>
         {process.env.NODE_ENV === "development" && (
           <script
+            nonce={nonce}
             dangerouslySetInnerHTML={{
               __html: `
                 if ('serviceWorker' in navigator) {
@@ -63,3 +68,4 @@ export default function RootLayout({
     </html>
   );
 }
+
