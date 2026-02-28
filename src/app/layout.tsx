@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
@@ -10,6 +9,8 @@ const inter = Inter({
   display: "swap",
   variable: "--font-inter",
 });
+
+const GA_ID = "G-PBTXW0SJSY";
 
 export const metadata: Metadata = {
   title: "UNIZA Student",
@@ -49,7 +50,6 @@ export default async function RootLayout({
                   navigator.serviceWorker.getRegistrations().then(function(registrations) {
                     for(let registration of registrations) {
                       registration.unregister();
-                      console.log('Unregistered stuck service worker in development mode.');
                     }
                   });
                 }
@@ -57,15 +57,33 @@ export default async function RootLayout({
             }}
           />
         )}
-
       </head>
       <body>
         <div id="app-wrapper">
           {children}
         </div>
-        <GoogleAnalytics gaId="G-PBTXW0SJSY" />
+        {/* Google Analytics with nonce for CSP compliance */}
+        <script
+          nonce={nonce}
+          async
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+        />
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_ID}', {
+                page_path: window.location.pathname,
+                anonymize_ip: true,
+                cookie_flags: 'SameSite=Strict;Secure'
+              });
+            `,
+          }}
+        />
       </body>
     </html>
   );
 }
-
