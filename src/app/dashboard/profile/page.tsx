@@ -179,21 +179,6 @@ export default function ProfilePage() {
         }}>
           <p>UNIZA Student App v1.0</p>
           <a
-            href="https://instagram.com/borrusik"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "inline-block",
-              marginTop: "4px",
-              color: "var(--primary)",
-              textDecoration: "none",
-              fontWeight: 500
-            }}
-          >
-            Developed by @borrusik
-          </a>
-          <br />
-          <a
             href="https://github.com/borrusik/unizaapp"
             target="_blank"
             rel="noopener noreferrer"
