@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-export type Lang = "sk" | "en" | "uk";
+export type Lang = "sk" | "en" | "uk" | "ru";
 
 export const dictionary = {
   sk: {
@@ -72,6 +72,7 @@ export const dictionary = {
     lang_sk: "Slovenčina",
     lang_en: "English",
     lang_uk: "Українська",
+    lang_ru: "Русский",
 
     // Offline
     offline_msg: "Si offline. Zobrazujú sa uložené údaje.",
@@ -169,6 +170,7 @@ export const dictionary = {
     lang_sk: "Slovenčina",
     lang_en: "English",
     lang_uk: "Українська",
+    lang_ru: "Русский",
 
     offline_msg: "You are offline. Showing cached data.",
 
@@ -265,6 +267,7 @@ export const dictionary = {
     lang_sk: "Slovenčina",
     lang_en: "English",
     lang_uk: "Українська",
+    lang_ru: "Русский",
 
     offline_msg: "Ви офлайн. Показано збережені дані.",
 
@@ -299,6 +302,102 @@ export const dictionary = {
     subject_literature: "Література",
     subject_teacher: "Викладач",
     subject_guarantor: "Гарант предмету",
+  },
+  ru: {
+    nav_subjects: "Предметы",
+    nav_schedule: "Расписание",
+    nav_grades: "Оценки",
+    nav_food: "Столовая",
+    nav_profile: "Профиль",
+
+    subjects_title: "Мои предметы",
+    subjects_winter: "Зимний семестр",
+    subjects_summer: "Летний семестр",
+    subjects_credits: "кредитов",
+    subjects_completed: "Получено",
+    subjects_to_complete: "Осталось",
+    subjects_no_data: "Нет предметов",
+
+    schedule_title: "Расписание",
+    schedule_today: "Сегодня",
+    schedule_lecture: "Лекция",
+    schedule_exercise: "Практика",
+    schedule_lab: "Лабораторная",
+    schedule_min_left: "Осталось",
+    schedule_no_classes_title: "Нет пар",
+    schedule_no_classes_desc: "Наслаждайся свободным днем!",
+    schedule_weekend_tab: "Выходные",
+    schedule_weekend_title: "Наконец-то выходные!",
+    schedule_weekend_desc: "Хорошо отдохни и наберись сил на следующую неделю. Лекций не предвидится.",
+    schedule_days_full: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
+    schedule_days_short: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс", "Вых"],
+    schedule_months: ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"],
+
+    grades_title: "Оценки",
+    grades_avg: "Средний балл",
+    grades_total_credits: "Полученные кредиты",
+    grades_winter: "Зимний семестр",
+    grades_summer: "Летний семестр",
+    grades_no_grade: "Не оценено",
+
+    food_title: "Столовая",
+    food_balance: "Текущий баланс",
+    food_order: "Пополнить баланс",
+    food_menu: "Меню на сегодня",
+    food_allergens: "Аллергены:",
+    food_history: "История транзакций",
+    food_no_history: "Нет недавних транзакций",
+
+    profile_title: "Профиль",
+    profile_avg: "Средний",
+    profile_completed: "Пройдено",
+    profile_info: "Информация",
+    profile_faculty: "Факультет",
+    profile_program: "Программа",
+    profile_id: "Личный номер",
+    profile_group: "Учебная группа",
+    profile_year: "Курс",
+    profile_acad_year: "Акад. год",
+    profile_logout: "Выйти",
+
+    settings_language: "Язык приложения",
+    lang_sk: "Slovenčina",
+    lang_en: "English",
+    lang_uk: "Українська",
+    lang_ru: "Русский",
+
+    offline_msg: "Вы не в сети. Показаны сохраненные данные.",
+
+    login_title: "Образование",
+    login_subtitle: "Жилинский университет",
+    login_email: "Email",
+    login_password: "Пароль",
+    login_button: "Войти",
+    login_loading: "Вход...",
+    login_terms: "Входя, вы соглашаетесь с условиями UNIZA.",
+    dashboard_acad_year: "Акад. год 2025/2026",
+    dashboard_subjects_count: "предметов",
+    dashboard_moodle: "MOODLE",
+    dashboard_info_list: "Инфолист",
+    grades_credits_short: "кр.",
+    grades_points_short: "б.",
+    food_subtitle: "Nová Menza / WebKredit",
+    food_isic_credit: "Кредит ISIC",
+    food_active: "Активно",
+    subject_not_found_title: "Информация недоступна",
+    subject_not_found_desc: "Не удалось загрузить инфолист для этого предмета.",
+    subject_type_default: "ПРЕДМЕТ",
+    subject_credits: "Кредитов",
+    subject_type: "Тип",
+    subject_completion: "Завершение",
+    subject_teaching: "Обучение",
+    subject_workload: "Нагрузка",
+    subject_conditions: "Условия прохождения",
+    subject_outcomes: "Результаты обучения",
+    subject_syllabus: "Программа курса",
+    subject_literature: "Литература",
+    subject_teacher: "Преподаватель",
+    subject_guarantor: "Гарант предмета",
   }
 };
 
@@ -309,14 +408,16 @@ export function useTranslation() {
     // Run on client side only
     const savedLang = localStorage.getItem("uniza_lang") as Lang | null;
 
-    if (savedLang && ["sk", "en", "uk"].includes(savedLang)) {
+    if (savedLang && ["sk", "en", "uk", "ru"].includes(savedLang)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLang(savedLang);
     } else {
       const navAny = navigator as unknown as { userLanguage?: string };
       const userLang = navigator.language || navAny.userLanguage || "sk";
-      if (userLang.startsWith("uk") || userLang.startsWith("ru")) {
-        setLang("uk"); // Map Russian/Ukrainian regions to uk
+      if (userLang.startsWith("uk")) {
+        setLang("uk"); // Map Ukrainian region to uk
+      } else if (userLang.startsWith("ru")) {
+        setLang("ru"); // Map Russian region to ru
       } else if (userLang.startsWith("en")) {
         setLang("en");
       } else {

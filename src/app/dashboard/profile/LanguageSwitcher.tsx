@@ -11,7 +11,7 @@ export function LanguageSwitcher() {
         <span className="label">{t("settings_language")}</span>
       </div>
       <div className="card-group">
-        {(["sk", "en", "uk"] as Lang[]).map((l) => (
+        {(["sk", "en", "uk", "ru"] as Lang[]).map((l) => (
           <button
             key={l}
             onClick={() => setLang(l)}
