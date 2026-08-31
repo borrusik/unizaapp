@@ -11,6 +11,8 @@ export const dictionary = {
     nav_grades: "Známky",
     nav_food: "Jedáleň",
     nav_profile: "Profil",
+    common_refresh: "Obnoviť údaje",
+    common_back: "Späť",
 
     // Subjects
     subjects_title: "Moje predmety",
@@ -66,6 +68,14 @@ export const dictionary = {
     profile_year: "Ročník",
     profile_acad_year: "Akad. rok",
     profile_logout: "Odhlásiť sa",
+    profile_systems: "Oficiálne systémy UNIZA",
+    integration_connected: "Pripojené",
+    integration_reconnect: "Vyžaduje prihlásenie",
+    integration_encrypted: "Automatické prihlásenie je šifrované",
+    integration_session_only: "Automatické prihlásenie nie je nakonfigurované",
+    system_academic_calendar: "Akademický kalendár",
+    system_campus_map: "Mapa kampusu",
+    system_helpdesk: "Helpdesk",
 
     // Settings / Language
     settings_language: "Jazyk aplikácie",
@@ -75,7 +85,7 @@ export const dictionary = {
     lang_ru: "Русский",
 
     // Offline
-    offline_msg: "Si offline. Zobrazujú sa uložené údaje.",
+    offline_msg: "Ste offline. Aktuálne údaje nemusia byť dostupné.",
 
     // New keys
     login_title: "Vzdelávanie",
@@ -85,7 +95,7 @@ export const dictionary = {
     login_button: "Prihlásiť sa",
     login_loading: "Prihlasovanie...",
     login_terms: "Prihlásením súhlasíte s podmienkami UNIZA.",
-    login_safe_msg: "Tvoje údaje sú v bezpečí. Prihlásenie prebieha priamo voči serverom UNIZA a heslo sa neukladá na žiadnom cudzom serveri.",
+    login_safe_msg: "Prihlásenie prebieha priamo voči serverom UNIZA. Pre automatické prihlásenie sa heslo ukladá iba šifrovane v chránenej cookie v tvojom prehliadači.",
     login_open_source: "Aplikácia je Open-Source",
     dashboard_acad_year: "Akad. rok 2025/2026",
     dashboard_subjects_count: "predmetov",
@@ -96,6 +106,9 @@ export const dictionary = {
     food_subtitle: "Nová Menza / WebKredit",
     food_isic_credit: "ISIC Kredit",
     food_active: "Aktívne",
+    food_unavailable: "WebKredit nie je dostupný",
+    food_menu_unavailable: "Dnešné menu sa nepodarilo načítať. Skontroluj WebKredit alebo obnov stránku.",
+    food_open_official: "Otvoriť WebKredit",
     subject_not_found_title: "Informácie nie sú dostupné",
     subject_not_found_desc: "Pre tento predmet sa nepodarilo načítať informačný list.",
     subject_type_default: "PREDMET",
@@ -117,6 +130,8 @@ export const dictionary = {
     nav_grades: "Grades",
     nav_food: "Canteen",
     nav_profile: "Profile",
+    common_refresh: "Refresh data",
+    common_back: "Back",
 
     subjects_title: "My Subjects",
     subjects_winter: "Winter Semester",
@@ -167,6 +182,14 @@ export const dictionary = {
     profile_year: "Year",
     profile_acad_year: "Acad. year",
     profile_logout: "Log out",
+    profile_systems: "Official UNIZA systems",
+    integration_connected: "Connected",
+    integration_reconnect: "Sign-in required",
+    integration_encrypted: "Automatic sign-in is encrypted",
+    integration_session_only: "Automatic sign-in is not configured",
+    system_academic_calendar: "Academic calendar",
+    system_campus_map: "Campus map",
+    system_helpdesk: "Helpdesk",
 
     settings_language: "App Language",
     lang_sk: "Slovenčina",
@@ -174,7 +197,7 @@ export const dictionary = {
     lang_uk: "Українська",
     lang_ru: "Русский",
 
-    offline_msg: "You are offline. Showing cached data.",
+    offline_msg: "You are offline. Current data may be unavailable.",
 
     // New keys
     login_title: "Education",
@@ -184,7 +207,7 @@ export const dictionary = {
     login_button: "Log In",
     login_loading: "Logging in...",
     login_terms: "By logging in, you agree to UNIZA terms.",
-    login_safe_msg: "Your data is safe. Login connects directly to UNIZA servers and your password is never stored on any third-party server.",
+    login_safe_msg: "Login connects directly to UNIZA servers. For automatic sign-in, the password is stored only in an encrypted, protected cookie in your browser.",
     login_open_source: "App is Open-Source",
     dashboard_acad_year: "Acad. year 2025/2026",
     dashboard_subjects_count: "subjects",
@@ -195,6 +218,9 @@ export const dictionary = {
     food_subtitle: "Nová Menza / WebKredit",
     food_isic_credit: "ISIC Credit",
     food_active: "Active",
+    food_unavailable: "WebKredit unavailable",
+    food_menu_unavailable: "Today's menu could not be loaded. Check WebKredit or refresh the page.",
+    food_open_official: "Open WebKredit",
     subject_not_found_title: "Information unavailable",
     subject_not_found_desc: "Could not load the information sheet for this subject.",
     subject_type_default: "SUBJECT",
@@ -216,6 +242,8 @@ export const dictionary = {
     nav_grades: "Оцінки",
     nav_food: "Їдальня",
     nav_profile: "Профіль",
+    common_refresh: "Оновити дані",
+    common_back: "Назад",
 
     subjects_title: "Мої предмети",
     subjects_winter: "Зимовий семестр",
@@ -266,6 +294,14 @@ export const dictionary = {
     profile_year: "Курс",
     profile_acad_year: "Акад. рік",
     profile_logout: "Вийти",
+    profile_systems: "Офіційні системи UNIZA",
+    integration_connected: "Підключено",
+    integration_reconnect: "Потрібен вхід",
+    integration_encrypted: "Автоматичний вхід зашифровано",
+    integration_session_only: "Автоматичний вхід не налаштовано",
+    system_academic_calendar: "Академічний календар",
+    system_campus_map: "Мапа кампусу",
+    system_helpdesk: "Служба підтримки",
 
     settings_language: "Мова додатку",
     lang_sk: "Slovenčina",
@@ -273,7 +309,7 @@ export const dictionary = {
     lang_uk: "Українська",
     lang_ru: "Русский",
 
-    offline_msg: "Ви офлайн. Показано збережені дані.",
+    offline_msg: "Ви офлайн. Актуальні дані можуть бути недоступні.",
 
     // New keys
     login_title: "Освіта",
@@ -283,7 +319,7 @@ export const dictionary = {
     login_button: "Увійти",
     login_loading: "Вхід...",
     login_terms: "Увійшовши, ви погоджуєтеся з умовами UNIZA.",
-    login_safe_msg: "Ваші дані в безпеці. Вхід виконується безпосередньо через сервери UNIZA і пароль ніде не зберігається.",
+    login_safe_msg: "Вхід виконується безпосередньо через сервери UNIZA. Для автоматичного входу пароль зберігається лише зашифрованим у захищеній cookie браузера.",
     login_open_source: "Додаток є Open-Source",
     dashboard_acad_year: "Акад. рік 2025/2026",
     dashboard_subjects_count: "предметів",
@@ -294,6 +330,9 @@ export const dictionary = {
     food_subtitle: "Nová Menza / WebKredit",
     food_isic_credit: "Кредит ISIC",
     food_active: "Активно",
+    food_unavailable: "WebKredit недоступний",
+    food_menu_unavailable: "Не вдалося завантажити меню на сьогодні. Перевірте WebKredit або оновіть сторінку.",
+    food_open_official: "Відкрити WebKredit",
     subject_not_found_title: "Інформація недоступна",
     subject_not_found_desc: "Не вдалося завантажити інфолист для цього предмету.",
     subject_type_default: "ПРЕДМЕТ",
@@ -315,6 +354,8 @@ export const dictionary = {
     nav_grades: "Оценки",
     nav_food: "Столовая",
     nav_profile: "Профиль",
+    common_refresh: "Обновить данные",
+    common_back: "Назад",
 
     subjects_title: "Мои предметы",
     subjects_winter: "Зимний семестр",
@@ -365,6 +406,14 @@ export const dictionary = {
     profile_year: "Курс",
     profile_acad_year: "Акад. год",
     profile_logout: "Выйти",
+    profile_systems: "Официальные системы UNIZA",
+    integration_connected: "Подключено",
+    integration_reconnect: "Требуется вход",
+    integration_encrypted: "Автоматический вход зашифрован",
+    integration_session_only: "Автоматический вход не настроен",
+    system_academic_calendar: "Академический календарь",
+    system_campus_map: "Карта кампуса",
+    system_helpdesk: "Поддержка",
 
     settings_language: "Язык приложения",
     lang_sk: "Slovenčina",
@@ -372,7 +421,7 @@ export const dictionary = {
     lang_uk: "Українська",
     lang_ru: "Русский",
 
-    offline_msg: "Вы не в сети. Показаны сохраненные данные.",
+    offline_msg: "Вы не в сети. Актуальные данные могут быть недоступны.",
 
     login_title: "Образование",
     login_subtitle: "Жилинский университет",
@@ -381,7 +430,7 @@ export const dictionary = {
     login_button: "Войти",
     login_loading: "Вход...",
     login_terms: "Входя, вы соглашаетесь с условиями UNIZA.",
-    login_safe_msg: "Ваши данные в безопасности. Аутентификация проходит напрямую через серверы UNIZA, ваш пароль нигде не сохраняется.",
+    login_safe_msg: "Вход выполняется напрямую через серверы UNIZA. Для автоматического входа пароль хранится только в зашифрованной защищённой cookie браузера.",
     login_open_source: "Приложение с открытым исходным кодом",
     dashboard_acad_year: "Акад. год 2025/2026",
     dashboard_subjects_count: "предметов",
@@ -392,6 +441,9 @@ export const dictionary = {
     food_subtitle: "Nová Menza / WebKredit",
     food_isic_credit: "Кредит ISIC",
     food_active: "Активно",
+    food_unavailable: "WebKredit недоступен",
+    food_menu_unavailable: "Не удалось загрузить меню на сегодня. Проверьте WebKredit или обновите страницу.",
+    food_open_official: "Открыть WebKredit",
     subject_not_found_title: "Информация недоступна",
     subject_not_found_desc: "Не удалось загрузить инфолист для этого предмета.",
     subject_type_default: "ПРЕДМЕТ",

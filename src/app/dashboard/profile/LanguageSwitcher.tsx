@@ -13,10 +13,11 @@ export function LanguageSwitcher() {
       <div className="card-group">
         {(["sk", "en", "uk", "ru"] as Lang[]).map((l) => (
           <button
+            type="button"
             key={l}
             onClick={() => setLang(l)}
             autoFocus={false}
-            tabIndex={-1}
+            aria-pressed={lang === l}
             className="card-row"
             style={{
               width: "100%",

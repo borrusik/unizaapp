@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getGrades, type Grade } from "@/lib/scraper";
+import { getGrades } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 
 import useSWR from "swr";
@@ -12,28 +12,9 @@ export default function GradesPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { t } = useTranslation();
 
-  const fetcher = async () => {
-    const data = await getGrades();
-    try {
-      localStorage.setItem("uniza_grades_cache", JSON.stringify(data));
-    } catch { }
-    return data;
-  };
+  const fetcher = async () => getGrades();
 
-  const { data, isLoading, mutate } = useSWR("uniza_grades", fetcher, {
-    fallbackData: typeof window !== "undefined"
-      ? (() => {
-        try {
-          const cached = localStorage.getItem("uniza_grades_cache");
-          if (cached) return JSON.parse(cached) as { winter: Grade[]; summer: Grade[] };
-        } catch { }
-        return { winter: [], summer: [] };
-      })()
-      : { winter: [], summer: [] },
-    revalidateOnFocus: false,
-    revalidateIfStale: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, isLoading, mutate } = useSWR("uniza_grades", fetcher);
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -80,6 +61,8 @@ export default function GradesPage() {
       <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title">{t("grades_title")}</div>
         <button
+          type="button"
+          aria-label={t("common_refresh") as string}
           onClick={handleRefresh}
           disabled={isRefreshing}
           style={{
@@ -105,10 +88,10 @@ export default function GradesPage() {
 
       <div className="container">
         <div className="segment-control">
-          <button className={`segment-btn ${semester === "winter" ? "active" : ""}`} onClick={() => setSemester("winter")}>
+          <button type="button" aria-pressed={semester === "winter"} className={`segment-btn ${semester === "winter" ? "active" : ""}`} onClick={() => setSemester("winter")}>
             ❄️ {t("grades_winter")}
           </button>
-          <button className={`segment-btn ${semester === "summer" ? "active" : ""}`} onClick={() => setSemester("summer")}>
+          <button type="button" aria-pressed={semester === "summer"} className={`segment-btn ${semester === "summer" ? "active" : ""}`} onClick={() => setSemester("summer")}>
             ☀️ {t("grades_summer")}
           </button>
         </div>

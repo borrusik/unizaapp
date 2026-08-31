@@ -1,20 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslation } from "@/hooks/useTranslation";
 
 export function ThemeSwitcher() {
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
-  const { t } = useTranslation();
 
   // On mount, sync the state with localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem("uniza_theme") as "light" | "dark" | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else {
-      setTheme("system");
-    }
+    const timer = window.setTimeout(() => {
+      const savedTheme = localStorage.getItem("uniza_theme") as "light" | "dark" | null;
+      setTheme(savedTheme || "system");
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
@@ -37,6 +34,8 @@ export function ThemeSwitcher() {
       </span>
       <div style={{ display: "flex", gap: "8px", background: "var(--surface-secondary)", padding: "4px", borderRadius: "12px" }}>
         <button
+          type="button"
+          aria-pressed={theme === "light"}
           onClick={() => handleThemeChange("light")}
           style={{
             background: theme === "light" ? "var(--surface)" : "transparent",
@@ -54,6 +53,8 @@ export function ThemeSwitcher() {
           Light
         </button>
         <button
+          type="button"
+          aria-pressed={theme === "system"}
           onClick={() => handleThemeChange("system")}
           style={{
             background: theme === "system" ? "var(--surface)" : "transparent",
@@ -71,6 +72,8 @@ export function ThemeSwitcher() {
           Auto
         </button>
         <button
+          type="button"
+          aria-pressed={theme === "dark"}
           onClick={() => handleThemeChange("dark")}
           style={{
             background: theme === "dark" ? "var(--surface)" : "transparent",

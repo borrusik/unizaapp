@@ -130,7 +130,12 @@ export function proxy(request: NextRequest) {
   }
 
   // ── Block suspicious query strings / URL patterns ──
-  const fullUrl = decodeURIComponent(request.url).toLowerCase();
+  let fullUrl = request.url.toLowerCase();
+  try {
+    fullUrl = decodeURIComponent(fullUrl);
+  } catch {
+    return new NextResponse("Bad Request", { status: 400 });
+  }
   if (SUSPICIOUS_PATTERNS.some((p) => fullUrl.includes(p))) {
     blockedIPs.set(ip, Date.now() + BLOCK_WINDOW_MS);
     return new NextResponse("Bad Request", { status: 400 });

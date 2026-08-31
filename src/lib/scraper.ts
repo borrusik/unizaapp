@@ -3,16 +3,31 @@
 import { cookies } from "next/headers";
 import * as cheerio from "cheerio";
 import { rateLimit } from "@/lib/rate-limit";
+import { authenticateStrava, clearStravaSession, getStoredStravaSession, storeStravaSession } from "@/lib/strava-session";
+import { getAcademicYear, resolveMoodleUrl, resolveSubjectInfoUrl } from "@/lib/uniza";
+import { canPersistCredentials, clearCredentials, readCredentials, saveCredentials } from "@/lib/credentials";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
+const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_HTML_BYTES = 5 * 1024 * 1024;
 
 // ─────────────────────────────────────────────
 // Fetch with Windows-1250 decoding
 // ─────────────────────────────────────────────
 
 async function fetchDecoded(url: string, options?: RequestInit): Promise<string> {
-  const res = await fetch(url, { ...options, cache: "no-store" });
+  const res = await fetch(url, {
+    ...options,
+    cache: "no-store",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`UNIZA request failed with status ${res.status}`);
+
+  const declaredLength = Number(res.headers.get("content-length") || 0);
+  if (declaredLength > MAX_HTML_BYTES) throw new Error("UNIZA response is too large");
+
   const buffer = await res.arrayBuffer();
+  if (buffer.byteLength > MAX_HTML_BYTES) throw new Error("UNIZA response is too large");
   const decoder = new TextDecoder("windows-1250");
   return decoder.decode(buffer);
 }
@@ -23,7 +38,11 @@ async function fetchDecoded(url: string, options?: RequestInit): Promise<string>
 
 async function getPhpSession(email: string, password: string): Promise<string | null> {
   // Step 1: Get initial PHPSESSID
-  const loginPageRes = await fetch(`${BASE_URL}/login.php`, { redirect: "manual" });
+  const loginPageRes = await fetch(`${BASE_URL}/login.php`, {
+    redirect: "manual",
+    cache: "no-store",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
   const rawCookies = loginPageRes.headers.get("set-cookie") || "";
   const match = rawCookies.match(/PHPSESSID=([^;]+)/);
   const phpSessionId = match ? match[1] : "";
@@ -45,6 +64,8 @@ async function getPhpSession(email: string, password: string): Promise<string | 
     },
     body: formBody.toString(),
     redirect: "manual",
+    cache: "no-store",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
   // Step 3: Verify session and pre-fetch all essential pages in parallel to warm up the cache
@@ -104,31 +125,31 @@ async function fetchPage(sessionId: string, page: string): Promise<string> {
     headers: { Cookie: `PHPSESSID=${sessionId}` },
   });
 
-  // Check if session has expired on the server by looking for the login page
+  // The password is deliberately not persisted. Expired upstream sessions require a fresh login.
   if (html.includes('name="heslo"') || html.includes('<title>Prihlásenie</title>')) {
     const cookieStore = await cookies();
-    const email = cookieStore.get("uniza_email")?.value;
-    const pass = cookieStore.get("uniza_pass")?.value;
+    const credentials = await readCredentials();
 
-    if (email && pass) {
-      const newSessionId = await getPhpSession(email, pass);
+    if (credentials) {
+      const newSessionId = await getPhpSession(credentials.email, credentials.password);
       if (newSessionId) {
         cookieStore.set("uniza_phpsessid", newSessionId, {
-          httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 30, // 30 days
+          httpOnly: true,
+          path: "/",
           secure: process.env.NODE_ENV === "production",
           sameSite: "strict",
         });
-
-        // Retry fetch with new active session
         html = await fetchDecoded(`${BASE_URL}/${page}`, {
           headers: { Cookie: `PHPSESSID=${newSessionId}` },
         });
-
-        // Prevent memory leaks
-        if (PAGE_CACHE.size > 500) PAGE_CACHE.clear();
         PAGE_CACHE.set(`${newSessionId}_${page}`, { html, timestamp: Date.now() });
+        return html;
       }
     }
+
+    cookieStore.delete("uniza_phpsessid");
+    await clearStravaSession();
+    return "";
   } else {
     // Prevent memory leaks
     if (PAGE_CACHE.size > 500) PAGE_CACHE.clear();
@@ -143,7 +164,7 @@ async function fetchPage(sessionId: string, page: string): Promise<string> {
 // ─────────────────────────────────────────────
 
 export async function login(formData: FormData) {
-  const email = formData.get("email")?.toString()?.trim();
+  const email = formData.get("email")?.toString()?.trim().toLowerCase();
   const password = formData.get("password")?.toString();
 
   if (!email || !password) {
@@ -165,59 +186,81 @@ export async function login(formData: FormData) {
     return { error: "Príliš veľa pokusov. Skúste znova o 2 minúty." };
   }
 
-  const sessionId = await getPhpSession(email, password);
+  const cookieStore = await cookies();
+  cookieStore.delete("uniza_phpsessid");
+  cookieStore.delete("uniza_email");
+  await clearCredentials();
+  await clearStravaSession();
+
+  const [sessionId, stravaSession] = await Promise.all([
+    getPhpSession(email, password),
+    authenticateStrava(email.split("@")[0], password).catch(() => null),
+  ]);
   if (!sessionId) {
     return { error: "Nesprávne prihlasovacie údaje" };
   }
 
-  const cookieStore = await cookies();
   cookieStore.set("uniza_phpsessid", sessionId, {
-    httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 30, // 30 days
+    httpOnly: true, path: "/",
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
   });
   cookieStore.set("uniza_email", email, {
-    httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 30, // 30 days
+    httpOnly: true, path: "/",
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
   });
-  cookieStore.set("uniza_pass", password, {
-    httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 30, // 30 days
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
+  const cateringConnected = await storeStravaSession(stravaSession);
+  const credentialsStored = await saveCredentials({ email, password });
 
-  return { success: true };
+  return {
+    success: true,
+    integrations: { education: true, catering: cateringConnected },
+    credentialsStored,
+  };
 }
 
 export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete("uniza_phpsessid");
   cookieStore.delete("uniza_email");
-  cookieStore.delete("uniza_pass");
+  await clearCredentials();
+  await clearStravaSession();
   return { success: true };
 }
 
 export async function getSession(): Promise<string | null> {
   const cookieStore = await cookies();
-  let sessionId = cookieStore.get("uniza_phpsessid")?.value;
+  const sessionId = cookieStore.get("uniza_phpsessid")?.value;
+  if (sessionId) return sessionId;
 
-  if (!sessionId) {
-    const email = cookieStore.get("uniza_email")?.value;
-    const pass = cookieStore.get("uniza_pass")?.value;
-    if (email && pass) {
-      sessionId = await getPhpSession(email, pass) || undefined;
-      if (sessionId) {
-        cookieStore.set("uniza_phpsessid", sessionId, {
-          httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 30, // 30 days
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-        });
-      }
-    }
+  const credentials = await readCredentials();
+  if (!credentials) return null;
+
+  const restoredSessionId = await getPhpSession(credentials.email, credentials.password);
+  if (!restoredSessionId) {
+    await clearCredentials();
+    return null;
   }
 
-  return sessionId || null;
+  cookieStore.set("uniza_phpsessid", restoredSessionId, {
+    httpOnly: true,
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+  return restoredSessionId;
+}
+
+export async function getIntegrationStatus() {
+  const cookieStore = await cookies();
+  const cateringSession = await getStoredStravaSession();
+
+  return {
+    education: Boolean(cookieStore.get("uniza_phpsessid")?.value),
+    catering: Boolean(cateringSession),
+    passwordStored: canPersistCredentials() && Boolean(await readCredentials()),
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -342,7 +385,7 @@ export async function getUserInfo(explicitSessionId?: string, explicitEmail?: st
     program,
     group,
     personalNumber,
-    academicYear: "2025/2026",
+    academicYear: getAcademicYear(),
   };
 }
 
@@ -400,15 +443,16 @@ export async function getSubjects(): Promise<{ winter: Subject[]; summer: Subjec
 
       const moodleLink = $(row).find('a[target="tmoodle"]');
       const hasMoodle = moodleLink.length > 0;
-      const moodleUrl = moodleLink.attr("href") || "";
+      const moodleUrl = resolveMoodleUrl(moodleLink.attr("href") || "") || "";
+      const safeInfoUrl = resolveSubjectInfoUrl(infoUrl) || "";
 
       const subject: Subject = {
         id: `s${id++}`,
         code,
         name,
-        hasMoodle,
+        hasMoodle: hasMoodle && Boolean(moodleUrl),
         moodleUrl,
-        infoUrl: infoUrl ? `${BASE_URL}/${infoUrl}` : "",
+        infoUrl: safeInfoUrl,
       };
 
       if (currentSemester === "winter") winter.push(subject);
@@ -525,7 +569,7 @@ export async function getSchedule(): Promise<ScheduleItem[]> {
     const formatTime = (totalMins: number, isEnd = false) => {
       let m = totalMins;
       if (isEnd && m % 60 === 0) {
-        m -= 15; // UNIZA classes usually end 15 mins before the hour
+        m -= 10; // Official UNIZA timetable uses 50-minute lessons and 10-minute breaks.
       }
       const hours = Math.floor(m / 60);
       const minutes = Math.round(m % 60);
@@ -643,8 +687,8 @@ export async function getSubjectInfo(infoUrl: string): Promise<SubjectInfo | nul
   if (!sessionId) return null;
 
   try {
-    // Extract the relative path or use full URL
-    const url = infoUrl.startsWith("http") ? infoUrl : `${BASE_URL}/${infoUrl}`;
+    const url = resolveSubjectInfoUrl(infoUrl);
+    if (!url) return null;
     const html = await fetchDecoded(url, {
       headers: { Cookie: `PHPSESSID=${sessionId}` },
     });

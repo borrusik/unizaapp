@@ -1,46 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getSubjects, type Subject } from "@/lib/scraper";
+import { useState } from "react";
+import { getSubjects } from "@/lib/scraper";
 import Link from "next/link";
 import { useTranslation } from "@/hooks/useTranslation";
 
 import useSWR from "swr";
+import { getAcademicYear } from "@/lib/uniza";
 
 export default function SubjectsPage() {
   const [semester, setSemester] = useState<"winter" | "summer">("summer");
-  const [mounted, setMounted] = useState(false);
   const { t } = useTranslation();
 
-  const fetcher = async () => {
-    const data = await getSubjects();
-    try {
-      localStorage.setItem("uniza_subjects_cache", JSON.stringify(data));
-    } catch { }
-    return data;
-  };
+  const fetcher = async () => getSubjects();
 
-  const { data, isLoading } = useSWR("uniza_subjects", fetcher, {
-    fallbackData: typeof window !== "undefined"
-      ? (() => {
-        try {
-          const cached = localStorage.getItem("uniza_subjects_cache");
-          if (cached) return JSON.parse(cached) as { winter: Subject[]; summer: Subject[] };
-        } catch { }
-        return { winter: [], summer: [] };
-      })()
-      : { winter: [], summer: [] },
-    revalidateOnFocus: false,
-    revalidateIfStale: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, isLoading } = useSWR("uniza_subjects", fetcher);
 
-  const loading = !mounted || (isLoading && (!data || (data.winter.length === 0 && data.summer.length === 0)));
-
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 0);
-    return () => clearTimeout(t);
-  }, []);
+  const loading = isLoading && !data;
   const subjects = data || { winter: [], summer: [] };
 
   const current = subjects[semester];
@@ -55,16 +31,20 @@ export default function SubjectsPage() {
         {/* Semester Switcher */}
         <div className="segment-control">
           <button
+            type="button"
+            aria-pressed={semester === "winter"}
             className={`segment-btn ${semester === "winter" ? "active" : ""}`}
             onClick={() => setSemester("winter")}
           >
-            ❄️ {t("subjects_winter")} ({mounted ? subjects.winter.length : 0})
+            ❄️ {t("subjects_winter")} ({subjects.winter.length})
           </button>
           <button
+            type="button"
+            aria-pressed={semester === "summer"}
             className={`segment-btn ${semester === "summer" ? "active" : ""}`}
             onClick={() => setSemester("summer")}
           >
-            ☀️ {t("subjects_summer")} ({mounted ? subjects.summer.length : 0})
+            ☀️ {t("subjects_summer")} ({subjects.summer.length})
           </button>
         </div>
 
@@ -76,8 +56,8 @@ export default function SubjectsPage() {
           marginBottom: "16px",
           padding: "0 4px",
         }}>
-          <span className="label">{t("dashboard_acad_year")}</span>
-          <span className="badge badge-credits">{mounted ? current.length : 0} {t("dashboard_subjects_count")}</span>
+          <span className="label">{t("profile_acad_year")} {getAcademicYear()}</span>
+          <span className="badge badge-credits">{current.length} {t("dashboard_subjects_count")}</span>
         </div>
 
         {loading ? (

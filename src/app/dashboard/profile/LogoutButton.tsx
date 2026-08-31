@@ -10,11 +10,22 @@ export function LogoutButton() {
 
   const handleLogout = async () => {
     await logout();
+    [
+      "uniza_subjects_cache",
+      "uniza_schedule_cache",
+      "uniza_grades_cache",
+      "uniza_user_cache",
+      "uniza_user_info",
+      "uniza_strava_info",
+      "uniza_strava_menu",
+      "uniza_strava_history",
+    ].forEach((key) => localStorage.removeItem(key));
     router.push("/");
   };
 
   return (
     <button
+      type="button"
       onClick={handleLogout}
       style={{
         width: "100%",

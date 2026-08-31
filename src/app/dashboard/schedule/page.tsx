@@ -129,28 +129,9 @@ export default function SchedulePage() {
   const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetcher = async () => {
-    const data = await getSchedule();
-    try {
-      localStorage.setItem("uniza_schedule_cache", JSON.stringify(data));
-    } catch { }
-    return data;
-  };
+  const fetcher = async () => getSchedule();
 
-  const { data, isLoading, mutate } = useSWR("uniza_schedule", fetcher, {
-    fallbackData: typeof window !== "undefined"
-      ? (() => {
-        try {
-          const cached = localStorage.getItem("uniza_schedule_cache");
-          if (cached) return JSON.parse(cached) as ScheduleItem[];
-        } catch { }
-        return [];
-      })()
-      : [],
-    revalidateOnFocus: false,
-    revalidateIfStale: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, isLoading, mutate } = useSWR("uniza_schedule", fetcher);
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -197,6 +178,8 @@ export default function SchedulePage() {
       <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title">{t("schedule_title")}</div>
         <button
+          type="button"
+          aria-label={t("common_refresh") as string}
           onClick={handleRefresh}
           disabled={isRefreshing}
           style={{
@@ -231,6 +214,8 @@ export default function SchedulePage() {
 
             return (
               <button
+                type="button"
+                aria-pressed={isActive}
                 key={dayNameOriginal}
                 className={`day-pill ${isActive ? "active" : ""}`}
                 onClick={() => setSelectedDay(dayNameOriginal)}

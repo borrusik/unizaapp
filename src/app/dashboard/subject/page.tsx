@@ -60,6 +60,8 @@ function SubjectInfoContent() {
         gap: "16px",
       }}>
         <button
+          type="button"
+          aria-label={t("common_back") as string}
           onClick={() => router.back()}
           style={{
             width: "40px",

@@ -15,7 +15,7 @@ const GA_ID = "G-PBTXW0SJSY";
 
 export const metadata: Metadata = {
   title: "UNIZA Student",
-  description: "Premium student portal for Žilinská univerzita",
+  description: "Mobile student portal for Žilinská univerzita",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

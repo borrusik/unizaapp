@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: 'uniza-student-portal-v1',
     name: 'UNIZA Študent',
     short_name: 'UNIZA',
-    description: 'Premium student portal pre študentov Žilinskej univerzity',
+    description: 'Mobilný študentský portál pre študentov Žilinskej univerzity',
     start_url: '/',
     display: 'standalone',
     background_color: '#fdfdfc',

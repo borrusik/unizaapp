@@ -7,17 +7,10 @@ export type MenuItem = {
   allergens?: string;
 };
 
-// Default fallback mock if API fails
-const MOCK_MENU: MenuItem[] = [
-  { id: "1", mealName: "Zemiakové halušky s bryndzou a slaninkou", price: "2,50 €", allergens: "1, 3, 7" },
-  { id: "2", mealName: "Bravčové na šampiňónoch, ryža", price: "3,20 €", allergens: "1, 7" },
-  { id: "3", mealName: "Vyprážaný syr s hranolkami, tatárska", price: "3,50 €", allergens: "1, 3, 7, 10" },
-  { id: "4", mealName: "Kurací perkelt, cestoviny", price: "3,10 €", allergens: "1, 3, 7" },
-];
-
 import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useEffect } from "react";
 import useSWR from "swr";
+import { UNIZA_URLS } from "@/lib/uniza";
 
 export default function StravaPage() {
   const { t } = useTranslation();
@@ -26,46 +19,15 @@ export default function StravaPage() {
 
   const fetcher = async () => {
     const { getStravaInfo, getStravaMenu, getStravaHistory } = await import("@/lib/strava");
-    const [infoData, menuData, historyData] = await Promise.all([
-      getStravaInfo(),
+    const infoData = await getStravaInfo();
+    const [menuData, historyData] = await Promise.all([
       getStravaMenu(),
       getStravaHistory()
     ]);
-    const infoStr = infoData || { balance: 0.00, name: "Student" };
-    const menuStr = menuData && menuData.length > 0 ? menuData : MOCK_MENU;
-    const historyStr = historyData || [];
-
-    try {
-      localStorage.setItem("uniza_strava_info", JSON.stringify(infoStr));
-      localStorage.setItem("uniza_strava_menu", JSON.stringify(menuStr));
-      localStorage.setItem("uniza_strava_history", JSON.stringify(historyStr));
-    } catch { }
-
-    return { info: infoStr, menu: menuStr, history: historyStr };
+    return { info: infoData, menu: menuData || [], history: historyData || [] };
   };
 
-  const { data, isLoading, mutate } = useSWR("uniza_strava_all", fetcher, {
-    fallbackData: typeof window !== "undefined"
-      ? (() => {
-        try {
-          const cachedInfo = localStorage.getItem("uniza_strava_info");
-          const cachedMenu = localStorage.getItem("uniza_strava_menu");
-          const cachedHistory = localStorage.getItem("uniza_strava_history");
-          if (cachedInfo || cachedMenu || cachedHistory) {
-            return {
-              info: cachedInfo ? JSON.parse(cachedInfo) : { balance: 0.00, name: "Student" },
-              menu: cachedMenu ? JSON.parse(cachedMenu) : [],
-              history: cachedHistory ? JSON.parse(cachedHistory) : []
-            };
-          }
-        } catch { }
-        return undefined; // no fallback
-      })()
-      : undefined,
-    revalidateOnFocus: false,
-    revalidateIfStale: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, isLoading, mutate } = useSWR("uniza_strava_all", fetcher);
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -74,7 +36,7 @@ export default function StravaPage() {
     setIsRefreshing(false);
   };
 
-  const loading = !mounted || (isLoading && (!data || data.menu.length === 0));
+  const loading = !mounted || (isLoading && !data);
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 0);
@@ -92,6 +54,8 @@ export default function StravaPage() {
           <div className="text-sm" style={{ marginTop: "2px" }}>{t("food_subtitle")}</div>
         </div>
         <button
+          type="button"
+          aria-label={t("common_refresh") as string}
           onClick={handleRefresh}
           disabled={isRefreshing}
           style={{
@@ -151,7 +115,7 @@ export default function StravaPage() {
                     {t("food_isic_credit")}
                   </div>
                   <div style={{ fontSize: "36px", fontWeight: 800, textShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
-                    {info?.balance.toFixed(2).replace('.', ',')} €
+                    {info ? `${info.balance.toFixed(2).replace('.', ',')} €` : "—"}
                   </div>
                 </div>
                 <div style={{
@@ -162,12 +126,12 @@ export default function StravaPage() {
                   fontWeight: 600,
                   backdropFilter: "blur(10px)"
                 }}>
-                  {t("food_active")}
+                  {info ? t("food_active") : t("food_unavailable")}
                 </div>
               </div>
 
               <div style={{ marginTop: "24px", fontSize: "14px", fontWeight: 500, opacity: 0.9, position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: "8px" }}>
-                <span>{info?.name}</span>
+                <span>{info?.name || "WebKredit"}</span>
               </div>
             </div>
 
@@ -177,6 +141,20 @@ export default function StravaPage() {
             </div>
 
             <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {menu.length === 0 && (
+                <div className="card" style={{ textAlign: "center", padding: "24px" }}>
+                  <p className="text-sm" style={{ marginBottom: "14px" }}>{t("food_menu_unavailable")}</p>
+                  <a
+                    href={UNIZA_URLS.catering}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="badge badge-neutral"
+                    style={{ textDecoration: "none" }}
+                  >
+                    {t("food_open_official")}
+                  </a>
+                </div>
+              )}
               {menu.map((item: { id?: string; mealName: string; price: string; allergens?: string }, index: number) => (
                 <div key={item.id || index} className="card animate-scale-in" style={{ opacity: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>

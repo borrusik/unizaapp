@@ -1,49 +1,29 @@
 "use client";
 
-import { getUserInfo, getGrades } from "@/lib/scraper";
+import { getUserInfo, getGrades, getIntegrationStatus } from "@/lib/scraper";
 import { LogoutButton } from "./LogoutButton";
 import { ClientText } from "@/components/ClientText";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { useState } from "react";
 import useSWR from "swr";
+import { UNIZA_URLS } from "@/lib/uniza";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function ProfilePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { t } = useTranslation();
 
   const fetcher = async () => {
-    const [user, gradesRes] = await Promise.all([
+    const [user, gradesRes, integration] = await Promise.all([
       getUserInfo(),
-      getGrades().catch(() => ({ winter: [], summer: [] }))
+      getGrades().catch(() => ({ winter: [], summer: [] })),
+      getIntegrationStatus(),
     ]);
-    const res = { user, grades: gradesRes || { winter: [], summer: [] } };
-    try {
-      localStorage.setItem("uniza_user_cache", JSON.stringify(res));
-    } catch { }
-    return res;
+    return { user, grades: gradesRes || { winter: [], summer: [] }, integration };
   };
 
-  const { data, mutate } = useSWR("uniza_user_profile", fetcher, {
-    fallbackData: typeof window !== "undefined"
-      ? (() => {
-        try {
-          const cached = localStorage.getItem("uniza_user_cache");
-          if (cached) return JSON.parse(cached);
-
-          // Also fallback to the ones created by the bootloader
-          const bootUser = localStorage.getItem("uniza_user_info");
-          const bootGrades = localStorage.getItem("uniza_grades_cache");
-          if (bootUser && bootGrades) {
-            return { user: JSON.parse(bootUser), grades: JSON.parse(bootGrades) };
-          }
-        } catch { }
-        return { user: null, grades: { winter: [], summer: [] } };
-      })()
-      : { user: null, grades: { winter: [], summer: [] } },
-    revalidateOnFocus: false,
-    revalidateIfStale: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, mutate } = useSWR("uniza_user_profile", fetcher);
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -63,6 +43,11 @@ export default function ProfilePage() {
     personalNumber: "..."
   };
   const grades = data?.grades || { winter: [], summer: [] };
+  const integration = data?.integration || {
+    education: false,
+    catering: false,
+    passwordStored: false,
+  };
 
   const allGrades = [...grades.winter, ...grades.summer];
   const totalCredits = allGrades
@@ -73,15 +58,34 @@ export default function ProfilePage() {
 
   const gradeValues: Record<string, number> = { A: 1, B: 1.5, C: 2, D: 2.5, E: 3, FX: 4 };
   const scored = allGrades.filter((g) => gradeValues[g.grade] !== undefined);
-  const avgGrade = scored.length > 0
-    ? (scored.reduce((sum, g) => sum + gradeValues[g.grade] * g.credits, 0) / scored.reduce((sum, g) => sum + g.credits, 0)).toFixed(2)
+  const scoredCredits = scored.reduce((sum, g) => sum + g.credits, 0);
+  const avgGrade = scored.length > 0 && scoredCredits > 0
+    ? (scored.reduce((sum, g) => sum + gradeValues[g.grade] * g.credits, 0) / scoredCredits).toFixed(2)
     : "—";
+
+  const officialSystems = [
+    {
+      name: "AIVS / Vzdelávanie",
+      href: UNIZA_URLS.education,
+      status: integration.education,
+    },
+    {
+      name: "WebKredit",
+      href: UNIZA_URLS.catering,
+      status: integration.catering,
+    },
+    { name: t("system_academic_calendar"), href: UNIZA_URLS.academicCalendar },
+    { name: t("system_campus_map"), href: UNIZA_URLS.campus },
+    { name: t("system_helpdesk"), href: UNIZA_URLS.helpdesk },
+  ];
 
   return (
     <div>
       <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title"><ClientText n="profile_title" /></div>
         <button
+          type="button"
+          aria-label={t("common_refresh") as string}
           onClick={handleRefresh}
           disabled={isRefreshing}
           style={{
@@ -165,6 +169,38 @@ export default function ProfilePage() {
             <span className="text-sm">{user.academicYear}</span>
           </div>
         </div>
+
+        <div style={{ marginBottom: "8px", padding: "0 4px" }}>
+          <span className="label">{t("profile_systems")}</span>
+        </div>
+        <div className="card-group" style={{ marginBottom: "12px" }}>
+          {officialSystems.map((system) => (
+            <a
+              key={system.href}
+              href={system.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="card-row"
+              style={{ textDecoration: "none" }}
+            >
+              <span className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 600 }}>
+                {system.name}
+              </span>
+              {typeof system.status === "boolean" ? (
+                <span className={`badge ${system.status ? "badge-credits" : "badge-neutral"}`}>
+                  {system.status ? t("integration_connected") : t("integration_reconnect")}
+                </span>
+              ) : (
+                <span aria-hidden="true">↗</span>
+              )}
+            </a>
+          ))}
+        </div>
+        <p className="text-xs" style={{ margin: "0 4px 24px" }}>
+          {integration.passwordStored
+            ? t("integration_encrypted")
+            : t("integration_session_only")}
+        </p>
 
         <LanguageSwitcher />
         <ThemeSwitcher />

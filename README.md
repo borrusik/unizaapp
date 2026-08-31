@@ -12,17 +12,35 @@ This project was born out of the need to unify the two most important student sy
 *   **🎓 Grades and Subjects** — Quick overview of your evaluations, earned credits (ECTS), and grade point average.
 *   **🍔 Canteen (Strava)** — Current daily menu, ISIC card credit balance, and your transaction history in the university canteen.
 *   **📱 PWA (Progressive Web App)** — Add the app to your phone's home screen (iOS and Android) and use it like a native application.
-*   **🌍 Multilingual** — Full support for both Slovak and English languages.
+*   **🌍 Multilingual** — Slovak, English, Ukrainian, and Russian interfaces.
 *   **🌙 Dark Mode** — The interface automatically adapts to your device's system appearance settings.
 
 ## 🔐 Privacy and Security
 
 The security of your sensitive data is the top priority. The application is designed to protect your information:
 
-1.  **No Password Storage:** Your login credentials are **never** stored in any external database. They are only used for one-time authentication against official university servers.
-2.  **Direct Connection:** The application acts as an intermediary (scraper) – it fetches data directly from the official UNIZA portals and returns them to you in a modern design.
-3.  **Modern Protection:** The codebase includes strict security headers (CSP with nonce, HSTS, XSS protection) and robust defense against automated bot attacks.
-4.  **Google Analytics:** The project utilizes anonymized traffic analytics without collecting personal data (IP addresses are masked).
+1.  **Encrypted automatic sign-in:** Credentials are never stored in a database or in plaintext. When `UNIZA_SESSION_SECRET` is configured, the email and password are encrypted with authenticated AES-256-GCM encryption and kept for up to 30 days in an `HttpOnly`, `Secure`, `SameSite=Strict` browser cookie. Without this secret, only the current upstream session is retained.
+2.  **Direct connection:** The server connects only to allow-listed official UNIZA hosts. Subject and Moodle links are validated before they can be fetched or opened.
+3.  **Private student data:** Grades, schedules, profile details, balances, and transaction history are held in the current in-memory UI session and are not persisted in `localStorage`.
+4.  **Modern protection:** The codebase includes a nonce-based CSP, HSTS, strict cookie settings, request timeouts, response-size limits, and login rate limiting.
+5.  **Google Analytics:** The project uses anonymized traffic analytics without intentionally sending student records or login fields.
+
+## Configuration
+
+Create `.env.local` for local development and configure the same variable in the production hosting environment:
+
+```dotenv
+UNIZA_SESSION_SECRET=replace-with-at-least-32-random-characters
+```
+
+Use a cryptographically random value and do not commit it. Rotating the value safely invalidates all saved automatic-login cookies. The repository includes `.env.example` as a template.
+
+The app integrates with these official systems and public resources:
+
+* **AIVS / Vzdelávanie** for subjects, grades, profile data, and schedules.
+* **Moodle** through the per-subject links issued by AIVS; direct Moodle login is intentionally not attempted.
+* **WebKredit** for the canteen balance, menu, and transaction history.
+* **UNIZA academic calendar, campus map, and Helpdesk** through verified official links in the profile.
 
 ## 🛠 Built With
 

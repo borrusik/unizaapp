@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslation, dictionary } from "@/hooks/useTranslation";
-import { useState, useEffect } from "react";
 
 export default function DashboardLayout({
   children,
@@ -63,80 +62,9 @@ export default function DashboardLayout({
     },
   ];
 
-  const [isBooting, setIsBooting] = useState(true);
-
-  useEffect(() => {
-    const boot = async () => {
-      const hasCaches = localStorage.getItem("uniza_subjects_cache");
-      // If we already have cache, we don't block the UI
-      if (hasCaches) {
-        setIsBooting(false);
-        return;
-      }
-
-      // If missing, show loading bar and warm up all caches concurrently!
-      const { getSubjects, getSchedule, getGrades, getUserInfo } = await import("@/lib/scraper");
-      const { getStravaInfo, getStravaMenu, getStravaHistory } = await import("@/lib/strava");
-
-      try {
-        const [subjects, schedule, grades, userInfo, stravaInfo, stravaMenu, stravaHist] = await Promise.all([
-          getSubjects(),
-          getSchedule(),
-          getGrades(),
-          getUserInfo(),
-          getStravaInfo(),
-          getStravaMenu(),
-          getStravaHistory()
-        ]);
-
-
-
-        localStorage.setItem("uniza_subjects_cache", JSON.stringify(subjects));
-        localStorage.setItem("uniza_schedule_cache", JSON.stringify(schedule));
-        localStorage.setItem("uniza_grades_cache", JSON.stringify(grades));
-        localStorage.setItem("uniza_user_info", JSON.stringify(userInfo));
-        localStorage.setItem("uniza_strava_info", JSON.stringify(stravaInfo || { balance: 0.00, name: "Student" }));
-        localStorage.setItem("uniza_strava_menu", JSON.stringify(stravaMenu || []));
-        localStorage.setItem("uniza_strava_history", JSON.stringify(stravaHist || []));
-      } catch (e) {
-        console.error("Bootload failed", e);
-      }
-
-      setTimeout(() => setIsBooting(false), 600);
-    };
-    boot();
-  }, []);
-
   return (
     <div className="page-with-nav">
-      <main>
-        {isBooting ? (
-          <div>
-            <div className="top-bar">
-              <div className="skeleton" style={{ width: "140px", height: "28px", borderRadius: "8px" }} />
-            </div>
-            <div className="container">
-              <div className="segment-control skeleton" style={{ height: "42px", display: "flex", gap: "4px", padding: "4px" }}>
-                <div style={{ flex: 1, borderRadius: "8px" }} />
-                <div style={{ flex: 1, borderRadius: "8px" }} />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px", padding: "0 4px" }}>
-                <div className="skeleton" style={{ width: "80px", height: "16px" }} />
-                <div className="skeleton" style={{ width: "100px", height: "22px", borderRadius: "12px" }} />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="card skeleton" style={{ height: "90px" }} />
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          children
-        )}
-      </main>
+      <main>{children}</main>
 
       <nav className="bottom-nav">
         {tabs.map((tab) => {

@@ -15,16 +15,18 @@ export default function LoginPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
-    // Clear old data and cookies before login to ensure fresh state
+    // Remove legacy personal-data caches while preserving language and theme preferences.
     try {
-      localStorage.clear();
-      const cookies = document.cookie.split(";");
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i];
-        const eqPos = cookie.indexOf("=");
-        const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-      }
+      [
+        "uniza_subjects_cache",
+        "uniza_schedule_cache",
+        "uniza_grades_cache",
+        "uniza_user_info",
+        "uniza_user_cache",
+        "uniza_strava_info",
+        "uniza_strava_menu",
+        "uniza_strava_history",
+      ].forEach((key) => localStorage.removeItem(key));
     } catch {
       // Ignore errors if any
     }
@@ -88,7 +90,7 @@ export default function LoginPage() {
           <div className="input-group">
             <label className="input-label" htmlFor="email">{t("login_email")}</label>
             <input
-              type="text"
+              type="email"
               id="email"
               name="email"
               className="input-field"
@@ -112,7 +114,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div style={{
+            <div role="alert" style={{
               color: "var(--danger)",
               fontSize: "14px",
               marginBottom: "16px",
