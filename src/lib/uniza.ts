@@ -2,6 +2,7 @@ export const UNIZA_URLS = {
   education: "https://vzdelavanie.uniza.sk/vzdelavanie/",
   moodle: "https://vzdelavanie.uniza.sk/moodle/",
   catering: "https://strava.uniza.sk/WebKredit/",
+  diningMenu: "https://menza.uniza.sk/jedalny-listok",
   academicCalendar: "https://www.uniza.sk/index.php/studenti/vseobecne-informacie/akademicky-kalendar",
   campus: "https://campus.uniza.sk/",
   helpdesk: "https://helpdesk.uniza.sk/",

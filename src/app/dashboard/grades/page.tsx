@@ -8,19 +8,26 @@ import useSWR from "swr";
 
 export default function GradesPage() {
   const [semester, setSemester] = useState<"winter" | "summer">("winter");
+  const [academicYearStart, setAcademicYearStart] = useState<number>();
   const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { t } = useTranslation();
 
-  const fetcher = async () => getGrades();
+  const fetcher = async () => getGrades(academicYearStart);
 
-  const { data, isLoading, mutate } = useSWR("uniza_grades", fetcher);
+  const { data, isLoading, mutate } = useSWR(
+    ["uniza_grades", academicYearStart ?? "current"],
+    fetcher,
+  );
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    await mutate();
-    setIsRefreshing(false);
+    try {
+      await mutate(() => getGrades(academicYearStart, true), { revalidate: false });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const loading = !mounted || (isLoading && (!data || (data.winter.length === 0 && data.summer.length === 0)));
@@ -29,7 +36,13 @@ export default function GradesPage() {
     const t = setTimeout(() => setMounted(true), 0);
     return () => clearTimeout(t);
   }, []);
-  const grades = data || { winter: [], summer: [] };
+  const grades = data || {
+    winter: [],
+    summer: [],
+    academicYear: "",
+    academicYears: [],
+    selectedStartYear: academicYearStart || 0,
+  };
 
   const current = grades[semester];
 
@@ -87,6 +100,33 @@ export default function GradesPage() {
       </div>
 
       <div className="container">
+        <label style={{ display: "block", marginBottom: "16px" }}>
+          <span className="label" style={{ display: "block", marginBottom: "7px" }}>
+            {t("common_academic_year")}
+          </span>
+          <select
+            aria-label={t("common_academic_year") as string}
+            value={grades.selectedStartYear || ""}
+            onChange={(event) => setAcademicYearStart(Number(event.target.value))}
+            disabled={loading || grades.academicYears.length === 0}
+            style={{
+              width: "100%",
+              minHeight: "44px",
+              borderRadius: "12px",
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text-primary)",
+              padding: "0 12px",
+              fontSize: "15px",
+              fontWeight: 600,
+            }}
+          >
+            {grades.academicYears.map((year) => (
+              <option key={year.startYear} value={year.startYear}>{year.label}</option>
+            ))}
+          </select>
+        </label>
+
         <div className="segment-control">
           <button type="button" aria-pressed={semester === "winter"} className={`segment-btn ${semester === "winter" ? "active" : ""}`} onClick={() => setSemester("winter")}>
             ❄️ {t("grades_winter")}
@@ -108,6 +148,12 @@ export default function GradesPage() {
                 <div key={i} className="card-row skeleton" style={{ height: "72px" }} />
               ))}
             </div>
+          </div>
+        ) : current.length === 0 ? (
+          <div className="card" style={{ textAlign: "center", padding: "36px 20px" }}>
+            <div style={{ fontSize: "42px", marginBottom: "10px" }}>🎓</div>
+            <div className="card-title">{t("grades_no_data")}</div>
+            <p className="text-sm" style={{ marginTop: "6px" }}>{t("grades_no_data_year")}</p>
           </div>
         ) : (
           <div className="animate-slide-up">

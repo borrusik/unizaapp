@@ -2,6 +2,15 @@
 
 import { createHash } from "node:crypto";
 import { clearStravaSession, getStoredStravaSession, restoreStravaSession } from "@/lib/strava-session";
+import {
+  getBratislavaDateKey,
+  listDateKeys,
+  localDateToUtcIso,
+  parseWebKreditCanteens,
+  parseWebKreditMenu,
+  type Canteen,
+  type MenuDay,
+} from "@/lib/uniza-parsers";
 
 const BASE_URL = "https://strava.uniza.sk/WebKredit";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -42,13 +51,13 @@ export type StravaInfo = {
   name: string;
 };
 
-export async function getStravaInfo(): Promise<StravaInfo | null> {
+export async function getStravaInfo(force = false): Promise<StravaInfo | null> {
   const sessionCookies = await getStravaSession();
   if (!sessionCookies) return null;
 
   const cacheKey = sessionCacheKey(sessionCookies, "info");
   const cached = getCached<StravaInfo>(cacheKey);
-  if (cached) return cached;
+  if (!force && cached) return cached;
 
   try {
     const res = await fetchStrava(`${BASE_URL}/`, {
@@ -90,13 +99,13 @@ export type StravaHistoryItem = {
   isMealOrder: boolean;
 };
 
-export async function getStravaHistory(): Promise<StravaHistoryItem[]> {
+export async function getStravaHistory(force = false): Promise<StravaHistoryItem[]> {
   const sessionCookies = await getStravaSession();
   if (!sessionCookies) return [];
 
   const cacheKey = sessionCacheKey(sessionCookies, "history");
   const cached = getCached<StravaHistoryItem[]>(cacheKey);
-  if (cached) return cached;
+  if (!force && cached) return cached;
 
   // Get last 30 days history
   const to = new Date();
@@ -126,62 +135,78 @@ export async function getStravaHistory(): Promise<StravaHistoryItem[]> {
   }
 }
 
-export type MenuItem = {
-  id: string;
-  mealName: string;
-  price: string;
-  allergens: string;
+export type StravaMenuResult = {
+  canteens: Canteen[];
+  selectedCanteenId: number;
+  days: MenuDay[];
+  requestedDates: string[];
+  message: string;
+  unavailable: boolean;
 };
 
-export async function getStravaMenu(): Promise<MenuItem[]> {
-  const sessionCookies = await getStravaSession();
-  if (!sessionCookies) return [];
+export async function getStravaMenu(
+  canteenId = 1,
+  startDate?: string,
+  force = false,
+): Promise<StravaMenuResult> {
+  const safeCanteenId = Number.isInteger(canteenId) && canteenId > 0 && canteenId < 1_000
+    ? canteenId
+    : 1;
+  const today = getBratislavaDateKey(new Date());
+  const requestedDates = listDateKeys(startDate || today, 5);
+  const safeDates = requestedDates.length > 0 ? requestedDates : listDateKeys(today, 5);
+  const cacheKey = `public_menu_${safeCanteenId}_${safeDates.join("_")}`;
+  const cached = getCached<StravaMenuResult>(cacheKey);
+  if (!force && cached) return cached;
 
-  const cacheKey = sessionCacheKey(sessionCookies, "menu");
-  const cached = getCached<MenuItem[]>(cacheKey);
-  if (cached) return cached;
-
-  // Get current date exactly at midnight local time to avoid timezone issues
-  const today = new Date();
-  today.setHours(12, 0, 0, 0); // Midday to be safe
-  const dateStr = today.toISOString().split("T")[0]; // YYYY-MM-DD
+  const dateParams = safeDates
+    .map(localDateToUtcIso)
+    .filter((date): date is string => Boolean(date));
+  const menuParams = new URLSearchParams({ CanteenId: safeCanteenId.toString() });
+  for (const date of dateParams) menuParams.append("Dates", date);
+  const orderingParams = new URLSearchParams({
+    DateFrom: dateParams[0] || new Date().toISOString(),
+    DateTo: dateParams.at(-1) || new Date().toISOString(),
+  });
 
   try {
-    const res = await fetchStrava(`${BASE_URL}/Api/Ordering/Menu?Dates=${dateStr}T00:00:00.000Z&CanteenId=1`, {
-      headers: { Cookie: sessionCookies.join("; ") },
-    });
+    const [menuResponse, orderingResponse] = await Promise.all([
+      fetchStrava(`${BASE_URL}/Api/Ordering/Menu?${menuParams.toString()}`, {
+        headers: { Accept: "application/json" },
+      }),
+      fetchStrava(`${BASE_URL}/Api/Ordering/Ordering?${orderingParams.toString()}`, {
+        headers: { Accept: "application/json" },
+      }),
+    ]);
+    if (!menuResponse.ok) throw new Error(`Menu returned ${menuResponse.status}`);
 
-    if (!res.ok) {
-      await clearStravaSession();
-      return [];
-    }
+    const [menuPayload, orderingPayload] = await Promise.all([
+      menuResponse.json(),
+      orderingResponse.ok ? orderingResponse.json() : Promise.resolve(null),
+    ]);
+    const ordering = parseWebKreditCanteens(orderingPayload);
+    const result: StravaMenuResult = {
+      canteens: ordering.canteens,
+      selectedCanteenId: ordering.canteens.some((canteen) => canteen.id === safeCanteenId)
+        ? safeCanteenId
+        : ordering.selectedCanteenId,
+      days: parseWebKreditMenu(menuPayload),
+      requestedDates: safeDates,
+      message: ordering.message,
+      unavailable: false,
+    };
 
-    const data = await res.json();
-    const items: MenuItem[] = [];
-
-    // The API might return an array of dates containing meals
-    if (Array.isArray(data) && data.length > 0 && data[0].groups) {
-      for (const group of data[0].groups) {
-        if (group.rows) {
-          for (const row of group.rows) {
-            if (row.item) {
-              items.push({
-                id: row.item.id?.toString() || Math.random().toString(),
-                mealName: row.item.mealName || row.item.name || "Neznáme jedlo",
-                price: row.item.priceWithCurrency || (row.item.price ? `${row.item.price.toFixed(2)} €` : "—"),
-                allergens: row.item.allergens?.join(", ") || "",
-              });
-            }
-          }
-        }
-      }
-    }
-
-    // Unknown or empty upstream structures are returned as an honest empty menu.
-    setCached(cacheKey, items);
-    return items;
+    setCached(cacheKey, result);
+    return result;
   } catch (e) {
     console.error("Failed to fetch Strava menu:", e);
-    return [];
+    return {
+      canteens: [],
+      selectedCanteenId: safeCanteenId,
+      days: [],
+      requestedDates: safeDates,
+      message: "",
+      unavailable: true,
+    };
   }
 }

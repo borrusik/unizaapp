@@ -14,22 +14,25 @@ export default function ProfilePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { t } = useTranslation();
 
-  const fetcher = async () => {
+  const fetcher = async (force = false) => {
     const [user, gradesRes, integration] = await Promise.all([
-      getUserInfo(),
-      getGrades().catch(() => ({ winter: [], summer: [] })),
+      getUserInfo(undefined, undefined, force),
+      getGrades(undefined, force).catch(() => ({ winter: [], summer: [] })),
       getIntegrationStatus(),
     ]);
     return { user, grades: gradesRes || { winter: [], summer: [] }, integration };
   };
 
-  const { data, mutate } = useSWR("uniza_user_profile", fetcher);
+  const { data, mutate } = useSWR("uniza_user_profile", () => fetcher(false));
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    await mutate();
-    setIsRefreshing(false);
+    try {
+      await mutate(() => fetcher(true), { revalidate: false });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
 

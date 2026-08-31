@@ -7,7 +7,10 @@ import type { NextRequest } from "next/server";
 
 const ipRequestMap = new Map<string, { count: number; resetTime: number }>();
 const WINDOW_MS = 60 * 1000; // 1 minute window
-const MAX_REQUESTS_PER_MINUTE = 60;
+// A single App Router navigation may produce several RSC and Server Action
+// requests. Keep the general ceiling high enough for normal multi-page use;
+// login and scanner traffic have stricter limits below.
+const MAX_REQUESTS_PER_MINUTE = 240;
 const MAX_LOGIN_PER_MINUTE = 5;
 const BLOCK_WINDOW_MS = 10 * 60 * 1000; // 10 minute block for repeated offenders
 
@@ -150,12 +153,6 @@ export function proxy(request: NextRequest) {
   // ── General rate limiting ──
   const isLimited = checkRate(ipRequestMap, ip, MAX_REQUESTS_PER_MINUTE, WINDOW_MS);
   if (isLimited && process.env.NODE_ENV !== "development") {
-    // If they keep hitting the limit, block them
-    const overLimitKey = `over_${ip}`;
-    const isRepeated = checkRate(ipRequestMap, overLimitKey, 3, 5 * 60 * 1000);
-    if (isRepeated) {
-      blockedIPs.set(ip, Date.now() + BLOCK_WINDOW_MS);
-    }
     return new NextResponse(
       JSON.stringify({ error: "Too many requests. Please try again later." }),
       {

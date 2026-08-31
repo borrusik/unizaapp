@@ -9,8 +9,8 @@ This project was born out of the need to unify the two most important student sy
 ## 🌟 Main Features
 
 *   **📅 Schedule** — A clear list of lectures, practicals, and labs divided by day. No complex tables, just what's ahead of you today.
-*   **🎓 Grades and Subjects** — Quick overview of your evaluations, earned credits (ECTS), and grade point average.
-*   **🍔 Canteen (Strava)** — Current daily menu, ISIC card credit balance, and your transaction history in the university canteen.
+*   **🎓 Grades and Subjects** — Quick overview of evaluations, earned credits (ECTS), and grade point average, including previous academic years exposed by AIVS.
+*   **🍔 Canteen (Strava)** — Public menus for multiple days and every WebKredit canteen/serving point, plus authenticated ISIC balance and transaction history.
 *   **📱 PWA (Progressive Web App)** — Add the app to your phone's home screen (iOS and Android) and use it like a native application.
 *   **🌍 Multilingual** — Slovak, English, Ukrainian, and Russian interfaces.
 *   **🌙 Dark Mode** — The interface automatically adapts to your device's system appearance settings.
@@ -37,9 +37,10 @@ Use a cryptographically random value and do not commit it. Rotating the value sa
 
 The app integrates with these official systems and public resources:
 
-* **AIVS / Vzdelávanie** for subjects, grades, profile data, and schedules.
+* **AIVS / Vzdelávanie** for subjects, grades, profile data, schedules, and the official list of available academic years.
 * **Moodle** through the per-subject links issued by AIVS; direct Moodle login is intentionally not attempted.
-* **WebKredit** for the canteen balance, menu, and transaction history.
+* **WebKredit** for the authenticated balance and transaction history, and its public menu API for canteen menus, allergens, closures, and serving-point selection.
+* **Menza UNIZA** as the human-readable official menu fallback when WebKredit is unavailable.
 * **UNIZA academic calendar, campus map, and Helpdesk** through verified official links in the profile.
 
 ## 🛠 Built With

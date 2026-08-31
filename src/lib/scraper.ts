@@ -5,6 +5,12 @@ import * as cheerio from "cheerio";
 import { rateLimit } from "@/lib/rate-limit";
 import { authenticateStrava, clearStravaSession, getStoredStravaSession, storeStravaSession } from "@/lib/strava-session";
 import { getAcademicYear, resolveMoodleUrl, resolveSubjectInfoUrl } from "@/lib/uniza";
+import {
+  formatAcademicYear,
+  parseAcademicYears,
+  type AcademicYearOption,
+  type AcademicYearSelection,
+} from "@/lib/uniza-parsers";
 import { canPersistCredentials, clearCredentials, readCredentials, saveCredentials } from "@/lib/credentials";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
@@ -68,25 +74,28 @@ async function getPhpSession(email: string, password: string): Promise<string | 
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
-  // Step 3: Verify session and pre-fetch all essential pages in parallel to warm up the cache
+  // Step 3: Verify the session and warm the currently selected academic year.
+  const academicYears = await getAcademicYearOptions();
+  const selectedStartYear = academicYears.selectedStartYear ?? academicYears.options[0]?.startYear;
+  const yearQuery = selectedStartYear ? `?ra=${selectedStartYear}` : "";
   const [testHtml, gradesHtml, scheduleHtml, indexHtml, planyHtml] = await Promise.all([
-    fetchDecoded(`${BASE_URL}/predmety_s.php`, {
+    fetchDecoded(`${BASE_URL}/predmety_s.php${yearQuery}`, {
       headers: { Cookie: `PHPSESSID=${phpSessionId}` },
       redirect: "manual",
     }),
-    fetchDecoded(`${BASE_URL}/svysledky.php`, {
+    fetchDecoded(`${BASE_URL}/svysledky.php${yearQuery}`, {
       headers: { Cookie: `PHPSESSID=${phpSessionId}` },
       redirect: "manual",
     }),
-    fetchDecoded(`${BASE_URL}/rozvrh2.php`, {
+    fetchDecoded(`${BASE_URL}/rozvrh2.php${yearQuery}`, {
       headers: { Cookie: `PHPSESSID=${phpSessionId}` },
       redirect: "manual",
     }),
-    fetchDecoded(`${BASE_URL}/index.php`, {
+    fetchDecoded(`${BASE_URL}/index.php${yearQuery}`, {
       headers: { Cookie: `PHPSESSID=${phpSessionId}` },
       redirect: "manual",
     }),
-    fetchDecoded(`${BASE_URL}/plany.php`, {
+    fetchDecoded(`${BASE_URL}/plany.php${yearQuery}`, {
       headers: { Cookie: `PHPSESSID=${phpSessionId}` },
       redirect: "manual",
     }),
@@ -99,11 +108,11 @@ async function getPhpSession(email: string, password: string): Promise<string | 
   // Inject pre-fetched results directly into PAGE_CACHE
   const now = Date.now();
   if (PAGE_CACHE.size > 500) PAGE_CACHE.clear();
-  PAGE_CACHE.set(`${phpSessionId}_predmety_s.php`, { html: testHtml, timestamp: now });
-  PAGE_CACHE.set(`${phpSessionId}_svysledky.php`, { html: gradesHtml, timestamp: now });
-  PAGE_CACHE.set(`${phpSessionId}_rozvrh2.php`, { html: scheduleHtml, timestamp: now });
-  PAGE_CACHE.set(`${phpSessionId}_index.php`, { html: indexHtml, timestamp: now });
-  PAGE_CACHE.set(`${phpSessionId}_plany.php`, { html: planyHtml, timestamp: now });
+  PAGE_CACHE.set(`${phpSessionId}_predmety_s.php${yearQuery}`, { html: testHtml, timestamp: now });
+  PAGE_CACHE.set(`${phpSessionId}_svysledky.php${yearQuery}`, { html: gradesHtml, timestamp: now });
+  PAGE_CACHE.set(`${phpSessionId}_rozvrh2.php${yearQuery}`, { html: scheduleHtml, timestamp: now });
+  PAGE_CACHE.set(`${phpSessionId}_index.php${yearQuery}`, { html: indexHtml, timestamp: now });
+  PAGE_CACHE.set(`${phpSessionId}_plany.php${yearQuery}`, { html: planyHtml, timestamp: now });
 
   return phpSessionId;
 }
@@ -111,10 +120,10 @@ async function getPhpSession(email: string, password: string): Promise<string | 
 const PAGE_CACHE = new Map<string, { html: string; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-async function fetchPage(sessionId: string, page: string): Promise<string> {
+async function fetchPage(sessionId: string, page: string, force = false): Promise<string> {
   const cacheKey = `${sessionId}_${page}`;
 
-  if (PAGE_CACHE.has(cacheKey)) {
+  if (!force && PAGE_CACHE.has(cacheKey)) {
     const cached = PAGE_CACHE.get(cacheKey)!;
     if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
       return cached.html;
@@ -125,7 +134,7 @@ async function fetchPage(sessionId: string, page: string): Promise<string> {
     headers: { Cookie: `PHPSESSID=${sessionId}` },
   });
 
-  // The password is deliberately not persisted. Expired upstream sessions require a fresh login.
+  // Restore an expired upstream session from the encrypted credential cookie when configured.
   if (html.includes('name="heslo"') || html.includes('<title>Prihlásenie</title>')) {
     const cookieStore = await cookies();
     const credentials = await readCredentials();
@@ -157,6 +166,54 @@ async function fetchPage(sessionId: string, page: string): Promise<string> {
   }
 
   return html;
+}
+
+const ACADEMIC_YEAR_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+let academicYearCache: { data: AcademicYearSelection; timestamp: number } | null = null;
+
+export async function getAcademicYearOptions(force = false): Promise<AcademicYearSelection> {
+  if (
+    !force &&
+    academicYearCache &&
+    Date.now() - academicYearCache.timestamp < ACADEMIC_YEAR_CACHE_TTL_MS
+  ) {
+    return academicYearCache.data;
+  }
+
+  try {
+    const html = await fetchDecoded(`${BASE_URL}/login.php`);
+    const parsed = parseAcademicYears(html);
+    if (parsed.options.length > 0) {
+      academicYearCache = { data: parsed, timestamp: Date.now() };
+      return parsed;
+    }
+  } catch (error) {
+    console.error("Failed to load AIVS academic years:", error);
+  }
+
+  const fallbackStartYear = Number(getAcademicYear().split("/")[0]);
+  return {
+    selectedStartYear: fallbackStartYear,
+    options: [{
+      startYear: fallbackStartYear,
+      label: formatAcademicYear(fallbackStartYear),
+    }],
+  };
+}
+
+async function resolveAcademicYear(requestedStartYear?: number) {
+  const selection = await getAcademicYearOptions();
+  const requested = Number(requestedStartYear);
+  const selectedStartYear = Number.isInteger(requested) &&
+    selection.options.some((option) => option.startYear === requested)
+    ? requested
+    : selection.selectedStartYear ?? selection.options[0].startYear;
+
+  return {
+    selectedStartYear,
+    academicYear: formatAcademicYear(selectedStartYear),
+    academicYears: selection.options,
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -300,8 +357,18 @@ export type ScheduleItem = {
   timeInfo?: string;
 };
 
+export type AcademicPeriodData = {
+  selectedStartYear: number;
+  academicYear: string;
+  academicYears: AcademicYearOption[];
+};
+
 // ─────────────────────────────────────────────
-export async function getUserInfo(explicitSessionId?: string, explicitEmail?: string) {
+export async function getUserInfo(
+  explicitSessionId?: string,
+  explicitEmail?: string,
+  force = false,
+) {
   const cookieStore = await cookies();
   const email = explicitEmail || cookieStore.get("uniza_email")?.value || "student@stud.uniza.sk";
 
@@ -313,13 +380,15 @@ export async function getUserInfo(explicitSessionId?: string, explicitEmail?: st
   let faculty = "Žilinská univerzita v Žiline";
   let program = "Neznámy program";
 
+  const year = await resolveAcademicYear();
+  const yearQuery = `?ra=${year.selectedStartYear}`;
   const sessionId = explicitSessionId || await getSession();
   if (sessionId) {
     try {
       const [indexHtml, svysledkyHtml, predmetyHtml] = await Promise.all([
-        fetchPage(sessionId, "index.php"),
-        fetchPage(sessionId, "svysledky.php"),
-        fetchPage(sessionId, "predmety_s.php"),
+        fetchPage(sessionId, `index.php${yearQuery}`, force),
+        fetchPage(sessionId, `svysledky.php${yearQuery}`, force),
+        fetchPage(sessionId, `predmety_s.php${yearQuery}`, force),
       ]);
 
       // Extract group from indexHtml
@@ -385,7 +454,7 @@ export async function getUserInfo(explicitSessionId?: string, explicitEmail?: st
     program,
     group,
     personalNumber,
-    academicYear: getAcademicYear(),
+    academicYear: year.academicYear,
   };
 }
 
@@ -393,12 +462,20 @@ export async function getUserInfo(explicitSessionId?: string, explicitEmail?: st
 // Parse Subjects
 // ─────────────────────────────────────────────
 
-export async function getSubjects(): Promise<{ winter: Subject[]; summer: Subject[] }> {
+export async function getSubjects(
+  requestedStartYear?: number,
+  force = false,
+): Promise<{ winter: Subject[]; summer: Subject[] } & AcademicPeriodData> {
+  const year = await resolveAcademicYear(requestedStartYear);
   const sessionId = await getSession();
-  if (!sessionId) return { winter: [], summer: [] };
+  if (!sessionId) return { winter: [], summer: [], ...year };
 
   try {
-    const html = await fetchPage(sessionId, "predmety_s.php");
+    const html = await fetchPage(
+      sessionId,
+      `predmety_s.php?ra=${year.selectedStartYear}`,
+      force,
+    );
     const $ = cheerio.load(html);
 
     const winter: Subject[] = [];
@@ -459,10 +536,10 @@ export async function getSubjects(): Promise<{ winter: Subject[]; summer: Subjec
       else summer.push(subject);
     });
 
-    return { winter, summer };
+    return { winter, summer, ...year };
   } catch (e) {
     console.error("Error parsing subjects:", e);
-    return { winter: [], summer: [] };
+    return { winter: [], summer: [], ...year };
   }
 }
 
@@ -470,12 +547,20 @@ export async function getSubjects(): Promise<{ winter: Subject[]; summer: Subjec
 // Parse Grades
 // ─────────────────────────────────────────────
 
-export async function getGrades(): Promise<{ winter: Grade[]; summer: Grade[] }> {
+export async function getGrades(
+  requestedStartYear?: number,
+  force = false,
+): Promise<{ winter: Grade[]; summer: Grade[] } & AcademicPeriodData> {
+  const year = await resolveAcademicYear(requestedStartYear);
   const sessionId = await getSession();
-  if (!sessionId) return { winter: [], summer: [] };
+  if (!sessionId) return { winter: [], summer: [], ...year };
 
   try {
-    const html = await fetchPage(sessionId, "svysledky.php");
+    const html = await fetchPage(
+      sessionId,
+      `svysledky.php?ra=${year.selectedStartYear}`,
+      force,
+    );
     const $ = cheerio.load(html);
 
     const winter: Grade[] = [];
@@ -535,10 +620,10 @@ export async function getGrades(): Promise<{ winter: Grade[]; summer: Grade[] }>
       else summer.push(grade);
     });
 
-    return { winter, summer };
+    return { winter, summer, ...year };
   } catch (e) {
     console.error("Error parsing grades:", e);
-    return { winter: [], summer: [] };
+    return { winter: [], summer: [], ...year };
   }
 }
 
@@ -547,12 +632,17 @@ export async function getGrades(): Promise<{ winter: Grade[]; summer: Grade[] }>
 // ─────────────────────────────────────────────
 
 
-export async function getSchedule(): Promise<ScheduleItem[]> {
+export async function getSchedule(force = false): Promise<ScheduleItem[]> {
   const sessionId = await getSession();
   if (!sessionId) return [];
 
   try {
-    const html = await fetchPage(sessionId, "rozvrh2.php");
+    const year = await resolveAcademicYear();
+    const html = await fetchPage(
+      sessionId,
+      `rozvrh2.php?ra=${year.selectedStartYear}`,
+      force,
+    );
     const $ = cheerio.load(html);
 
     const items: ScheduleItem[] = [];

@@ -129,15 +129,18 @@ export default function SchedulePage() {
   const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetcher = async () => getSchedule();
+  const fetcher = async (force = false) => getSchedule(force);
 
-  const { data, isLoading, mutate } = useSWR("uniza_schedule", fetcher);
+  const { data, isLoading, mutate } = useSWR("uniza_schedule", () => fetcher(false));
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    await mutate();
-    setIsRefreshing(false);
+    try {
+      await mutate(() => fetcher(true), { revalidate: false });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const loading = !mounted || ((isLoading || isRefreshing) && (!data || data.length === 0));
