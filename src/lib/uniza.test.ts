@@ -6,6 +6,7 @@ import {
   resolveMoodleUrl,
   resolveSubjectInfoUrl,
 } from "./uniza.ts";
+import { getBratislavaDayIndex, getScheduleTiming } from "./schedule-timing.ts";
 import {
   getAcademicYearStartFromSlovakDate,
   getBratislavaDateKey,
@@ -23,6 +24,28 @@ test("AIVS grade dates map to the correct academic year", () => {
   assert.equal(getAcademicYearStartFromSlovakDate("1.9.2026"), 2026);
   assert.equal(getAcademicYearStartFromSlovakDate("31.2.2026"), null);
   assert.equal(getAcademicYearStartFromSlovakDate(""), null);
+});
+
+test("schedule progress is shown only for the currently selected day", () => {
+  const duringClass = new Date("2026-03-09T09:30:00Z"); // 10:30 in Bratislava
+
+  assert.deepEqual(getScheduleTiming("10:00", "11:00", duringClass, false), {
+    isLive: false,
+    progress: 0,
+    minsLeft: 0,
+  });
+  assert.deepEqual(getScheduleTiming("10:00", "11:00", duringClass, true), {
+    isLive: true,
+    progress: 50,
+    minsLeft: 30,
+  });
+});
+
+test("schedule day and class time use the Bratislava timezone", () => {
+  const mondayAfterDst = new Date("2026-04-06T08:30:00Z"); // 10:30 CEST
+
+  assert.equal(getBratislavaDayIndex(mondayAfterDst), 1);
+  assert.equal(getScheduleTiming("10:00", "11:00", mondayAfterDst, true).isLive, true);
 });
 
 test("subject info URLs are restricted to the official AIVS endpoint", () => {

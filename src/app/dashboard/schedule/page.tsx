@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, memo } from "react";
 import { getSchedule, type ScheduleItem } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
+import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing";
 
 import useSWR from "swr";
 
@@ -10,7 +11,7 @@ import useSWR from "swr";
 const REGULAR_DAYS = ["Pondelok", "Utorok", "Streda", "Štvrtok", "Piatok"];
 
 function getTodayDayName(t: (key: keyof typeof import("@/hooks/useTranslation").dictionary.sk) => unknown): string {
-  const jsDay = new Date().getDay(); // 0=Sun, 1=Mon...
+  const jsDay = getBratislavaDayIndex(); // 0=Sun, 1=Mon...
   if (jsDay === 0 || jsDay === 6) return t("schedule_weekend_tab") as string; // weekend -> show Víkend
   return REGULAR_DAYS[jsDay - 1];
 }
@@ -18,36 +19,18 @@ function getTodayDayName(t: (key: keyof typeof import("@/hooks/useTranslation").
 const ScheduleCard = memo(({
   item,
   now,
+  isCurrentDay,
   typeLabel,
   t
 }: {
   item: ScheduleItem;
   now: Date;
+  isCurrentDay: boolean;
   typeLabel: (t: string) => string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: (k: any) => any;
 }) => {
-  const [sh, sm] = item.timeStart.split(":").map(Number);
-  const [eh, em] = item.timeEnd.split(":").map(Number);
-
-  const startObj = new Date(now);
-  startObj.setHours(sh, sm, 0, 0);
-
-  const endObj = new Date(now);
-  endObj.setHours(eh, em, 0, 0);
-
-  const isLive = now >= startObj && now <= endObj;
-  let progress = 0;
-
-  if (isLive) {
-    progress = ((now.getTime() - startObj.getTime()) / (endObj.getTime() - startObj.getTime())) * 100;
-  }
-
-  const timing = {
-    isLive,
-    progress: Math.min(Math.max(progress, 0), 100),
-    minsLeft: Math.ceil((endObj.getTime() - now.getTime()) / 60000)
-  };
+  const timing = getScheduleTiming(item.timeStart, item.timeEnd, now, isCurrentDay);
 
   return (
     <div
@@ -168,13 +151,13 @@ export default function SchedulePage() {
   };
 
   const isToday = (dayNameCurrent: string) => {
-    const today = new Date();
-    const jsDay = today.getDay();
+    const jsDay = getBratislavaDayIndex(now);
     if (jsDay === 0 || jsDay === 6) return dayNameCurrent === (t("schedule_weekend_tab") as string);
     return dayNameCurrent === REGULAR_DAYS[jsDay - 1];
   };
 
-  const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+  const currentDayIndex = getBratislavaDayIndex(now);
+  const isWeekend = currentDayIndex === 0 || currentDayIndex === 6;
   const dayNames = isWeekend ? [...REGULAR_DAYS, t("schedule_weekend_tab") as string] : REGULAR_DAYS;
   return (
     <div>
@@ -278,6 +261,7 @@ export default function SchedulePage() {
                 key={item.id}
                 item={item}
                 now={now}
+                isCurrentDay={isToday(selectedDay)}
                 typeLabel={typeLabel}
                 t={t}
               />
