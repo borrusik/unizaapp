@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getSubjects } from "@/lib/scraper";
 import Link from "next/link";
 import { useTranslation } from "@/hooks/useTranslation";
+import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
 
 import useSWR from "swr";
 
@@ -71,52 +72,19 @@ export default function SubjectsPage() {
       </div>
 
       <div className="container">
-        <label style={{ display: "block", marginBottom: "16px" }}>
-          <span className="label" style={{ display: "block", marginBottom: "7px" }}>
-            {t("common_academic_year")}
-          </span>
-          <select
-            aria-label={t("common_academic_year") as string}
-            value={subjects.selectedStartYear || ""}
-            onChange={(event) => setAcademicYearStart(Number(event.target.value))}
-            disabled={loading || subjects.academicYears.length === 0}
-            style={{
-              width: "100%",
-              minHeight: "44px",
-              borderRadius: "12px",
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-              color: "var(--text-primary)",
-              padding: "0 12px",
-              fontSize: "15px",
-              fontWeight: 600,
-            }}
-          >
-            {subjects.academicYears.map((year) => (
-              <option key={year.startYear} value={year.startYear}>{year.label}</option>
-            ))}
-          </select>
-        </label>
-
-        {/* Semester Switcher */}
-        <div className="segment-control">
-          <button
-            type="button"
-            aria-pressed={semester === "winter"}
-            className={`segment-btn ${semester === "winter" ? "active" : ""}`}
-            onClick={() => setSemester("winter")}
-          >
-            ❄️ {t("subjects_winter")} ({subjects.winter.length})
-          </button>
-          <button
-            type="button"
-            aria-pressed={semester === "summer"}
-            className={`segment-btn ${semester === "summer" ? "active" : ""}`}
-            onClick={() => setSemester("summer")}
-          >
-            ☀️ {t("subjects_summer")} ({subjects.summer.length})
-          </button>
-        </div>
+        <AcademicPeriodControls
+          academicYearLabel={t("common_academic_year") as string}
+          years={subjects.academicYears}
+          selectedStartYear={subjects.selectedStartYear}
+          onYearChange={setAcademicYearStart}
+          semester={semester}
+          onSemesterChange={setSemester}
+          winterLabel={t("subjects_winter") as string}
+          summerLabel={t("subjects_summer") as string}
+          winterCount={subjects.winter.length}
+          summerCount={subjects.summer.length}
+          disabled={loading || subjects.academicYears.length === 0}
+        />
 
         {/* Summary Row */}
         <div style={{

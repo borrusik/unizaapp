@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { getGrades } from "@/lib/scraper";
+import type { Grade } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
+import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
+import { formatAcademicYear } from "@/lib/uniza-parsers";
 
 import useSWR from "swr";
 
@@ -44,7 +47,18 @@ export default function GradesPage() {
     selectedStartYear: academicYearStart || 0,
   };
 
-  const current = grades[semester];
+  const allForSemester = grades[semester];
+  const current = allForSemester.filter(
+    (grade) => grade.academicYearStart === grades.selectedStartYear,
+  );
+  const historical = allForSemester.filter(
+    (grade) => grade.academicYearStart !== grades.selectedStartYear,
+  );
+  const historicalGroups = historical.reduce<Map<number | null, Grade[]>>((groups, grade) => {
+    const key = grade.academicYearStart;
+    groups.set(key, [...(groups.get(key) ?? []), grade]);
+    return groups;
+  }, new Map());
 
   const gradeClassMap: Record<string, string> = {
     A: "badge-a", B: "badge-b", C: "badge-c", D: "badge-d", E: "badge-e", FX: "badge-fx",
@@ -68,6 +82,40 @@ export default function GradesPage() {
   })();
 
   const passedCount = current.filter((g) => g.grade && g.grade !== "—" && g.grade !== "FX" && g.grade !== "").length;
+
+  const renderGradeRows = (items: Grade[]) => (
+    <div className="card-group">
+      {items.map((item) => {
+        const displayGrade = item.grade || "—";
+        const cls = gradeClassMap[displayGrade] || "";
+        const color = gradeColorMap[displayGrade] || "var(--text-tertiary)";
+        return (
+          <div key={`${item.code}-${item.date}-${item.type}`} className="card-row">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="card-title grade-subject-title">
+                {item.subject}
+              </div>
+              <div className="text-xs grade-meta">
+                <span>{item.code}</span>
+                {item.credits > 0 && <><span>·</span><span>{item.credits} {t("grades_credits_short")}</span></>}
+                {item.date && <><span>·</span><span>{item.date}</span></>}
+                {item.points && item.points !== "—" && item.points !== "" && <><span>·</span><span>{item.points} {t("grades_points_short")}</span></>}
+              </div>
+            </div>
+            <div
+              className={`grade-circle ${cls}`}
+              style={{
+                background: displayGrade === "—" ? "var(--surface-secondary)" : undefined,
+                color: displayGrade === "—" ? "var(--text-tertiary)" : color,
+              }}
+            >
+              {displayGrade}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div>
@@ -100,41 +148,19 @@ export default function GradesPage() {
       </div>
 
       <div className="container">
-        <label style={{ display: "block", marginBottom: "16px" }}>
-          <span className="label" style={{ display: "block", marginBottom: "7px" }}>
-            {t("common_academic_year")}
-          </span>
-          <select
-            aria-label={t("common_academic_year") as string}
-            value={grades.selectedStartYear || ""}
-            onChange={(event) => setAcademicYearStart(Number(event.target.value))}
-            disabled={loading || grades.academicYears.length === 0}
-            style={{
-              width: "100%",
-              minHeight: "44px",
-              borderRadius: "12px",
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-              color: "var(--text-primary)",
-              padding: "0 12px",
-              fontSize: "15px",
-              fontWeight: 600,
-            }}
-          >
-            {grades.academicYears.map((year) => (
-              <option key={year.startYear} value={year.startYear}>{year.label}</option>
-            ))}
-          </select>
-        </label>
-
-        <div className="segment-control">
-          <button type="button" aria-pressed={semester === "winter"} className={`segment-btn ${semester === "winter" ? "active" : ""}`} onClick={() => setSemester("winter")}>
-            ❄️ {t("grades_winter")}
-          </button>
-          <button type="button" aria-pressed={semester === "summer"} className={`segment-btn ${semester === "summer" ? "active" : ""}`} onClick={() => setSemester("summer")}>
-            ☀️ {t("grades_summer")}
-          </button>
-        </div>
+        <AcademicPeriodControls
+          academicYearLabel={t("common_academic_year") as string}
+          years={grades.academicYears}
+          selectedStartYear={grades.selectedStartYear}
+          onYearChange={setAcademicYearStart}
+          semester={semester}
+          onSemesterChange={setSemester}
+          winterLabel={t("grades_winter") as string}
+          summerLabel={t("grades_summer") as string}
+          winterCount={grades.winter.filter((grade) => grade.academicYearStart === grades.selectedStartYear).length}
+          summerCount={grades.summer.filter((grade) => grade.academicYearStart === grades.selectedStartYear).length}
+          disabled={loading || grades.academicYears.length === 0}
+        />
 
         {loading ? (
           <div>
@@ -149,62 +175,59 @@ export default function GradesPage() {
               ))}
             </div>
           </div>
-        ) : current.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: "36px 20px" }}>
-            <div style={{ fontSize: "42px", marginBottom: "10px" }}>🎓</div>
-            <div className="card-title">{t("grades_no_data")}</div>
-            <p className="text-sm" style={{ marginTop: "6px" }}>{t("grades_no_data_year")}</p>
-          </div>
         ) : (
           <div className="animate-slide-up">
-            {/* Stats Row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "24px" }}>
-              <div className="stat-card">
-                <div className="stat-value" style={{ color: "var(--primary)", fontSize: "24px" }}>{earnedCredits}</div>
-                <div className="stat-label">ECTS</div>
+            {current.length === 0 ? (
+              <div className="card" style={{ textAlign: "center", padding: "36px 20px" }}>
+                <div style={{ fontSize: "42px", marginBottom: "10px" }}>🎓</div>
+                <div className="card-title">{t("grades_no_data")}</div>
+                <p className="text-sm" style={{ marginTop: "6px" }}>{t("grades_no_data_year")}</p>
               </div>
-              <div className="stat-card">
-                <div className="stat-value" style={{ color: "var(--success)", fontSize: "24px" }}>{avgGrade}</div>
-                <div className="stat-label">{t("profile_avg")}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value" style={{ color: "var(--warning)", fontSize: "24px" }}>{passedCount}/{current.length}</div>
-                <div className="stat-label">{t("profile_completed")}</div>
-              </div>
-            </div>
-
-            {/* Grades List */}
-            <div className="card-group">
-              {current.map((item, idx) => {
-                const displayGrade = item.grade || "—";
-                const cls = gradeClassMap[displayGrade] || "";
-                const color = gradeColorMap[displayGrade] || "var(--text-tertiary)";
-                return (
-                  <div key={idx} className="card-row">
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="card-title" style={{ marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {item.subject}
-                      </div>
-                      <div className="text-xs" style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                        <span>{item.code}</span>
-                        {item.credits > 0 && <><span>·</span><span>{item.credits} {t("grades_credits_short")}</span></>}
-                        {item.date && <><span>·</span><span>{item.date}</span></>}
-                        {item.points && item.points !== "—" && item.points !== "" && <><span>·</span><span>{item.points} {t("grades_points_short")}</span></>}
-                      </div>
-                    </div>
-                    <div
-                      className={`grade-circle ${cls}`}
-                      style={{
-                        background: displayGrade === "—" ? "var(--surface-secondary)" : undefined,
-                        color: displayGrade === "—" ? "var(--text-tertiary)" : color,
-                      }}
-                    >
-                      {displayGrade}
-                    </div>
+            ) : (
+              <>
+                <div className="grades-stats">
+                  <div className="stat-card">
+                    <div className="stat-value" style={{ color: "var(--primary)", fontSize: "24px" }}>{earnedCredits}</div>
+                    <div className="stat-label">ECTS</div>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="stat-card">
+                    <div className="stat-value" style={{ color: "var(--success)", fontSize: "24px" }}>{avgGrade}</div>
+                    <div className="stat-label">{t("profile_avg")}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-value" style={{ color: "var(--warning)", fontSize: "24px" }}>{passedCount}/{current.length}</div>
+                    <div className="stat-label">{t("profile_completed")}</div>
+                  </div>
+                </div>
+                {renderGradeRows(current)}
+              </>
+            )}
+
+            {historical.length > 0 && (
+              <details className="historical-results">
+                <summary>
+                  <span className="historical-results-icon" aria-hidden="true">↩</span>
+                  <span>
+                    <strong>{t("grades_previous_results")}</strong>
+                    <small>{t("grades_previous_hint")}</small>
+                  </span>
+                  <span className="historical-results-count">{historical.length}</span>
+                  <span className="historical-results-chevron" aria-hidden="true">⌄</span>
+                </summary>
+                <div className="historical-results-content">
+                  {[...historicalGroups.entries()]
+                    .sort(([left], [right]) => (right ?? 0) - (left ?? 0))
+                    .map(([startYear, items]) => (
+                      <div key={startYear ?? "other"} className="historical-year-group">
+                        <div className="historical-year-label">
+                          {startYear ? formatAcademicYear(startYear) : t("grades_other_year")}
+                        </div>
+                        {renderGradeRows(items)}
+                      </div>
+                    ))}
+                </div>
+              </details>
+            )}
           </div>
         )}
       </div>

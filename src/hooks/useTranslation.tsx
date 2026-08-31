@@ -50,6 +50,9 @@ export const dictionary = {
     grades_no_grade: "Nehodnotené",
     grades_no_data: "Žiadne hodnotenia",
     grades_no_data_year: "V tomto semestri a akademickom roku nie sú dostupné výsledky.",
+    grades_previous_results: "Výsledky z iných rokov",
+    grades_previous_hint: "AIVS ich zobrazuje v spoločnej tabuľke",
+    grades_other_year: "Iný akademický rok",
 
     // Food
     food_title: "Jedáleň",
@@ -174,6 +177,9 @@ export const dictionary = {
     grades_no_grade: "Not graded",
     grades_no_data: "No grades",
     grades_no_data_year: "No results are available for this semester and academic year.",
+    grades_previous_results: "Results from other years",
+    grades_previous_hint: "AIVS includes them in one combined table",
+    grades_other_year: "Other academic year",
 
     food_title: "Canteen",
     food_balance: "Current Balance",
@@ -294,6 +300,9 @@ export const dictionary = {
     grades_no_grade: "Не оцінено",
     grades_no_data: "Немає оцінок",
     grades_no_data_year: "Для цього семестру й академічного року результати відсутні.",
+    grades_previous_results: "Результати з інших років",
+    grades_previous_hint: "AIVS показує їх у спільній таблиці",
+    grades_other_year: "Інший академічний рік",
 
     food_title: "Їдальня",
     food_balance: "Поточний баланс",
@@ -414,6 +423,9 @@ export const dictionary = {
     grades_no_grade: "Не оценено",
     grades_no_data: "Нет оценок",
     grades_no_data_year: "Для этого семестра и академического года результаты отсутствуют.",
+    grades_previous_results: "Результаты за другие годы",
+    grades_previous_hint: "AIVS показывает их в общей таблице",
+    grades_other_year: "Другой академический год",
 
     food_title: "Столовая",
     food_balance: "Текущий баланс",

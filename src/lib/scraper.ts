@@ -7,6 +7,7 @@ import { authenticateStrava, clearStravaSession, getStoredStravaSession, storeSt
 import { getAcademicYear, resolveMoodleUrl, resolveSubjectInfoUrl } from "@/lib/uniza";
 import {
   formatAcademicYear,
+  getAcademicYearStartFromSlovakDate,
   parseAcademicYears,
   type AcademicYearOption,
   type AcademicYearSelection,
@@ -341,6 +342,7 @@ export type Grade = {
   date: string;
   type: string;
   points: string;
+  academicYearStart: number | null;
 };
 
 export type ScheduleItem = {
@@ -556,12 +558,27 @@ export async function getGrades(
   if (!sessionId) return { winter: [], summer: [], ...year };
 
   try {
-    const html = await fetchPage(
-      sessionId,
-      `svysledky.php?ra=${year.selectedStartYear}`,
-      force,
-    );
+    const [html, subjectsHtml] = await Promise.all([
+      fetchPage(
+        sessionId,
+        `svysledky.php?ra=${year.selectedStartYear}`,
+        force,
+      ),
+      fetchPage(
+        sessionId,
+        `predmety_s.php?ra=${year.selectedStartYear}`,
+        force,
+      ),
+    ]);
     const $ = cheerio.load(html);
+    const $subjects = cheerio.load(subjectsHtml);
+    const selectedSubjectCodes = new Set<string>();
+
+    $subjects("#id-tabulka-predmety-s tr").each((_i, row) => {
+      const firstCellText = $subjects(row).find("td").first().text().trim();
+      const code = firstCellText.match(/^(\S+)\s+/)?.[1];
+      if (code) selectedSubjectCodes.add(code);
+    });
 
     const winter: Grade[] = [];
     const summer: Grade[] = [];
@@ -605,6 +622,7 @@ export async function getGrades(
       const creditsText = $(tds[8]).text().trim();
       const credits = parseFloat(creditsText) || 0;
       const points = $(tds[9])?.text()?.trim() || "";
+      const datedAcademicYear = getAcademicYearStartFromSlovakDate(examDate);
 
       const grade: Grade = {
         subject,
@@ -614,6 +632,12 @@ export async function getGrades(
         date: examDate || "",
         type,
         points: points || "—",
+        // The upstream results table is cumulative and identical for multiple
+        // selected years. Dates are authoritative for completed courses; the
+        // selected subject list identifies still-ungraded courses.
+        academicYearStart: datedAcademicYear ?? (
+          selectedSubjectCodes.has(code) ? year.selectedStartYear : null
+        ),
       };
 
       if (currentSemester === "winter") winter.push(grade);

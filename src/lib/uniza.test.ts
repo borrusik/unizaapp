@@ -7,6 +7,7 @@ import {
   resolveSubjectInfoUrl,
 } from "./uniza.ts";
 import {
+  getAcademicYearStartFromSlovakDate,
   getBratislavaDateKey,
   listDateKeys,
   localDateToUtcIso,
@@ -14,6 +15,15 @@ import {
   parseWebKreditCanteens,
   parseWebKreditMenu,
 } from "./uniza-parsers.ts";
+
+test("AIVS grade dates map to the correct academic year", () => {
+  assert.equal(getAcademicYearStartFromSlovakDate("22.9.2025"), 2025);
+  assert.equal(getAcademicYearStartFromSlovakDate("16.2.2026"), 2025);
+  assert.equal(getAcademicYearStartFromSlovakDate("31.8.2026"), 2025);
+  assert.equal(getAcademicYearStartFromSlovakDate("1.9.2026"), 2026);
+  assert.equal(getAcademicYearStartFromSlovakDate("31.2.2026"), null);
+  assert.equal(getAcademicYearStartFromSlovakDate(""), null);
+});
 
 test("subject info URLs are restricted to the official AIVS endpoint", () => {
   assert.equal(

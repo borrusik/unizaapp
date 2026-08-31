@@ -60,6 +60,30 @@ export function formatAcademicYear(startYear: number): string {
   return `${startYear}/${startYear + 1}`;
 }
 
+/**
+ * AIVS uses Slovak dates (d.M.yyyy). UNIZA academic years start in September,
+ * so January-August belong to the academic year that began the year before.
+ */
+export function getAcademicYearStartFromSlovakDate(value: string): number | null {
+  const match = value.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return month >= 9 ? year : year - 1;
+}
+
 export function parseAcademicYears(html: string): AcademicYearSelection {
   const options: AcademicYearOption[] = [];
   let selectedStartYear: number | null = null;
