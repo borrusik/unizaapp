@@ -11,7 +11,7 @@ export function LanguageSwitcher() {
       <div style={{ marginBottom: "8px", padding: "0 4px" }}>
         <span className="label">{t("settings_language")}</span>
       </div>
-      <div className="card-group">
+      <div className="profile-open-group">
         {(["sk", "en", "uk", "ru"] as Lang[]).map((l) => (
           <button
             type="button"
@@ -19,13 +19,15 @@ export function LanguageSwitcher() {
             onClick={() => setLang(l)}
             autoFocus={false}
             aria-pressed={lang === l}
-            className="card-row"
+            className="profile-open-row"
             style={{
               width: "100%",
               textAlign: "left",
               outline: "none",
-              border: "none",
-              background: "var(--surface)",
+              borderTop: "none",
+              borderRight: "none",
+              borderLeft: "none",
+              background: "transparent",
               color: lang === l ? "var(--primary)" : "var(--text-primary)",
             }}
           >

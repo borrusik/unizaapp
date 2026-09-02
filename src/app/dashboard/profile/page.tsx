@@ -9,7 +9,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { UNIZA_URLS } from "@/lib/uniza";
 import { useTranslation } from "@/hooks/useTranslation";
-import { AppIcon } from "@/components/AppIcon";
+import { AppIcon, type AppIconName } from "@/components/AppIcon";
 
 export default function ProfilePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -72,15 +72,17 @@ export default function ProfilePage() {
       name: "AIVS / Vzdelávanie",
       href: UNIZA_URLS.education,
       status: integration.education,
+      icon: "book" as AppIconName,
     },
     {
       name: "WebKredit",
       href: UNIZA_URLS.catering,
       status: integration.catering,
+      icon: "restaurant" as AppIconName,
     },
-    { name: t("system_academic_calendar"), href: UNIZA_URLS.academicCalendar },
-    { name: t("system_campus_map"), href: UNIZA_URLS.campus },
-    { name: t("system_helpdesk"), href: UNIZA_URLS.helpdesk },
+    { name: t("system_academic_calendar"), href: UNIZA_URLS.academicCalendar, icon: "calendar" as AppIconName },
+    { name: t("system_campus_map"), href: UNIZA_URLS.campus, icon: "map-pin" as AppIconName },
+    { name: t("system_helpdesk"), href: UNIZA_URLS.helpdesk, icon: "info" as AppIconName },
   ];
 
   return (
@@ -99,80 +101,72 @@ export default function ProfilePage() {
       </div>
 
       <div className="container animate-slide-up">
-        {/* Profile Header */}
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          marginBottom: "28px",
-          padding: "8px 0",
-        }}>
+        <div className="profile-identity">
           <div className="avatar">
             {user.name && user.name !== "Načítavam..." ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "?"}
           </div>
-          <h2 style={{ fontSize: "22px", fontWeight: 700, marginTop: "14px", marginBottom: "2px" }}>
-            {user.name}
-          </h2>
-          <p className="text-sm">{user.email}</p>
-        </div>
-
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "24px" }}>
-          <div className="stat-card">
-            <div className="stat-value" style={{ color: "var(--primary)", fontSize: "24px" }}>{totalCredits}</div>
-            <div className="stat-label">ECTS</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{ color: "var(--success)", fontSize: "24px" }}>{avgGrade}</div>
-            <div className="stat-label"><ClientText n="profile_avg" /></div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{ color: "var(--warning)", fontSize: "24px" }}>{passedSubjects}/{totalSubjects}</div>
-            <div className="stat-label"><ClientText n="profile_completed" /></div>
+          <div className="profile-identity-copy">
+            <h2>{user.name}</h2>
+            <p>{user.email}</p>
           </div>
         </div>
 
-        {/* Info Card Group */}
+        <div className="profile-stats">
+          <div className="profile-stat">
+            <strong>{totalCredits}</strong>
+            <span>ECTS</span>
+          </div>
+          <div className="profile-stat">
+            <strong>{avgGrade}</strong>
+            <span><ClientText n="profile_avg" /></span>
+          </div>
+          <div className="profile-stat">
+            <strong>{passedSubjects}/{totalSubjects}</strong>
+            <span><ClientText n="profile_completed" /></span>
+          </div>
+        </div>
+
         <div style={{ marginBottom: "8px", padding: "0 4px" }}>
           <span className="label"><ClientText n="profile_info" /></span>
         </div>
-        <div className="card-group" style={{ marginBottom: "24px" }}>
-          <div className="card-row" style={{ cursor: "default" }}>
-            <span className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 500 }}><ClientText n="profile_faculty" /></span>
-            <span className="text-sm" style={{ textAlign: "right", maxWidth: "200px" }}>{user.faculty}</span>
+        <div className="profile-open-group">
+          <div className="profile-open-row">
+            <span className="profile-open-row-label"><ClientText n="profile_faculty" /></span>
+            <span className="profile-open-row-value">{user.faculty}</span>
           </div>
-          <div className="card-row" style={{ cursor: "default" }}>
-            <span className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 500 }}><ClientText n="profile_program" /></span>
-            <span className="text-sm">{user.program}</span>
+          <div className="profile-open-row">
+            <span className="profile-open-row-label"><ClientText n="profile_program" /></span>
+            <span className="profile-open-row-value">{user.program}</span>
           </div>
-          <div className="card-row" style={{ cursor: "default" }}>
-            <span className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 500 }}><ClientText n="profile_id" /></span>
-            <span className="text-sm">{user.personalNumber}</span>
+          <div className="profile-open-row">
+            <span className="profile-open-row-label"><ClientText n="profile_id" /></span>
+            <span className="profile-open-row-value">{user.personalNumber}</span>
           </div>
-          <div className="card-row" style={{ cursor: "default" }}>
-            <span className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 500 }}><ClientText n="profile_group" /></span>
-            <span className="text-sm">{user.group}</span>
+          <div className="profile-open-row">
+            <span className="profile-open-row-label"><ClientText n="profile_group" /></span>
+            <span className="profile-open-row-value">{user.group}</span>
           </div>
-          <div className="card-row" style={{ cursor: "default" }}>
-            <span className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 500 }}><ClientText n="profile_acad_year" /></span>
-            <span className="text-sm">{user.academicYear}</span>
+          <div className="profile-open-row">
+            <span className="profile-open-row-label"><ClientText n="profile_acad_year" /></span>
+            <span className="profile-open-row-value">{user.academicYear}</span>
           </div>
         </div>
 
         <div style={{ marginBottom: "8px", padding: "0 4px" }}>
           <span className="label">{t("profile_systems")}</span>
         </div>
-        <div className="card-group" style={{ marginBottom: "12px" }}>
+        <div className="profile-open-group" style={{ marginBottom: "12px" }}>
           {officialSystems.map((system) => (
             <a
               key={system.href}
               href={system.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="card-row"
+              className="profile-open-row"
               style={{ textDecoration: "none" }}
             >
-              <span className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 600 }}>
+              <span className="profile-system-name">
+                <AppIcon name={system.icon} size={19} />
                 {system.name}
               </span>
               {typeof system.status === "boolean" ? (
@@ -191,17 +185,28 @@ export default function ProfilePage() {
             : t("integration_session_only")}
         </p>
 
+        <div className="profile-support">
+          <a
+            href="https://www.instagram.com/borrusik/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="support-link"
+          >
+            <span className="support-link-icon"><AppIcon name="instagram" size={23} /></span>
+            <span className="support-link-copy">
+              <strong>{t("support_instagram")}</strong>
+              <small>{t("support_instagram_hint")}</small>
+            </span>
+            <AppIcon name="external-link" size={17} />
+          </a>
+        </div>
+
         <LanguageSwitcher />
         <ThemeSwitcher />
 
         <LogoutButton />
 
-        <div style={{
-          textAlign: "center",
-          marginTop: "28px",
-          color: "var(--text-tertiary)",
-          fontSize: "12px",
-        }}>
+        <div style={{ textAlign: "center", marginTop: "28px", color: "var(--text-tertiary)", fontSize: "12px" }}>
           <p>UNIZA Student App v1.0</p>
           <a
             href="https://github.com/borrusik/unizaapp"
@@ -218,7 +223,7 @@ export default function ProfilePage() {
               fontWeight: 500,
               padding: "6px 16px",
               borderRadius: "20px",
-              background: "var(--surface-secondary)",
+              borderBottom: "1px solid var(--border)",
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">

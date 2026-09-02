@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export function ThemeSwitcher() {
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+  const { t } = useTranslation();
 
   // On mount, sync the state with localStorage
   useEffect(() => {
@@ -28,9 +30,9 @@ export function ThemeSwitcher() {
   };
 
   return (
-    <div className="card-row" style={{ marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div className="profile-open-row" style={{ marginTop: "-8px", marginBottom: "24px" }}>
       <span className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 500 }}>
-        Theme
+        {t("settings_theme")}
       </span>
       <div style={{ display: "flex", gap: "8px", background: "var(--surface-secondary)", padding: "4px", borderRadius: "12px" }}>
         <button
@@ -50,7 +52,7 @@ export function ThemeSwitcher() {
             transition: "all 0.2s"
           }}
         >
-          Light
+          {t("theme_light")}
         </button>
         <button
           type="button"
@@ -69,7 +71,7 @@ export function ThemeSwitcher() {
             transition: "all 0.2s"
           }}
         >
-          Auto
+          {t("theme_auto")}
         </button>
         <button
           type="button"
@@ -88,7 +90,7 @@ export function ThemeSwitcher() {
             transition: "all 0.2s"
           }}
         >
-          Dark
+          {t("theme_dark")}
         </button>
       </div>
     </div>

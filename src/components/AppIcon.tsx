@@ -13,6 +13,8 @@ export type AppIconName =
   | "external-link"
   | "history"
   | "info"
+  | "instagram"
+  | "lock"
   | "map-pin"
   | "pin"
   | "refresh"
@@ -29,7 +31,7 @@ type AppIconProps = Omit<SVGProps<SVGSVGElement>, "name"> & {
 const paths: Record<AppIconName, ReactNode> = {
   "arrow-left": <path d="m15 18-6-6 6-6" />,
   award: <><circle cx="12" cy="8" r="5" /><path d="m8.5 12-1 9 4.5-2.5 4.5 2.5-1-9" /><path d="m10 8 1.3 1.3L14.5 6" /></>,
-  book: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11a2 2 0 0 1 2 2v16a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 21.5Z" /><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v18a2 2 0 0 1 2-2h2.5a2.5 2.5 0 0 1 2.5 2.5Z" /></>,
+  book: <><path d="M3.5 5.5A3.5 3.5 0 0 1 7 3h2.5A2.5 2.5 0 0 1 12 5.5V21a3.8 3.8 0 0 0-3.5-2H3.5Z" /><path d="M20.5 5.5A3.5 3.5 0 0 0 17 3h-2.5A2.5 2.5 0 0 0 12 5.5V21a3.8 3.8 0 0 1 3.5-2h5Z" /><path d="M6.5 7h2M15.5 7h2" /></>,
   building: <><path d="M4 21h16M6 21V5l6-3 6 3v16" /><path d="M9 8h1m4 0h1M9 12h1m4 0h1M9 16h6v5" /></>,
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4m8-4v4M3 10h18" /></>,
   check: <><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16 9" /></>,
@@ -39,6 +41,8 @@ const paths: Record<AppIconName, ReactNode> = {
   "external-link": <><path d="M14 5h5v5m0-5-8 8" /><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" /></>,
   history: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5m4-1v5l3 2" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></>,
+  instagram: <><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><path d="M17.5 6.5h.01" /></>,
+  lock: <><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3" /></>,
   "map-pin": <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
   pin: <><path d="m9 3 6 6m-7.5 1.5 6 6M6 21l3.5-3.5M8 6l10 10M7 7l3-3 10 10-3 3" /></>,
   refresh: <><path d="M20 7V3l-1.9 1.9A8 8 0 1 0 20 14" /><path d="M20 3h-4" /></>,

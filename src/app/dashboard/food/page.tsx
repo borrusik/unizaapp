@@ -92,22 +92,9 @@ export default function StravaPage() {
           </div>
         ) : (
           <div className="animate-slide-up">
-            <div className="food-balance-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative", zIndex: 1 }}>
-                <div>
-                  <div style={{ fontSize: "14px", fontWeight: 500, opacity: 0.85, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "4px" }}>{t("food_isic_credit")}</div>
-                  <div style={{ fontSize: "36px", fontWeight: 800 }}>{info ? `${info.balance.toFixed(2).replace(".", ",")} €` : "—"}</div>
-                </div>
-                <div className="food-balance-status">
-                  {info ? t("food_active") : t("food_balance_reconnect")}
-                </div>
-              </div>
-              <div style={{ marginTop: "24px", fontSize: "14px", fontWeight: 500, opacity: 0.9, position: "relative", zIndex: 1 }}>{info?.name || "WebKredit"}</div>
-            </div>
-
-            <div className="card" style={{ marginBottom: "16px", padding: "16px" }}>
-              <label>
-                <span className="label" style={{ display: "block", marginBottom: "7px" }}>{t("food_canteen")}</span>
+            <div className="food-toolbar">
+              <label className="food-canteen-select">
+                <span>{t("food_canteen")}</span>
                 <select
                   value={menu?.selectedCanteenId || canteenId}
                   onChange={(event) => {
@@ -115,11 +102,14 @@ export default function StravaPage() {
                     setSelectedDate("");
                   }}
                   disabled={!menu || menu.canteens.length === 0}
-                  style={{ width: "100%", minHeight: "44px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", padding: "0 12px", fontSize: "15px", fontWeight: 600 }}
                 >
                   {(menu?.canteens || []).map((canteen) => <option key={canteen.id} value={canteen.id}>{canteen.name}</option>)}
                 </select>
               </label>
+              <div className="food-credit" title={info?.name || "WebKredit"}>
+                <span className="food-credit-label">{t("food_isic_credit")}</span>
+                <strong>{info ? `${info.balance.toFixed(2).replace(".", ",")} €` : "—"}</strong>
+              </div>
             </div>
 
             {menu?.message && (
@@ -131,14 +121,14 @@ export default function StravaPage() {
               </div>
             )}
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", padding: "0 4px" }}>
-              <span className="label" style={{ fontSize: "17px", color: "var(--text-primary)" }}>{t("food_menu")}</span>
-              <span className="badge badge-neutral" style={{ fontSize: "10px" }}>{t("food_public_source")}</span>
+            <div className="food-section-heading">
+              <h2>{t("food_menu")}</h2>
+              <span className="food-source">{t("food_public_source")}</span>
             </div>
 
-            <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "8px", marginBottom: "10px" }}>
+            <div className="food-date-tabs">
               {availableDates.map((date) => (
-                <button type="button" key={date} aria-pressed={activeDate === date} onClick={() => setSelectedDate(date)} className={`day-pill ${activeDate === date ? "active" : ""}`} style={{ minWidth: "96px", flex: "0 0 auto", padding: "10px 12px" }}>
+                <button type="button" key={date} aria-pressed={activeDate === date} onClick={() => setSelectedDate(date)} className={`food-date-tab ${activeDate === date ? "active" : ""}`}>
                   {formatMenuDate(date, LOCALES[lang])}
                 </button>
               ))}
@@ -151,25 +141,23 @@ export default function StravaPage() {
                 <a href={UNIZA_URLS.diningMenu} target="_blank" rel="noopener noreferrer" className="badge badge-neutral" style={{ textDecoration: "none" }}>{t("food_open_official")}</a>
               </div>
             ) : (
-              <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div className="stagger">
                 {activeDay?.groups.map((group) => (
                   <section key={group.mealKindName} aria-label={group.mealKindName}>
-                    {activeDay.groups.length > 1 && <div className="label" style={{ margin: "14px 4px 8px" }}>{group.mealKindName}</div>}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {activeDay.groups.length > 1 && <div className="food-group-label">{group.mealKindName}</div>}
+                    <div className="food-menu-list">
                       {group.items.map((item: MenuItem) => (
-                        <div key={item.id} className="card animate-scale-in" style={{ opacity: 0, padding: "16px" }}>
-                          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                            <div style={{ minWidth: "38px", height: "38px", borderRadius: "12px", background: "var(--surface-secondary)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--primary)" }}>{item.alternative ?? "•"}</div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div className="card-title" style={{ fontSize: "15px", lineHeight: 1.35, marginBottom: "5px" }}>{item.mealName}</div>
-                              <div className="text-xs" style={{ display: "flex", gap: "7px", flexWrap: "wrap", alignItems: "center" }}>
-                                {item.mealSize && <span>{item.mealSize}</span>}
-                                {item.price && <span style={{ color: "var(--success)", fontWeight: 700 }}>{item.price}</span>}
-                                {item.allergens && <span>{t("food_allergens")} {item.allergens}</span>}
-                              </div>
-                              {item.note && <div className="text-xs" style={{ marginTop: "5px" }}>{item.note}</div>}
+                        <div key={item.id} className="food-menu-row animate-fade-in" style={{ opacity: 0 }}>
+                          <div className="food-menu-number">{item.alternative ?? "–"}</div>
+                          <div className="food-menu-copy">
+                            <div className="food-menu-name">{item.mealName}</div>
+                            <div className="food-menu-meta">
+                              {item.mealSize && <span>{item.mealSize}</span>}
+                              {item.allergens && <span>{t("food_allergens")} {item.allergens}</span>}
+                              {item.note && <span>{item.note}</span>}
                             </div>
                           </div>
+                          {item.price && <div className="food-menu-price">{item.price}</div>}
                         </div>
                       ))}
                     </div>
@@ -180,18 +168,18 @@ export default function StravaPage() {
 
             {history.length > 0 && (
               <div style={{ marginTop: "32px", marginBottom: "20px" }}>
-                <div className="label" style={{ fontSize: "17px", color: "var(--text-primary)", marginBottom: "16px", padding: "0 4px" }}>{t("food_history")}</div>
-                <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div className="food-section-heading"><h2>{t("food_history")}</h2></div>
+                <div className="food-history-list stagger">
                   {history.slice(0, 10).map((item, index) => (
-                    <div key={`${item.date}-${index}`} className="card animate-scale-in" style={{ opacity: 0, padding: "16px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", marginBottom: "4px" }}>
-                        <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-primary)" }}>{item.movementTypeName}</div>
-                        <div style={{ fontSize: "15px", fontWeight: 700, color: item.reserve < 0 ? "var(--text-primary)" : "var(--success)", whiteSpace: "nowrap" }}>{item.reserve > 0 ? "+" : ""}{(item.reserve || 0).toFixed(2).replace(".", ",")} €</div>
+                    <div key={`${item.date}-${index}`} className="food-history-row animate-fade-in" style={{ opacity: 0 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="food-menu-name">{item.movementTypeName}</div>
+                        <div className="food-menu-meta">
+                          <span>{new Date(item.date).toLocaleDateString(LOCALES[lang], { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</span>
+                          <span>{item.destination || item.source}</span>
+                        </div>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", fontSize: "13px", color: "var(--text-tertiary)" }}>
-                        <span>{new Date(item.date).toLocaleDateString(LOCALES[lang], { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</span>
-                        <span>{item.destination || item.source}</span>
-                      </div>
+                      <div className="food-menu-price" style={{ color: item.reserve < 0 ? "var(--text-primary)" : "var(--success)" }}>{item.reserve > 0 ? "+" : ""}{(item.reserve || 0).toFixed(2).replace(".", ",")} €</div>
                     </div>
                   ))}
                 </div>
