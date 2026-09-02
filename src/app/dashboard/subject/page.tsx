@@ -5,6 +5,7 @@ import { getSubjectInfo, type SubjectInfo } from "@/lib/scraper";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { AppIcon, type AppIconName } from "@/components/AppIcon";
 
 function SubjectInfoContent() {
   const searchParams = useSearchParams();
@@ -26,9 +27,9 @@ function SubjectInfoContent() {
 
   const sections = info
     ? [
-      { label: t("subject_credits"), value: info.credits, icon: "🎓" },
-      { label: t("subject_type"), value: info.obligation, icon: "📌" },
-      { label: t("subject_completion"), value: info.completion, icon: "✅" },
+      { label: t("subject_credits"), value: info.credits, icon: "award" as AppIconName },
+      { label: t("subject_type"), value: info.obligation, icon: "pin" as AppIconName },
+      { label: t("subject_completion"), value: info.completion, icon: "check" as AppIconName },
     ].filter((s) => s.value)
     : [];
 
@@ -78,9 +79,7 @@ function SubjectInfoContent() {
             transition: "all 0.2s ease"
           }}
         >
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
+          <AppIcon name="arrow-left" size={20} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
@@ -107,8 +106,8 @@ function SubjectInfoContent() {
             <div className="spinner"></div>
           </div>
         ) : !info ? (
-          <div style={{ textAlign: "center", padding: "80px 20px" }}>
-            <div style={{ fontSize: "64px", marginBottom: "16px", opacity: 0.5 }}>📚</div>
+          <div className="empty-state" style={{ paddingTop: "80px" }}>
+            <AppIcon name="book" size={48} />
             <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>
               {t("subject_not_found_title")}
             </div>
@@ -121,7 +120,7 @@ function SubjectInfoContent() {
 
             {/* Hero Card */}
             <div style={{
-              background: "linear-gradient(145deg, var(--surface) 0%, var(--surface-secondary) 100%)",
+              background: "var(--surface)",
               borderRadius: "24px",
               padding: "24px",
               border: "1px solid var(--border)",
@@ -129,18 +128,6 @@ function SubjectInfoContent() {
               position: "relative",
               overflow: "hidden"
             }}>
-              <div style={{
-                position: "absolute",
-                top: "-50%",
-                right: "-20%",
-                width: "200px",
-                height: "200px",
-                background: "var(--primary-light)",
-                filter: "blur(60px)",
-                borderRadius: "50%",
-                pointerEvents: "none"
-              }} />
-
               <div style={{ position: "relative", zIndex: 1 }}>
                 <div style={{
                   display: "inline-block",
@@ -169,9 +156,7 @@ function SubjectInfoContent() {
                 </h1>
                 {info.faculty && (
                   <div style={{ fontSize: "15px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
+                    <AppIcon name="building" size={16} />
                     {info.faculty}
                   </div>
                 )}
@@ -194,7 +179,7 @@ function SubjectInfoContent() {
                     justifyContent: "center",
                     textAlign: "center"
                   }}>
-                    <div style={{ fontSize: "24px", marginBottom: "8px" }}>{s.icon}</div>
+                    <AppIcon name={s.icon} size={24} style={{ marginBottom: "8px", color: "var(--primary-hover)" }} />
                     <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, marginBottom: "4px" }}>
                       {s.value}
                     </div>

@@ -263,7 +263,10 @@ export function parseWebKreditMenu(payload: unknown): MenuDay[] {
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([date, groups]) => ({
       date,
-      groups: [...groups.entries()].map(([mealKindName, items]) => ({ mealKindName, items })),
+      groups: [...groups.entries()].map(([mealKindName, items]) => ({
+        mealKindName,
+        items: [...new Map(items.map((item) => [item.id, item])).values()],
+      })),
     }));
 }
 

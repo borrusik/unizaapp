@@ -2,13 +2,12 @@
 
 import { useTransition, useState } from "react";
 import { login } from "@/lib/scraper";
-import { useRouter } from "next/navigation";
 import { useTranslation } from "@/hooks/useTranslation";
+import { AppIcon } from "@/components/AppIcon";
 
 export default function LoginPage() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const { t } = useTranslation();
 
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
@@ -36,7 +35,11 @@ export default function LoginPage() {
       if (result.error) {
         setError(result.error);
       } else {
-        router.push("/dashboard");
+        // A full navigation clears SWR's in-memory cache so a new login can
+        // never inherit subjects, grades, or a selected year from the prior session.
+        window.history.scrollRestoration = "manual";
+        window.scrollTo(0, 0);
+        window.location.replace("/dashboard");
       }
     });
   };
@@ -170,9 +173,7 @@ export default function LoginPage() {
           fontSize: "13px",
           lineHeight: 1.5,
         }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: "2px" }}>
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          </svg>
+          <AppIcon name="shield" size={20} style={{ flexShrink: 0, marginTop: "2px" }} />
           <span>{t("login_safe_msg")}</span>
         </div>
 

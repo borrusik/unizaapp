@@ -9,6 +9,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { UNIZA_URLS } from "@/lib/uniza";
 import { useTranslation } from "@/hooks/useTranslation";
+import { AppIcon } from "@/components/AppIcon";
 
 export default function ProfilePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -91,24 +92,9 @@ export default function ProfilePage() {
           aria-label={t("common_refresh") as string}
           onClick={handleRefresh}
           disabled={isRefreshing}
-          style={{
-            background: "var(--surface-secondary)",
-            border: "none",
-            padding: "8px",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            opacity: isRefreshing ? 0.5 : 1
-          }}
+          className="icon-button"
         >
-          <svg className={isRefreshing ? "spin" : ""} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 2v6h-6"></path>
-            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
-            <path d="M3 22v-6h6"></path>
-            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
-          </svg>
+          <AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} />
         </button>
       </div>
 
@@ -194,7 +180,7 @@ export default function ProfilePage() {
                   {system.status ? t("integration_connected") : t("integration_reconnect")}
                 </span>
               ) : (
-                <span aria-hidden="true">↗</span>
+                <AppIcon name="external-link" size={17} />
               )}
             </a>
           ))}

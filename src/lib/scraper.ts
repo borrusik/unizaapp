@@ -13,6 +13,7 @@ import {
   type AcademicYearSelection,
 } from "@/lib/uniza-parsers";
 import { canPersistCredentials, clearCredentials, readCredentials, saveCredentials } from "@/lib/credentials";
+import { parseAivsSubjects } from "@/lib/aivs-subjects";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -76,31 +77,19 @@ async function getPhpSession(email: string, password: string): Promise<string | 
   });
 
   // Step 3: Verify the session and warm the currently selected academic year.
-  const academicYears = await getAcademicYearOptions();
-  const selectedStartYear = academicYears.selectedStartYear ?? academicYears.options[0]?.startYear;
+  const academicYears = await getAcademicYearOptions().catch(() => null);
+  const selectedStartYear = academicYears?.selectedStartYear ??
+    academicYears?.options[0]?.startYear ??
+    Number(getAcademicYear().split("/")[0]);
   const yearQuery = selectedStartYear ? `?ra=${selectedStartYear}` : "";
-  const [testHtml, gradesHtml, scheduleHtml, indexHtml, planyHtml] = await Promise.all([
-    fetchDecoded(`${BASE_URL}/predmety_s.php${yearQuery}`, {
-      headers: { Cookie: `PHPSESSID=${phpSessionId}` },
-      redirect: "manual",
-    }),
-    fetchDecoded(`${BASE_URL}/svysledky.php${yearQuery}`, {
-      headers: { Cookie: `PHPSESSID=${phpSessionId}` },
-      redirect: "manual",
-    }),
-    fetchDecoded(`${BASE_URL}/rozvrh2.php${yearQuery}`, {
-      headers: { Cookie: `PHPSESSID=${phpSessionId}` },
-      redirect: "manual",
-    }),
-    fetchDecoded(`${BASE_URL}/index.php${yearQuery}`, {
-      headers: { Cookie: `PHPSESSID=${phpSessionId}` },
-      redirect: "manual",
-    }),
-    fetchDecoded(`${BASE_URL}/plany.php${yearQuery}`, {
-      headers: { Cookie: `PHPSESSID=${phpSessionId}` },
-      redirect: "manual",
-    }),
-  ]);
+  const requestOptions = {
+    headers: { Cookie: `PHPSESSID=${phpSessionId}` },
+    redirect: "manual" as const,
+  };
+  const testHtml = await fetchDecoded(
+    `${BASE_URL}/predmety_s.php${yearQuery}`,
+    requestOptions,
+  );
 
   if (testHtml.includes('name="heslo"')) {
     return null; // Still on login page — auth failed
@@ -110,16 +99,52 @@ async function getPhpSession(email: string, password: string): Promise<string | 
   const now = Date.now();
   if (PAGE_CACHE.size > 500) PAGE_CACHE.clear();
   PAGE_CACHE.set(`${phpSessionId}_predmety_s.php${yearQuery}`, { html: testHtml, timestamp: now });
-  PAGE_CACHE.set(`${phpSessionId}_svysledky.php${yearQuery}`, { html: gradesHtml, timestamp: now });
-  PAGE_CACHE.set(`${phpSessionId}_rozvrh2.php${yearQuery}`, { html: scheduleHtml, timestamp: now });
-  PAGE_CACHE.set(`${phpSessionId}_index.php${yearQuery}`, { html: indexHtml, timestamp: now });
-  PAGE_CACHE.set(`${phpSessionId}_plany.php${yearQuery}`, { html: planyHtml, timestamp: now });
+
+  // Optional pages improve the first load, but a temporary failure in grades,
+  // schedule, profile, or plans must not invalidate an otherwise valid login.
+  const warmPages = ["svysledky.php", "rozvrh2.php", "index.php", "plany.php"];
+  const warmed = await Promise.allSettled(
+    warmPages.map((page) => fetchDecoded(`${BASE_URL}/${page}${yearQuery}`, requestOptions)),
+  );
+  warmed.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      PAGE_CACHE.set(`${phpSessionId}_${warmPages[index]}${yearQuery}`, {
+        html: result.value,
+        timestamp: now,
+      });
+    }
+  });
 
   return phpSessionId;
 }
 
 const PAGE_CACHE = new Map<string, { html: string; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const sessionRefreshRequests = new Map<string, Promise<string | null>>();
+
+function clearSessionCaches(sessionId: string | undefined) {
+  if (!sessionId) return;
+  for (const key of PAGE_CACHE.keys()) {
+    if (key.startsWith(`${sessionId}_`)) PAGE_CACHE.delete(key);
+  }
+  studyYearsCache.delete(sessionId);
+  studyYearsRequests.delete(sessionId);
+  sessionRefreshRequests.delete(sessionId);
+}
+
+async function restoreExpiredSession(sessionId: string): Promise<string | null> {
+  const pending = sessionRefreshRequests.get(sessionId);
+  if (pending) return pending;
+
+  const request = (async () => {
+    const credentials = await readCredentials();
+    if (!credentials) return null;
+    return getPhpSession(credentials.email, credentials.password);
+  })();
+  if (sessionRefreshRequests.size > 500) sessionRefreshRequests.clear();
+  sessionRefreshRequests.set(sessionId, request);
+  return request;
+}
 
 async function fetchPage(sessionId: string, page: string, force = false): Promise<string> {
   const cacheKey = `${sessionId}_${page}`;
@@ -138,23 +163,19 @@ async function fetchPage(sessionId: string, page: string, force = false): Promis
   // Restore an expired upstream session from the encrypted credential cookie when configured.
   if (html.includes('name="heslo"') || html.includes('<title>Prihlásenie</title>')) {
     const cookieStore = await cookies();
-    const credentials = await readCredentials();
-
-    if (credentials) {
-      const newSessionId = await getPhpSession(credentials.email, credentials.password);
-      if (newSessionId) {
-        cookieStore.set("uniza_phpsessid", newSessionId, {
-          httpOnly: true,
-          path: "/",
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-        });
-        html = await fetchDecoded(`${BASE_URL}/${page}`, {
-          headers: { Cookie: `PHPSESSID=${newSessionId}` },
-        });
-        PAGE_CACHE.set(`${newSessionId}_${page}`, { html, timestamp: Date.now() });
-        return html;
-      }
+    const newSessionId = await restoreExpiredSession(sessionId);
+    if (newSessionId) {
+      cookieStore.set("uniza_phpsessid", newSessionId, {
+        httpOnly: true,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      html = await fetchDecoded(`${BASE_URL}/${page}`, {
+        headers: { Cookie: `PHPSESSID=${newSessionId}` },
+      });
+      PAGE_CACHE.set(`${newSessionId}_${page}`, { html, timestamp: Date.now() });
+      return html;
     }
 
     cookieStore.delete("uniza_phpsessid");
@@ -217,6 +238,79 @@ async function resolveAcademicYear(requestedStartYear?: number) {
   };
 }
 
+const STUDY_YEARS_CACHE_TTL_MS = 30 * 60 * 1000;
+const studyYearsCache = new Map<string, { data: AcademicYearOption[]; timestamp: number }>();
+const studyYearsRequests = new Map<string, Promise<AcademicYearOption[]>>();
+
+async function getStudyAcademicYears(
+  sessionId: string,
+  force = false,
+): Promise<AcademicYearOption[]> {
+  const selection = await getAcademicYearOptions(force);
+  const cached = studyYearsCache.get(sessionId);
+  if (!force && cached && Date.now() - cached.timestamp < STUDY_YEARS_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  if (!force && studyYearsRequests.has(sessionId)) {
+    return studyYearsRequests.get(sessionId)!;
+  }
+
+  const request = (async () => {
+    const pages = await Promise.all(
+      selection.options.map(async (year) => ({
+        year,
+        html: await fetchPage(sessionId, `predmety_s.php?ra=${year.startYear}`, force),
+      })),
+    );
+    const available = pages
+      .filter(({ html }) => {
+        const parsed = parseAivsSubjects(html);
+        return parsed.winter.length + parsed.summer.length > 0;
+      })
+      .map(({ year }) => year);
+
+    const fallback = selection.options.find(
+      (year) => year.startYear === selection.selectedStartYear,
+    ) ?? selection.options[0];
+    const data = available.length > 0 ? available : fallback ? [fallback] : [];
+    if (studyYearsCache.size > 500) studyYearsCache.clear();
+    studyYearsCache.set(sessionId, { data, timestamp: Date.now() });
+    return data;
+  })();
+
+  studyYearsRequests.set(sessionId, request);
+  try {
+    return await request;
+  } finally {
+    studyYearsRequests.delete(sessionId);
+  }
+}
+
+async function resolveStudyAcademicYear(
+  sessionId: string,
+  requestedStartYear?: number,
+  force = false,
+): Promise<AcademicPeriodData> {
+  const publicSelection = await getAcademicYearOptions(force);
+  const academicYears = await getStudyAcademicYears(sessionId, force);
+  const requested = Number(requestedStartYear);
+  const preferred = publicSelection.selectedStartYear;
+  const selectedStartYear = Number.isInteger(requested) &&
+    academicYears.some((year) => year.startYear === requested)
+    ? requested
+    : academicYears.find((year) => year.startYear === preferred)?.startYear ??
+      academicYears[0]?.startYear ??
+      preferred ??
+      Number(getAcademicYear().split("/")[0]);
+
+  return {
+    selectedStartYear,
+    academicYear: formatAcademicYear(selectedStartYear),
+    academicYears,
+  };
+}
+
 // ─────────────────────────────────────────────
 // Auth Actions
 // ─────────────────────────────────────────────
@@ -245,15 +339,22 @@ export async function login(formData: FormData) {
   }
 
   const cookieStore = await cookies();
+  clearSessionCaches(cookieStore.get("uniza_phpsessid")?.value);
   cookieStore.delete("uniza_phpsessid");
   cookieStore.delete("uniza_email");
   await clearCredentials();
   await clearStravaSession();
 
-  const [sessionId, stravaSession] = await Promise.all([
-    getPhpSession(email, password),
-    authenticateStrava(email.split("@")[0], password).catch(() => null),
-  ]);
+  let sessionId: string | null;
+  let stravaSession: Awaited<ReturnType<typeof authenticateStrava>> | null;
+  try {
+    [sessionId, stravaSession] = await Promise.all([
+      getPhpSession(email, password),
+      authenticateStrava(email.split("@")[0], password).catch(() => null),
+    ]);
+  } catch {
+    return { error: "Systém UNIZA je dočasne nedostupný. Skúste to znova." };
+  }
   if (!sessionId) {
     return { error: "Nesprávne prihlasovacie údaje" };
   }
@@ -280,6 +381,7 @@ export async function login(formData: FormData) {
 
 export async function logout() {
   const cookieStore = await cookies();
+  clearSessionCaches(cookieStore.get("uniza_phpsessid")?.value);
   cookieStore.delete("uniza_phpsessid");
   cookieStore.delete("uniza_email");
   await clearCredentials();
@@ -468,9 +570,12 @@ export async function getSubjects(
   requestedStartYear?: number,
   force = false,
 ): Promise<{ winter: Subject[]; summer: Subject[] } & AcademicPeriodData> {
-  const year = await resolveAcademicYear(requestedStartYear);
   const sessionId = await getSession();
-  if (!sessionId) return { winter: [], summer: [], ...year };
+  if (!sessionId) {
+    const year = await resolveAcademicYear(requestedStartYear);
+    return { winter: [], summer: [], ...year };
+  }
+  const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
 
   try {
     const html = await fetchPage(
@@ -478,65 +583,20 @@ export async function getSubjects(
       `predmety_s.php?ra=${year.selectedStartYear}`,
       force,
     );
-    const $ = cheerio.load(html);
-
-    const winter: Subject[] = [];
-    const summer: Subject[] = [];
-    let currentSemester: "winter" | "summer" | null = null;
-    let id = 0;
-
-    // The subjects table is nested:  #id-tabulka-predmety-s > tr > td > table > rows
-    // So we select ALL tr inside the outer table
-    $("#id-tabulka-predmety-s tr").each((_i, row) => {
-      // Check for semester separator
-      const sepCell = $(row).find("td.sep");
-      if (sepCell.length > 0) {
-        const text = sepCell.text().trim().toLowerCase();
-        if (text.includes("zimný")) currentSemester = "winter";
-        else if (text.includes("letný")) currentSemester = "summer";
-        return;
-      }
-
-      if (!currentSemester) return;
-
-      // Skip header rows
-      if ($(row).find("td.hdr").length > 0 || $(row).hasClass("hdr")) return;
-
-      const firstTd = $(row).find("td").first();
-      const cellText = firstTd.text().trim();
-      if (!cellText) return;
-
-      // Extract subject code and name
-      // Format: "6BM0027 základy ekonómie"
-      const codeMatch = cellText.match(/^(\S+)\s+(.+)$/);
-      if (!codeMatch) return;
-
-      const code = codeMatch[1];
-      const rawName = codeMatch[2];
-      // Capitalize first letter
-      const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-
-      // Get links
-      const infoLink = firstTd.find("a[href*='planinfo']").first();
-      const infoUrl = infoLink.attr("href") || "";
-
-      const moodleLink = $(row).find('a[target="tmoodle"]');
-      const hasMoodle = moodleLink.length > 0;
-      const moodleUrl = resolveMoodleUrl(moodleLink.attr("href") || "") || "";
-      const safeInfoUrl = resolveSubjectInfoUrl(infoUrl) || "";
-
-      const subject: Subject = {
-        id: `s${id++}`,
-        code,
-        name,
-        hasMoodle: hasMoodle && Boolean(moodleUrl),
+    const parsed = parseAivsSubjects(html);
+    const toSubject = (item: (typeof parsed.winter)[number]): Subject => {
+      const moodleUrl = resolveMoodleUrl(item.moodleHref) || "";
+      return {
+        id: `${year.selectedStartYear}-${item.semester}-${item.code}`,
+        code: item.code,
+        name: item.name,
+        hasMoodle: Boolean(moodleUrl),
         moodleUrl,
-        infoUrl: safeInfoUrl,
+        infoUrl: resolveSubjectInfoUrl(item.infoHref) || "",
       };
-
-      if (currentSemester === "winter") winter.push(subject);
-      else summer.push(subject);
-    });
+    };
+    const winter = parsed.winter.map(toSubject);
+    const summer = parsed.summer.map(toSubject);
 
     return { winter, summer, ...year };
   } catch (e) {
@@ -553,9 +613,12 @@ export async function getGrades(
   requestedStartYear?: number,
   force = false,
 ): Promise<{ winter: Grade[]; summer: Grade[] } & AcademicPeriodData> {
-  const year = await resolveAcademicYear(requestedStartYear);
   const sessionId = await getSession();
-  if (!sessionId) return { winter: [], summer: [], ...year };
+  if (!sessionId) {
+    const year = await resolveAcademicYear(requestedStartYear);
+    return { winter: [], summer: [], ...year };
+  }
+  const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
 
   try {
     const [html, subjectsHtml] = await Promise.all([
@@ -571,18 +634,15 @@ export async function getGrades(
       ),
     ]);
     const $ = cheerio.load(html);
-    const $subjects = cheerio.load(subjectsHtml);
-    const selectedSubjectCodes = new Set<string>();
-
-    $subjects("#id-tabulka-predmety-s tr").each((_i, row) => {
-      const firstCellText = $subjects(row).find("td").first().text().trim();
-      const code = firstCellText.match(/^(\S+)\s+/)?.[1];
-      if (code) selectedSubjectCodes.add(code);
-    });
+    const parsedSubjects = parseAivsSubjects(subjectsHtml);
+    const selectedSubjectCodes = new Set(
+      [...parsedSubjects.winter, ...parsedSubjects.summer].map((subject) => subject.code),
+    );
 
     const winter: Grade[] = [];
     const summer: Grade[] = [];
     let currentSemester: "winter" | "summer" | null = null;
+    const seenGrades = new Set<string>();
 
     // Grades table structure:
     // <tr><td class="sep-mch">Zimný/Letný semester</td></tr>
@@ -623,6 +683,16 @@ export async function getGrades(
       const credits = parseFloat(creditsText) || 0;
       const points = $(tds[9])?.text()?.trim() || "";
       const datedAcademicYear = getAcademicYearStartFromSlovakDate(examDate);
+      const identity = [
+        currentSemester,
+        code.toLocaleUpperCase("sk"),
+        examDate,
+        finalGrade,
+        credits,
+        points,
+      ].join("|");
+      if (seenGrades.has(identity)) return;
+      seenGrades.add(identity);
 
       const grade: Grade = {
         subject,
@@ -766,7 +836,12 @@ export async function getSchedule(force = false): Promise<ScheduleItem[]> {
       });
     });
 
-    return items;
+    const uniqueItems = new Map<string, ScheduleItem>();
+    for (const item of items) {
+      const key = [item.day, item.timeStart, item.timeEnd, item.subject, item.room, item.teacher, item.type].join("|");
+      if (!uniqueItems.has(key)) uniqueItems.set(key, item);
+    }
+    return [...uniqueItems.values()];
   } catch (e) {
     console.error("Error parsing schedule:", e);
     return [];

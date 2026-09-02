@@ -16,6 +16,26 @@ import {
   parseWebKreditCanteens,
   parseWebKreditMenu,
 } from "./uniza-parsers.ts";
+import { parseAivsSubjects } from "./aivs-subjects.ts";
+
+test("AIVS subjects are deduplicated per semester and useful links are merged", () => {
+  const parsed = parseAivsSubjects(`
+    <table id="id-tabulka-predmety-s"><tr><td><table>
+      <tr><td class="sep">Zimný semester</td></tr>
+      <tr><td><a href="planinfo.php?id=1">6BI0001 Informatika</a></td><td></td></tr>
+      <tr><td class="sep">Letný semester</td></tr>
+      <tr><td><a href="planinfo.php?id=2">6BL0001 ekonomické a právne aspekty podnikania</a></td><td></td></tr>
+      <tr><td>6BL0001 ekonomické a právne aspekty podnikania</td><td><a target="tmoodle" href="https://vzdelavanie.uniza.sk/moodle/course/view.php?id=2">Moodle</a></td></tr>
+    </table></td></tr></table>
+  `);
+
+  assert.equal(parsed.winter.length, 1);
+  assert.equal(parsed.summer.length, 1);
+  assert.equal(parsed.summer[0].code, "6BL0001");
+  assert.equal(parsed.summer[0].name, "Ekonomické a právne aspekty podnikania");
+  assert.equal(parsed.summer[0].infoHref, "planinfo.php?id=2");
+  assert.equal(parsed.summer[0].moodleHref, "https://vzdelavanie.uniza.sk/moodle/course/view.php?id=2");
+});
 
 test("AIVS grade dates map to the correct academic year", () => {
   assert.equal(getAcademicYearStartFromSlovakDate("22.9.2025"), 2025);
@@ -165,4 +185,27 @@ test("legacy WebKredit array shape and canteen catalogue stay supported", () => 
   assert.equal(catalogue.canteens.length, 2);
   assert.equal(catalogue.selectedCanteenId, 1);
   assert.equal(catalogue.message, "Prevádzka je zatvorená");
+});
+
+test("WebKredit repeated menu rows are shown only once", () => {
+  const repeatedRow = {
+    item: {
+      date: "2026-08-31T22:00:00.0000000Z",
+      canteenId: 1,
+      mealKindId: 2,
+      altId: 1,
+      mealKindName: "Obed",
+      mealName: "Denné menu",
+      show: true,
+    },
+  };
+  const days = parseWebKreditMenu({
+    groups: [{
+      date: "2026-08-31T22:00:00.0000000Z",
+      mealKindName: "Obed",
+      rows: [repeatedRow, repeatedRow],
+    }],
+  });
+
+  assert.equal(days[0].groups[0].items.length, 1);
 });

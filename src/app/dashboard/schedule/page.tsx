@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, memo } from "react";
 import { getSchedule, type ScheduleItem } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing";
+import { AppIcon } from "@/components/AppIcon";
 
 import useSWR from "swr";
 
@@ -62,17 +63,12 @@ const ScheduleCard = memo(({
         <div className="schedule-subject-name">{item.subject}</div>
         {item.room && (
           <div className="schedule-meta">
-            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <AppIcon name="map-pin" size={13} />
             {item.room}
             {item.teacher && (
               <>
                 <span style={{ margin: "0 2px" }}>·</span>
-                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+                <AppIcon name="user" size={13} />
                 {item.teacher}
               </>
             )}
@@ -168,24 +164,9 @@ export default function SchedulePage() {
           aria-label={t("common_refresh") as string}
           onClick={handleRefresh}
           disabled={isRefreshing}
-          style={{
-            background: "var(--surface-secondary)",
-            border: "none",
-            padding: "8px",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            opacity: isRefreshing ? 0.5 : 1
-          }}
+          className="icon-button"
         >
-          <svg className={isRefreshing ? "spin" : ""} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 2v6h-6"></path>
-            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
-            <path d="M3 22v-6h6"></path>
-            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
-          </svg>
+          <AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} />
         </button>
       </div>
 
@@ -237,14 +218,8 @@ export default function SchedulePage() {
             ))}
           </div>
         ) : dayItems.length === 0 ? (
-          <div style={{
-            textAlign: "center",
-            padding: "80px 20px",
-            color: "var(--text-tertiary)",
-          }}>
-            <div style={{ fontSize: "64px", marginBottom: "16px" }}>
-              {selectedDay === t("schedule_weekend_tab") ? "🍻" : "🎉"}
-            </div>
+          <div className="empty-state" style={{ paddingTop: "80px" }}>
+            <AppIcon name="empty-calendar" size={48} />
             <div style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px", color: "var(--text-primary)" }}>
               {selectedDay === t("schedule_weekend_tab") ? t("schedule_weekend_title") as string : t("schedule_no_classes_title") as string}
             </div>

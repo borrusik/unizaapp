@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { useTranslation, type Lang } from "@/hooks/useTranslation";
 import { UNIZA_URLS } from "@/lib/uniza";
 import type { MenuItem } from "@/lib/uniza-parsers";
+import { AppIcon } from "@/components/AppIcon";
 
 const LOCALES: Record<Lang, string> = {
   sk: "sk-SK",
@@ -74,14 +75,9 @@ export default function StravaPage() {
           aria-label={t("common_refresh") as string}
           onClick={handleRefresh}
           disabled={isRefreshing}
-          style={{ background: "var(--surface-secondary)", border: "none", padding: "8px", borderRadius: "50%", display: "flex", cursor: "pointer", opacity: isRefreshing ? 0.5 : 1 }}
+          className="icon-button"
         >
-          <svg className={isRefreshing ? "spin" : ""} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 2v6h-6" />
-            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-            <path d="M3 22v-6h6" />
-            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-          </svg>
+          <AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} />
         </button>
       </div>
 
@@ -96,15 +92,13 @@ export default function StravaPage() {
           </div>
         ) : (
           <div className="animate-slide-up">
-            <div style={{ background: "linear-gradient(135deg, var(--primary), var(--orange))", borderRadius: "16px", padding: "24px", color: "white", boxShadow: "0 10px 20px rgba(0, 122, 255, 0.2)", marginBottom: "24px", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", right: "-20px", top: "-20px", width: "150px", height: "150px", background: "white", opacity: 0.1, borderRadius: "50%" }} />
-              <div style={{ position: "absolute", left: "20px", bottom: "-40px", width: "100px", height: "100px", background: "white", opacity: 0.1, borderRadius: "50%" }} />
+            <div className="food-balance-card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative", zIndex: 1 }}>
                 <div>
                   <div style={{ fontSize: "14px", fontWeight: 500, opacity: 0.85, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "4px" }}>{t("food_isic_credit")}</div>
                   <div style={{ fontSize: "36px", fontWeight: 800 }}>{info ? `${info.balance.toFixed(2).replace(".", ",")} €` : "—"}</div>
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.2)", padding: "6px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: 600 }}>
+                <div className="food-balance-status">
                   {info ? t("food_active") : t("food_balance_reconnect")}
                 </div>
               </div>
@@ -131,7 +125,7 @@ export default function StravaPage() {
             {menu?.message && (
               <div className="card" style={{ marginBottom: "16px", padding: "14px 16px", borderColor: "var(--warning)", background: "color-mix(in srgb, var(--warning) 10%, var(--surface))" }}>
                 <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                  <span aria-hidden="true">ℹ️</span>
+                  <AppIcon name="info" size={19} />
                   <span className="text-sm" style={{ color: "var(--text-primary)", lineHeight: 1.45 }}>{menu.message}</span>
                 </div>
               </div>
@@ -151,8 +145,8 @@ export default function StravaPage() {
             </div>
 
             {activeItems.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: "28px 20px" }}>
-                <div style={{ fontSize: "36px", marginBottom: "8px" }}>{menu?.unavailable ? "⚠️" : "🍽️"}</div>
+              <div className="empty-state">
+                <AppIcon name={menu?.unavailable ? "warning" : "restaurant"} size={38} />
                 <p className="text-sm" style={{ marginBottom: "14px" }}>{menu?.unavailable ? t("food_menu_unavailable") : t("food_no_menu_day")}</p>
                 <a href={UNIZA_URLS.diningMenu} target="_blank" rel="noopener noreferrer" className="badge badge-neutral" style={{ textDecoration: "none" }}>{t("food_open_official")}</a>
               </div>

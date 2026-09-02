@@ -1,17 +1,17 @@
 :root {
-  --body-bg: #ececeb;
-  --background: #fdfdfc;
+  --body-bg: #eef0f2;
+  --background: #ffffff;
   --surface: #ffffff;
-  --surface-secondary: #fefce8;
-  --surface-hover: #fef9c3;
-  --border: rgba(234, 179, 8, 0.12);
-  --text-primary: #1a1a19;
-  --text-secondary: #5a574c;
-  --text-tertiary: #929296;
-  --primary: #eab308;
+  --surface-secondary: #f4f5f6;
+  --surface-hover: #f0f1f2;
+  --border: rgba(15, 23, 42, 0.10);
+  --text-primary: #111317;
+  --text-secondary: #5f6670;
+  --text-tertiary: #9299a3;
+  --primary: #e6ad00;
   /* Yellow 500 */
-  --primary-light: rgba(234, 179, 8, 0.15);
-  --primary-hover: #ca8a04;
+  --primary-light: rgba(230, 173, 0, 0.15);
+  --primary-hover: #b98600;
   /* Yellow 600 */
   --danger: #ef4444;
   --danger-light: rgba(239, 68, 68, 0.12);
@@ -394,7 +394,7 @@ select {
   z-index: 40;
   background: var(--background);
   /* Fallback */
-  background: rgba(253, 253, 252, 0.85);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(24px) saturate(150%);
   -webkit-backdrop-filter: blur(24px) saturate(150%);
   border-bottom: 0.5px solid transparent;
@@ -415,6 +415,33 @@ select {
   font-size: 34px;
   font-weight: 800;
   letter-spacing: -0.8px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.icon-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.icon-button:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 /* ============================================
@@ -450,11 +477,13 @@ select {
 }
 
 .nav-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 4px 12px;
+  min-width: 64px;
+  padding: 5px 8px;
   color: var(--text-tertiary);
   transition: color 0.2s;
   font-size: 10px;
@@ -465,9 +494,21 @@ select {
   color: var(--primary);
 }
 
+.nav-item.active::before {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 30px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--primary);
+  content: "";
+  transform: translateX(-50%);
+}
+
 .nav-icon {
-  width: 28px;
-  height: 28px;
+  width: 25px;
+  height: 25px;
 }
 
 /* ============================================
@@ -583,7 +624,7 @@ select {
    ACADEMIC PERIOD CONTROLS
    ============================================ */
 .academic-period-controls {
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .academic-period-heading {
@@ -591,22 +632,19 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 9px;
+  margin-bottom: 4px;
   padding: 0 2px;
 }
 
-.academic-period-current {
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.semester-heading {
+  margin-bottom: 8px;
 }
 
 .academic-year-scroll {
   display: flex;
-  gap: 8px;
-  margin: 0 -20px 14px;
-  padding: 1px 20px 8px;
+  gap: 0;
+  margin: 0 -20px 16px;
+  padding: 0 20px;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scroll-snap-type: inline mandatory;
@@ -618,38 +656,37 @@ select {
 }
 
 .academic-year-chip {
+  position: relative;
   display: inline-flex;
-  align-items: baseline;
-  flex: 0 0 auto;
-  min-height: 42px;
-  padding: 9px 14px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 50%;
+  min-height: 40px;
+  padding: 5px 0 9px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--text-secondary);
-  font-size: 15px;
-  font-weight: 750;
+  font-size: 14px;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   scroll-snap-align: start;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
-}
-
-.academic-year-chip-end {
-  color: var(--text-tertiary);
-  font-size: 12px;
-  font-weight: 650;
+  transition: color 160ms ease;
 }
 
 .academic-year-chip.active {
-  border-color: rgba(234, 179, 8, 0.55);
-  background: var(--primary-light);
   color: var(--text-primary);
-  box-shadow: 0 4px 14px rgba(234, 179, 8, 0.13);
 }
 
-.academic-year-chip.active .academic-year-chip-end {
-  color: var(--primary-hover);
+.academic-year-chip.active::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--primary);
+  content: "";
 }
 
 .academic-year-chip:active:not(:disabled) {
@@ -665,22 +702,22 @@ select {
   position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  min-height: 50px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  min-height: 46px;
+  padding: 3px;
+  border: 0;
+  border-radius: 12px;
   background: var(--surface-secondary);
   overflow: hidden;
 }
 
 .semester-slider-indicator {
   position: absolute;
-  inset: 4px auto 4px 4px;
-  width: calc(50% - 4px);
-  border: 1px solid rgba(234, 179, 8, 0.22);
-  border-radius: 12px;
+  inset: 3px auto 3px 3px;
+  width: calc(50% - 3px);
+  border: 1px solid var(--border);
+  border-radius: 9px;
   background: var(--surface);
-  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
   transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -694,10 +731,10 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
   padding: 9px 7px;
-  border-radius: 12px;
+  border-radius: 9px;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 650;
@@ -733,6 +770,104 @@ select {
 .semester-slider button[aria-pressed="true"] .semester-slider-count {
   background: var(--primary-light);
   color: var(--primary-hover);
+}
+
+.subject-list {
+  border-top: 1px solid var(--border);
+}
+
+.subject-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.subject-row-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.subject-code {
+  margin-top: 3px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.subject-row h3 {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.32;
+}
+
+.subject-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.subject-action {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text-primary);
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.subject-action:hover {
+  background: var(--surface-hover);
+  color: var(--primary-hover);
+}
+
+.subject-action:active {
+  transform: scale(0.95);
+}
+
+.skeleton-list .subject-row {
+  height: 76px;
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 56px 20px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.empty-state .card-title {
+  color: var(--text-primary);
+}
+
+.food-balance-card {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.food-balance-status {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary-hover);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .grades-stats {

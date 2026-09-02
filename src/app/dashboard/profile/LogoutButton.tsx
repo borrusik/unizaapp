@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { logout } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 
 export function LogoutButton() {
-  const router = useRouter();
   const { t } = useTranslation();
 
   const handleLogout = async () => {
@@ -20,7 +18,7 @@ export function LogoutButton() {
       "uniza_strava_menu",
       "uniza_strava_history",
     ].forEach((key) => localStorage.removeItem(key));
-    router.push("/");
+    window.location.replace("/");
   };
 
   return (

@@ -31,15 +31,14 @@ export function AcademicPeriodControls({
   summerCount,
   disabled = false,
 }: AcademicPeriodControlsProps) {
-  const selectedLabel = years.find((year) => year.startYear === selectedStartYear)?.label;
   const winterShortLabel = winterLabel.split(/\s+/)[0];
   const summerShortLabel = summerLabel.split(/\s+/)[0];
+  const semesterLabel = winterLabel.split(/\s+/).slice(1).join(" ");
 
   return (
     <section className="academic-period-controls" aria-label={academicYearLabel}>
       <div className="academic-period-heading">
         <span className="label">{academicYearLabel}</span>
-        {selectedLabel && <span className="academic-period-current">{selectedLabel}</span>}
       </div>
 
       <div className="academic-year-scroll" role="group" aria-label={academicYearLabel}>
@@ -54,12 +53,17 @@ export function AcademicPeriodControls({
               disabled={disabled}
               onClick={() => onYearChange(year.startYear)}
             >
-              <span>{year.startYear}</span>
-              <span className="academic-year-chip-end">/{year.startYear + 1}</span>
+              <span>{year.startYear}/{year.startYear + 1}</span>
             </button>
           );
         })}
       </div>
+
+      {semesterLabel && (
+        <div className="academic-period-heading semester-heading">
+          <span className="label">{semesterLabel}</span>
+        </div>
+      )}
 
       <div className={`semester-slider ${semester === "summer" ? "summer-active" : ""}`}>
         <span className="semester-slider-indicator" aria-hidden="true" />
@@ -69,7 +73,6 @@ export function AcademicPeriodControls({
           aria-pressed={semester === "winter"}
           onClick={() => onSemesterChange("winter")}
         >
-          <span aria-hidden="true">❄️</span>
           <span className="semester-slider-label">{winterShortLabel}</span>
           <span className="semester-slider-count">{winterCount}</span>
         </button>
@@ -79,7 +82,6 @@ export function AcademicPeriodControls({
           aria-pressed={semester === "summer"}
           onClick={() => onSemesterChange("summer")}
         >
-          <span aria-hidden="true">☀️</span>
           <span className="semester-slider-label">{summerShortLabel}</span>
           <span className="semester-slider-count">{summerCount}</span>
         </button>

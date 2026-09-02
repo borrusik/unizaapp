@@ -6,6 +6,7 @@ import type { Grade } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
 import { formatAcademicYear } from "@/lib/uniza-parsers";
+import { AppIcon } from "@/components/AppIcon";
 
 import useSWR from "swr";
 
@@ -126,24 +127,9 @@ export default function GradesPage() {
           aria-label={t("common_refresh") as string}
           onClick={handleRefresh}
           disabled={isRefreshing}
-          style={{
-            background: "var(--surface-secondary)",
-            border: "none",
-            padding: "8px",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            opacity: isRefreshing ? 0.5 : 1
-          }}
+          className="icon-button"
         >
-          <svg className={isRefreshing ? "spin" : ""} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 2v6h-6"></path>
-            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
-            <path d="M3 22v-6h6"></path>
-            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
-          </svg>
+          <AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} />
         </button>
       </div>
 
@@ -178,10 +164,10 @@ export default function GradesPage() {
         ) : (
           <div className="animate-slide-up">
             {current.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: "36px 20px" }}>
-                <div style={{ fontSize: "42px", marginBottom: "10px" }}>🎓</div>
+              <div className="empty-state">
+                <AppIcon name="award" size={42} />
                 <div className="card-title">{t("grades_no_data")}</div>
-                <p className="text-sm" style={{ marginTop: "6px" }}>{t("grades_no_data_year")}</p>
+                <p className="text-sm">{t("grades_no_data_year")}</p>
               </div>
             ) : (
               <>
@@ -206,13 +192,13 @@ export default function GradesPage() {
             {historical.length > 0 && (
               <details className="historical-results">
                 <summary>
-                  <span className="historical-results-icon" aria-hidden="true">↩</span>
+                  <span className="historical-results-icon" aria-hidden="true"><AppIcon name="history" size={19} /></span>
                   <span>
                     <strong>{t("grades_previous_results")}</strong>
                     <small>{t("grades_previous_hint")}</small>
                   </span>
                   <span className="historical-results-count">{historical.length}</span>
-                  <span className="historical-results-chevron" aria-hidden="true">⌄</span>
+                  <span className="historical-results-chevron" aria-hidden="true"><AppIcon name="chevron-down" size={18} /></span>
                 </summary>
                 <div className="historical-results-content">
                   {[...historicalGroups.entries()]

@@ -5,6 +5,7 @@ import { getSubjects } from "@/lib/scraper";
 import Link from "next/link";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
+import { AppIcon } from "@/components/AppIcon";
 
 import useSWR from "swr";
 
@@ -51,23 +52,9 @@ export default function SubjectsPage() {
           aria-label={t("common_refresh") as string}
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className={isRefreshing ? "spin" : ""}
-          style={{
-            background: "var(--surface-secondary)",
-            border: "none",
-            padding: "8px",
-            borderRadius: "50%",
-            display: "flex",
-            cursor: "pointer",
-            opacity: isRefreshing ? 0.5 : 1,
-          }}
+          className="icon-button"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 2v6h-6" />
-            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-            <path d="M3 22v-6h6" />
-            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-          </svg>
+          <AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} />
         </button>
       </div>
 
@@ -86,62 +73,47 @@ export default function SubjectsPage() {
           disabled={loading || subjects.academicYears.length === 0}
         />
 
-        {/* Summary Row */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "16px",
-          padding: "0 4px",
-        }}>
-          <span className="label">{t("profile_acad_year")} {subjects.academicYear}</span>
-          <span className="badge badge-credits">{current.length} {t("dashboard_subjects_count")}</span>
-        </div>
-
         {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div className="subject-list skeleton-list">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="card skeleton" style={{ height: "90px" }} />
+              <div key={i} className="subject-row skeleton" />
             ))}
           </div>
         ) : current.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: "36px 20px" }}>
-            <div style={{ fontSize: "42px", marginBottom: "10px" }}>📚</div>
+          <div className="empty-state">
+            <AppIcon name="book" size={42} />
             <div className="card-title">{t("subjects_no_data")}</div>
-            <p className="text-sm" style={{ marginTop: "6px" }}>{t("subjects_no_data_year")}</p>
+            <p className="text-sm">{t("subjects_no_data_year")}</p>
           </div>
         ) : (
-          <div className="stagger animate-slide-up" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div className="subject-list animate-slide-up">
             {current.map((subject) => (
-              <div key={subject.id} className="card animate-scale-in" style={{ opacity: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px", marginBottom: "6px" }}>
-                  <div style={{ flex: 1 }}>
-                    <div className="text-xs" style={{ marginBottom: "2px", fontWeight: 600, letterSpacing: "0.5px" }}>
-                      {subject.code}
-                    </div>
-                    <h3 className="card-title">{subject.name}</h3>
-                  </div>
+              <div key={subject.id} className="subject-row">
+                <div className="subject-row-copy">
+                  <h3>{subject.name}</h3>
+                  <div className="subject-code">{subject.code}</div>
                 </div>
-
-                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                <div className="subject-actions">
                   {subject.hasMoodle && (
                     <a
                       href={subject.moodleUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="badge"
-                      style={{ fontSize: "11px", background: "var(--primary-light)", color: "var(--primary)", textDecoration: "none" }}
+                      className="subject-action"
+                      aria-label={`${t("dashboard_moodle")}: ${subject.name}`}
+                      title={t("dashboard_moodle") as string}
                     >
-                      🎓 {t("dashboard_moodle")}
+                      <AppIcon name="external-link" size={19} />
                     </a>
                   )}
                   {subject.infoUrl && (
                     <Link
                       href={`/dashboard/subject?url=${encodeURIComponent(subject.infoUrl)}&name=${encodeURIComponent(subject.name)}`}
-                      className="badge badge-neutral"
-                      style={{ fontSize: "11px", textDecoration: "none" }}
+                      className="subject-action"
+                      aria-label={`${t("dashboard_info_list")}: ${subject.name}`}
+                      title={t("dashboard_info_list") as string}
                     >
-                      📋 {t("dashboard_info_list")}
+                      <AppIcon name="clipboard" size={19} />
                     </Link>
                   )}
                 </div>
@@ -151,10 +123,6 @@ export default function SubjectsPage() {
         )}
       </div>
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spin { animation: spin 1s linear infinite; }
-      `}</style>
     </div>
   );
 }

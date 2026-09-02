@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslation, type Lang } from "@/hooks/useTranslation";
+import { AppIcon } from "@/components/AppIcon";
 
 export function LanguageSwitcher() {
   const { t, lang, setLang } = useTranslation();
@@ -32,9 +33,7 @@ export function LanguageSwitcher() {
               {t(`lang_${l}` as keyof typeof import("@/hooks/useTranslation").dictionary.sk)}
             </span>
             {lang === l && (
-              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+              <AppIcon name="check" size={18} />
             )}
           </button>
         ))}

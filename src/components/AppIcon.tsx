@@ -1,0 +1,69 @@
+import type { ReactNode, SVGProps } from "react";
+
+export type AppIconName =
+  | "arrow-left"
+  | "award"
+  | "book"
+  | "building"
+  | "calendar"
+  | "check"
+  | "chevron-down"
+  | "clipboard"
+  | "empty-calendar"
+  | "external-link"
+  | "history"
+  | "info"
+  | "map-pin"
+  | "pin"
+  | "refresh"
+  | "restaurant"
+  | "shield"
+  | "user"
+  | "warning";
+
+type AppIconProps = Omit<SVGProps<SVGSVGElement>, "name"> & {
+  name: AppIconName;
+  size?: number;
+};
+
+const paths: Record<AppIconName, ReactNode> = {
+  "arrow-left": <path d="m15 18-6-6 6-6" />,
+  award: <><circle cx="12" cy="8" r="5" /><path d="m8.5 12-1 9 4.5-2.5 4.5 2.5-1-9" /><path d="m10 8 1.3 1.3L14.5 6" /></>,
+  book: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11a2 2 0 0 1 2 2v16a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 21.5Z" /><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v18a2 2 0 0 1 2-2h2.5a2.5 2.5 0 0 1 2.5 2.5Z" /></>,
+  building: <><path d="M4 21h16M6 21V5l6-3 6 3v16" /><path d="M9 8h1m4 0h1M9 12h1m4 0h1M9 16h6v5" /></>,
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4m8-4v4M3 10h18" /></>,
+  check: <><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16 9" /></>,
+  "chevron-down": <path d="m7 10 5 5 5-5" />,
+  clipboard: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4.5V3h6v1.5M9 9h6m-6 4h6m-6 4h4" /></>,
+  "empty-calendar": <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4m8-4v4M3 10h18m-6 4v3m-1.5-1.5h3" /></>,
+  "external-link": <><path d="M14 5h5v5m0-5-8 8" /><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" /></>,
+  history: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5m4-1v5l3 2" /></>,
+  info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></>,
+  "map-pin": <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
+  pin: <><path d="m9 3 6 6m-7.5 1.5 6 6M6 21l3.5-3.5M8 6l10 10M7 7l3-3 10 10-3 3" /></>,
+  refresh: <><path d="M20 7V3l-1.9 1.9A8 8 0 1 0 20 14" /><path d="M20 3h-4" /></>,
+  restaurant: <><path d="M4 3v7a2 2 0 0 0 2 2h3a2 2 0 0 0 2-2V3M7.5 3v18" /><path d="M20 14V3a5 5 0 0 0-5 5v4a2 2 0 0 0 2 2h3Zm0 0v7" /></>,
+  shield: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></>,
+  user: <><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></>,
+  warning: <><path d="M10.3 3.6 2.6 18a2 2 0 0 0 1.8 3h15.2a2 2 0 0 0 1.8-3L13.7 3.6a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4m0 4h.01" /></>,
+};
+
+export function AppIcon({ name, size = 24, className, ...props }: AppIconProps) {
+  return (
+    <svg
+      aria-hidden={props["aria-label"] ? undefined : true}
+      className={className}
+      fill="none"
+      height={size}
+      viewBox="0 0 24 24"
+      width={size}
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      {paths[name]}
+    </svg>
+  );
+}
