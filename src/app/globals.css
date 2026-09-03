@@ -1744,3 +1744,14 @@ select {
     background-position: -200% 0;
   }
 }
+
+.profile-identity .avatar {
+  width: 66px;
+  height: 66px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+  box-shadow: none;
+  color: var(--text-primary);
+  font-size: 22px;
+}
