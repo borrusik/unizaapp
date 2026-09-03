@@ -6,6 +6,10 @@ export const UNIZA_URLS = {
   academicCalendar: "https://www.uniza.sk/index.php/studenti/vseobecne-informacie/akademicky-kalendar",
   campus: "https://campus.uniza.sk/",
   helpdesk: "https://helpdesk.uniza.sk/",
+  directory: "https://www.uniza.sk/index.php/zamestnanci/vseobecne-informacie/adresar-zamestnancov",
+  news: "https://www.uniza.sk/index.php",
+  studentMail: "https://www.uniza.sk/index.php/studenti/vseobecne-informacie/webmail-a-sietove-sluzby",
+  library: "https://ukzu.uniza.sk/",
 } as const;
 
 const AIVS_ORIGIN = new URL(UNIZA_URLS.education).origin;
@@ -43,6 +47,12 @@ export function resolveMoodleUrl(value: string): string | null {
     url.pathname.startsWith("/vzdelavanie/");
 
   return isAllowedPath ? url.toString() : null;
+}
+
+export function resolveExamTermsUrl(value: string): string | null {
+  const url = resolveOfficialAivsUrl(value);
+  if (!url || url.pathname !== "/vzdelavanie/terminy_s.php") return null;
+  return url.searchParams.has("pid") ? url.toString() : null;
 }
 
 export function getAcademicYear(date = new Date()): string {

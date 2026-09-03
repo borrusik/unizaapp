@@ -5,6 +5,8 @@ import { getSchedule, type ScheduleItem } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing";
 import { AppIcon } from "@/components/AppIcon";
+import { downloadIcs } from "@/lib/calendar";
+import { getBratislavaDateKey, listDateKeys } from "@/lib/uniza-parsers";
 
 import useSWR from "swr";
 
@@ -136,6 +138,23 @@ export default function SchedulePage() {
 
   const dayItems = useMemo(() => (data || []).filter((item) => item.day === selectedDay), [data, selectedDay]);
 
+  const exportDay = () => {
+    const start = getBratislavaDateKey(now);
+    const dates = listDateKeys(start, 7);
+    const selectedIndex = REGULAR_DAYS.indexOf(selectedDay) + 1;
+    const date = dates.find((key) => new Date(`${key}T12:00:00Z`).getUTCDay() === selectedIndex);
+    if (!date || dayItems.length === 0) return;
+    downloadIcs(dayItems.map((item) => ({
+      uid: `schedule-${item.id}-${selectedDay}`,
+      title: item.subject,
+      date,
+      timeStart: item.timeStart,
+      timeEnd: item.timeEnd,
+      location: item.room,
+      description: [typeLabel(item.type), item.teacher].filter(Boolean).join(" · "),
+    })), `uniza-${date}.ics`);
+  };
+
   const typeLabel = (type: string): string => {
     type DictKey = keyof typeof import("@/hooks/useTranslation").dictionary.sk;
     switch (type) {
@@ -159,15 +178,10 @@ export default function SchedulePage() {
     <div>
       <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title">{t("schedule_title")}</div>
-        <button
-          type="button"
-          aria-label={t("common_refresh") as string}
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="icon-button"
-        >
-          <AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} />
-        </button>
+        <div className="top-bar-actions">
+          <button type="button" aria-label={t("exams_export") as string} onClick={exportDay} disabled={dayItems.length === 0} className="icon-button"><AppIcon name="download" size={20} /></button>
+          <button type="button" aria-label={t("common_refresh") as string} onClick={handleRefresh} disabled={isRefreshing} className="icon-button"><AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} /></button>
+        </div>
       </div>
 
       <div className="container">

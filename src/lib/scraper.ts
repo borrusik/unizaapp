@@ -4,20 +4,23 @@ import { cookies } from "next/headers";
 import * as cheerio from "cheerio";
 import { rateLimit } from "@/lib/rate-limit";
 import { authenticateStrava, clearStravaSession, getStoredStravaSession, storeStravaSession } from "@/lib/strava-session";
-import { getAcademicYear, resolveMoodleUrl, resolveSubjectInfoUrl } from "@/lib/uniza";
+import { getAcademicYear, resolveExamTermsUrl, resolveMoodleUrl, resolveSubjectInfoUrl } from "@/lib/uniza";
 import {
   formatAcademicYear,
   getAcademicYearStartFromSlovakDate,
   parseAcademicYears,
   type AcademicYearOption,
   type AcademicYearSelection,
+  type IntegrationOperationResult,
 } from "@/lib/uniza-parsers";
 import { canPersistCredentials, clearCredentials, readCredentials, saveCredentials } from "@/lib/credentials";
 import { parseAivsSubjects } from "@/lib/aivs-subjects";
+import { parseAivsExamTerms, type ExamTerm, type InternalExamTerm } from "@/lib/aivs-exams";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
+const examOperationLocks = new Map<string, number>();
 
 // ─────────────────────────────────────────────
 // Fetch with Windows-1250 decoding
@@ -318,6 +321,7 @@ async function resolveStudyAcademicYear(
 export async function login(formData: FormData) {
   const email = formData.get("email")?.toString()?.trim().toLowerCase();
   const password = formData.get("password")?.toString();
+  const remember = formData.getAll("remember").some((value) => value === "on");
 
   if (!email || !password) {
     return { error: "Zadajte email a heslo" };
@@ -370,7 +374,7 @@ export async function login(formData: FormData) {
     sameSite: "strict",
   });
   const cateringConnected = await storeStravaSession(stravaSession);
-  const credentialsStored = await saveCredentials({ email, password });
+  const credentialsStored = remember ? await saveCredentials({ email, password }) : false;
 
   return {
     success: true,
@@ -719,6 +723,138 @@ export async function getGrades(
     console.error("Error parsing grades:", e);
     return { winter: [], summer: [], ...year };
   }
+}
+
+async function getExamTermsInternal(
+  requestedStartYear?: number,
+  force = false,
+): Promise<{ terms: InternalExamTerm[] } & AcademicPeriodData> {
+  const sessionId = await getSession();
+  if (!sessionId) {
+    const year = await resolveAcademicYear(requestedStartYear);
+    return { terms: [], ...year };
+  }
+  const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
+  try {
+    const subjectsHtml = await fetchPage(sessionId, `predmety_s.php?ra=${year.selectedStartYear}`, force);
+    const parsed = parseAivsSubjects(subjectsHtml);
+    const subjects = [...parsed.winter, ...parsed.summer].filter((subject) => subject.termsHref);
+    const pages = await Promise.all(subjects.map(async (subject) => {
+      const url = resolveExamTermsUrl(subject.termsHref);
+      if (!url) return [];
+      const parsedUrl = new URL(url);
+      const page = `${parsedUrl.pathname.replace("/vzdelavanie/", "")}${parsedUrl.search}`;
+      const html = await fetchPage(sessionId, page, force);
+      return parseAivsExamTerms(html, subject.name, subject.code, year.selectedStartYear, subject.termsHref);
+    }));
+    const unique = new Map<string, InternalExamTerm>();
+    for (const term of pages.flat()) unique.set(term.id, term);
+    return { terms: [...unique.values()].sort((left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`)), ...year };
+  } catch (error) {
+    console.error("Failed to load AIVS exam terms:", error instanceof Error ? error.message : "unknown");
+    return { terms: [], ...year };
+  }
+}
+
+export async function getExamTerms(
+  requestedStartYear?: number,
+  force = false,
+): Promise<{ terms: ExamTerm[] } & AcademicPeriodData> {
+  const result = await getExamTermsInternal(requestedStartYear, force);
+  return {
+    ...result,
+    terms: result.terms.map(toPublicExamTerm),
+  };
+}
+
+function toPublicExamTerm(term: InternalExamTerm): ExamTerm {
+  return {
+    id: term.id,
+    academicYearStart: term.academicYearStart,
+    subject: term.subject,
+    subjectCode: term.subjectCode,
+    date: term.date,
+    time: term.time,
+    room: term.room,
+    teacher: term.teacher,
+    capacity: term.capacity,
+    occupied: term.occupied,
+    type: term.type,
+    note: term.note,
+    deadline: term.deadline,
+    canRegister: term.canRegister,
+    canCancel: term.canCancel,
+  };
+}
+
+function examOperationResult<T>(
+  status: IntegrationOperationResult<T>["status"],
+  code: string,
+  message: string,
+  confirmedState?: T,
+): IntegrationOperationResult<T> {
+  return { status, code, message, confirmedState, checkedAt: new Date().toISOString() };
+}
+
+async function changeExamRegistration(
+  termId: string,
+  academicYearStart: number,
+  action: "register" | "cancel",
+): Promise<IntegrationOperationResult<ExamTerm>> {
+  if (process.env.ENABLE_AIVS_EXAM_ACTIONS !== "true") {
+    return examOperationResult("disabled", "actions_disabled", "Prihlasovanie na termíny je dočasne vypnuté.");
+  }
+  if (!termId || termId.length > 300 || !Number.isInteger(academicYearStart) || academicYearStart < 2000 || academicYearStart > 2200) {
+    return examOperationResult("rejected", "invalid_input", "Neplatný termín.");
+  }
+  const sessionId = await getSession();
+  if (!sessionId) return examOperationResult("rejected", "not_authenticated", "AIVS nie je pripojený.");
+  const lockKey = `${sessionId}:${academicYearStart}:${termId}:${action}`;
+  const now = Date.now();
+  if ((examOperationLocks.get(lockKey) || 0) > now) {
+    return examOperationResult("rejected", "already_processing", "Operácia sa už spracúva.");
+  }
+  if (examOperationLocks.size > 500) examOperationLocks.clear();
+  examOperationLocks.set(lockKey, now + 30_000);
+
+  try {
+  const current = (await getExamTermsInternal(academicYearStart, true)).terms.find((term) => term.id === termId);
+  if (!current) return examOperationResult("rejected", "term_not_found", "Termín už nie je dostupný.");
+  if ((action === "register" && !current.canRegister) || (action === "cancel" && !current.canCancel)) {
+    return examOperationResult("rejected", "action_not_allowed", "AIVS túto zmenu momentálne nepovoľuje.");
+  }
+  const actionUrl = resolveExamTermsUrl(current.actionHref);
+  if (!actionUrl) return examOperationResult("rejected", "invalid_action", "AIVS neposkytol bezpečnú akciu pre tento termín.");
+
+    const response = await fetch(actionUrl, { headers: { Cookie: `PHPSESSID=${sessionId}` }, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    if (!response.ok && response.status !== 302 && response.status !== 303) return examOperationResult("uncertain", `http_${response.status}`, "Výsledok sa nepodarilo potvrdiť. Skontrolujte AIVS.");
+    if (response.ok) {
+      const html = new TextDecoder("windows-1250").decode(await response.arrayBuffer());
+      if (html.includes('name="heslo"')) return examOperationResult("uncertain", "session_expired", "Výsledok sa nepodarilo potvrdiť. Skontrolujte AIVS.");
+    }
+    clearSessionCaches(sessionId);
+    const confirmed = (await getExamTermsInternal(academicYearStart, true)).terms.find((term) => term.id === termId);
+    const changed = action === "register" ? confirmed?.canCancel : confirmed?.canRegister || !confirmed;
+    if (!changed) return examOperationResult("uncertain", "not_confirmed", "AIVS zmenu zatiaľ nepotvrdil.");
+    return examOperationResult(
+      "success",
+      "success",
+      action === "register" ? "Prihlásenie bolo potvrdené." : "Odhlásenie bolo potvrdené.",
+      toPublicExamTerm(confirmed || current),
+    );
+  } catch {
+    return examOperationResult("uncertain", "network_error", "Spojenie sa prerušilo. Pred opakovaním skontrolujte AIVS.");
+  } finally {
+    examOperationLocks.delete(lockKey);
+  }
+}
+
+export async function registerExam(termId: string, academicYearStart: number) {
+  return changeExamRegistration(termId, academicYearStart, "register");
+}
+
+export async function cancelExam(termId: string, academicYearStart: number) {
+  return changeExamRegistration(termId, academicYearStart, "cancel");
 }
 
 // ─────────────────────────────────────────────

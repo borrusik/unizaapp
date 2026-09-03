@@ -38,6 +38,8 @@ export default function GradesPage() {
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 0);
+    const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
+    if (Number.isInteger(stored) && stored > 2000) setAcademicYearStart(stored);
     return () => clearTimeout(t);
   }, []);
   const grades = data || {
@@ -52,6 +54,8 @@ export default function GradesPage() {
   const current = allForSemester.filter(
     (grade) => grade.academicYearStart === grades.selectedStartYear,
   );
+  const completed = current.filter((grade) => grade.grade && grade.grade !== "—");
+  const pending = current.filter((grade) => !grade.grade || grade.grade === "—");
   const historical = allForSemester.filter(
     (grade) => grade.academicYearStart !== grades.selectedStartYear,
   );
@@ -138,7 +142,10 @@ export default function GradesPage() {
           academicYearLabel={t("common_academic_year") as string}
           years={grades.academicYears}
           selectedStartYear={grades.selectedStartYear}
-          onYearChange={setAcademicYearStart}
+          onYearChange={(startYear) => {
+            setAcademicYearStart(startYear);
+            window.localStorage.setItem("uniza:academic-year:v1", String(startYear));
+          }}
           semester={semester}
           onSemesterChange={setSemester}
           winterLabel={t("grades_winter") as string}
@@ -185,7 +192,13 @@ export default function GradesPage() {
                     <div className="stat-label">{t("profile_completed")}</div>
                   </div>
                 </div>
-                {renderGradeRows(current)}
+                {completed.length > 0 ? renderGradeRows(completed) : null}
+                {pending.length > 0 ? (
+                  <section className="pending-grades">
+                    <div className="section-label">{t("grades_no_grade")} <span>{pending.length}</span></div>
+                    {renderGradeRows(pending)}
+                  </section>
+                ) : null}
               </>
             )}
 

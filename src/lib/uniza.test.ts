@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   getAcademicYear,
+  resolveExamTermsUrl,
   resolveMoodleUrl,
   resolveSubjectInfoUrl,
 } from "./uniza.ts";
@@ -15,8 +16,12 @@ import {
   parseAcademicYears,
   parseWebKreditCanteens,
   parseWebKreditMenu,
+  parseWebKreditOperation,
+  parseWebKreditOrders,
 } from "./uniza-parsers.ts";
 import { parseAivsSubjects } from "./aivs-subjects.ts";
+import { parseAivsExamTerms } from "./aivs-exams.ts";
+import { createIcsCalendar } from "./calendar.ts";
 
 test("AIVS subjects are deduplicated per semester and useful links are merged", () => {
   const parsed = parseAivsSubjects(`
@@ -88,6 +93,16 @@ test("Moodle links stay on approved UNIZA paths", () => {
   );
   assert.equal(resolveMoodleUrl("javascript:alert(1)"), null);
   assert.equal(resolveMoodleUrl("https://example.com/moodle/course/view.php?id=1"), null);
+});
+
+test("exam action URLs are restricted to the official AIVS terms endpoint", () => {
+  assert.equal(
+    resolveExamTermsUrl("terminy_s.php?pid=register-7"),
+    "https://vzdelavanie.uniza.sk/vzdelavanie/terminy_s.php?pid=register-7",
+  );
+  assert.equal(resolveExamTermsUrl("terminy_s.php"), null);
+  assert.equal(resolveExamTermsUrl("https://example.com/vzdelavanie/terminy_s.php?pid=register-7"), null);
+  assert.equal(resolveExamTermsUrl("javascript:alert(1)"), null);
 });
 
 test("academic year changes on 1 September in Bratislava", () => {
@@ -173,6 +188,7 @@ test("legacy WebKredit array shape and canteen catalogue stay supported", () => 
   }]);
   const catalogue = parseWebKreditCanteens({
     canteenId: 1,
+    canOrder: true,
     message: "Prevádzka je zatvorená",
     canteens: [
       { id: 1, name: "Nová Menza", code: "NM" },
@@ -185,6 +201,7 @@ test("legacy WebKredit array shape and canteen catalogue stay supported", () => 
   assert.equal(catalogue.canteens.length, 2);
   assert.equal(catalogue.selectedCanteenId, 1);
   assert.equal(catalogue.message, "Prevádzka je zatvorená");
+  assert.equal(catalogue.canOrder, true);
 });
 
 test("WebKredit repeated menu rows are shown only once", () => {
@@ -208,4 +225,65 @@ test("WebKredit repeated menu rows are shown only once", () => {
   });
 
   assert.equal(days[0].groups[0].items.length, 1);
+});
+
+test("WebKredit menu exposes order state and optional composite choices", () => {
+  const [day] = parseWebKreditMenu({ groups: [{
+    date: "2026-09-04T22:00:00.000Z",
+    mealKindName: "Obed",
+    rows: [{
+      item: { date: "2026-09-04T22:00:00.000Z", canteenId: 1, mealKindId: 2, altId: 3, mealName: "Mix", state: 0, orderInAdvance: true, countAvailable: 8 },
+      composites: { maxWeight: 350, items: [{ id: 11, altId: 1, name: "Ryža" }] },
+    }],
+  }] });
+  const item = day.groups[0].items[0];
+  assert.equal(item.canOrder, true);
+  assert.equal(item.orderInAdvance, true);
+  assert.equal(item.countAvailable, 8);
+  assert.equal(item.compositeMaxWeight, 350);
+  assert.deepEqual(item.composites, [{ id: 11, alternative: 1, name: "Ryža" }]);
+});
+
+test("WebKredit orders preserve only capabilities returned by the server", () => {
+  const orders = parseWebKreditOrders({ items: [{ order: {
+    id: 42, date: "2026-09-05T22:00:00.000Z", mealKindId: 2, mealKind: "Obed", alternative: 1,
+    name: "Menu", canteenId: 3, canteen: "FRI", count: 1, canCancel: true, canChangeAlt: false, canChangeCanteen: true,
+  }, alternatives: [{ id: 1, name: "Menu" }], canteens: [{ id: 3, name: "FRI", code: "FRI" }] }] });
+  assert.equal(orders[0].id, "42");
+  assert.equal(orders[0].canCancel, true);
+  assert.equal(orders[0].canChangeAlternative, false);
+  assert.equal(orders[0].canChangeCanteen, true);
+});
+
+test("WebKredit operation codes are normalized", () => {
+  assert.deepEqual(parseWebKreditOperation({ results: [{ validationResult: 0, orderResult: 0, isSuccessful: true }] }), { successful: true, code: "success" });
+  assert.deepEqual(parseWebKreditOperation({ results: [{ validationResult: 0, orderResult: 99993, isSuccessful: false }] }), { successful: false, code: "insufficient_funds" });
+  assert.deepEqual(parseWebKreditOperation({ results: [{ validationResult: 43, orderResult: 0, isSuccessful: false }] }), { successful: false, code: "ordering_closed" });
+});
+
+test("AIVS exam terms parse data and expose only direct allowed actions", () => {
+  const terms = parseAivsExamTerms(`<table>
+    <tr><td>15.01.2027 / 09:00</td><td>RC006</td><td>Doc. Test</td><td>24</td><td>9</td><td>riadny termín</td><td>Bring ISIC</td><td><a href="terminy_s.php?pid=register-7"><img title="Prihlásenie na termín"></a><a href="terminy_s.php?pid=detail-7"><img title="Informácie o termíne"></a></td></tr>
+    <tr><td>16.01.2027 / 09:00</td><td>RC006</td><td>Doc. Test</td><td>24</td><td>24</td><td>riadny termín</td><td></td><td><a href="javascript: alert('Kapacita termínu naplnená!');"><img title="Prihlásenie na termín"></a><a href="terminy_s.php?pid=detail-8"><img title="Informácie o termíne"></a></td></tr>
+  </table>`, "Logické systémy", "6BI0019", 2026, "terminy_s.php?pid=list");
+  assert.equal(terms.length, 2);
+  assert.equal(terms[0].id, "detail-7");
+  assert.equal(terms[0].canRegister, true);
+  assert.equal(terms[1].canRegister, false);
+  assert.equal(terms[0].capacity, 24);
+  assert.equal(terms[0].occupied, 9);
+});
+
+test("ICS export uses Bratislava local time, stable IDs, and escaped text", () => {
+  const calendar = createIcsCalendar([{ uid: "exam-42", title: "Math, exam", date: "2027-01-15", timeStart: "09:00", timeEnd: "10:00", location: "RC006", description: "Line 1\nLine 2" }]);
+  assert.match(calendar, /DTSTART;TZID=Europe\/Bratislava:20270115T090000/);
+  assert.match(calendar, /SUMMARY:Math\\, exam/);
+  assert.match(calendar, /DESCRIPTION:Line 1\\nLine 2/);
+  assert.match(calendar, /UID:[a-f0-9]+@uniza-student/);
+});
+
+test("ICS export gives events without an end time a one-hour duration", () => {
+  const calendar = createIcsCalendar([{ uid: "exam-midnight", title: "Late exam", date: "2027-01-15", timeStart: "23:30" }]);
+  assert.match(calendar, /DTSTART;TZID=Europe\/Bratislava:20270115T233000/);
+  assert.match(calendar, /DTEND;TZID=Europe\/Bratislava:20270116T003000/);
 });

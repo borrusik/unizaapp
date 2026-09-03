@@ -25,6 +25,50 @@ export type MenuItem = {
   price: string;
   allergens: string;
   note: string;
+  mealKindId: number;
+  state: number | null;
+  canOrder: boolean;
+  orderInAdvance: boolean;
+  countAvailable: number | null;
+  countOrdered: number | null;
+  imageId: string;
+  nutritionalValues: string;
+  pictograms: string[];
+  composites: Array<{
+    id: number;
+    alternative: number | null;
+    name: string;
+  }>;
+  compositeMaxWeight: number | null;
+};
+
+export type WebKreditOrder = {
+  id: string;
+  date: string;
+  mealKindId: number;
+  mealKind: string;
+  alternative: number | null;
+  name: string;
+  canteenId: number;
+  canteen: string;
+  count: number;
+  price: string;
+  inExchange: boolean;
+  canCancel: boolean;
+  canChangeAlternative: boolean;
+  canChangeCanteen: boolean;
+  alternatives: Array<{ id: number; name: string }>;
+  canteens: Canteen[];
+};
+
+export type WebKreditOperationStatus = "success" | "rejected" | "uncertain" | "disabled";
+
+export type IntegrationOperationResult<T = unknown> = {
+  status: WebKreditOperationStatus;
+  code: string;
+  message: string;
+  confirmedState?: T;
+  checkedAt: string;
 };
 
 export type MenuDay = {
@@ -192,6 +236,14 @@ function normalizeAllergens(value: unknown): string {
   return asString(value);
 }
 
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry) => {
+    const record = asRecord(entry);
+    return asString(record?.name ?? record?.text ?? entry);
+  }).filter(Boolean);
+}
+
 function formatPrice(item: UnknownRecord): string {
   const formatted = asString(item.priceWithCurrency);
   if (formatted && !/^0(?:[.,]0+)?\s*[^\d]*$/.test(formatted)) return formatted;
@@ -234,6 +286,17 @@ export function parseWebKreditMenu(payload: unknown): MenuDay[] {
         const itemDate = getBratislavaDateKey(asString(item.date)) || date;
         const menuDetailId = asString(item.menuDetailId);
         const id = menuDetailId || [canteenId, itemDate, asNumber(item.mealKindId) ?? "meal", alternative ?? mealName].join("-");
+        const compositeData = asRecord(row?.composites);
+        const compositeItems = (Array.isArray(compositeData?.items) ? compositeData.items : [])
+          .map(asRecord)
+          .filter((entry): entry is UnknownRecord => Boolean(entry))
+          .map((entry) => ({
+            id: asNumber(entry.id) ?? 0,
+            alternative: asNumber(entry.altId),
+            name: asString(entry.name),
+          }))
+          .filter((entry) => entry.id > 0 && entry.name);
+        const state = asNumber(item.state);
 
         groupItems.push({
           id,
@@ -246,6 +309,17 @@ export function parseWebKreditMenu(payload: unknown): MenuDay[] {
           price: formatPrice(item),
           allergens: normalizeAllergens(item.allergens),
           note: asString(item.note),
+          mealKindId: asNumber(item.mealKindId) ?? 0,
+          state,
+          canOrder: state === 0,
+          orderInAdvance: item.orderInAdvance === true,
+          countAvailable: asNumber(item.countAvailable),
+          countOrdered: asNumber(item.countOrdered),
+          imageId: asString(item.imageId),
+          nutritionalValues: asString(item.nutritionalValuesSimple) || asString(item.nutritionalValues),
+          pictograms: normalizeStringList(item.pictograms),
+          composites: compositeItems,
+          compositeMaxWeight: asNumber(compositeData?.maxWeight),
         });
       }
 
@@ -270,10 +344,116 @@ export function parseWebKreditMenu(payload: unknown): MenuDay[] {
     }));
 }
 
+export function parseWebKreditOrders(payload: unknown): WebKreditOrder[] {
+  const data = asRecord(payload);
+  const rows = Array.isArray(data?.items) ? data.items : [];
+  const orders = new Map<string, WebKreditOrder>();
+
+  for (const rowValue of rows) {
+    const row = asRecord(rowValue);
+    const order = asRecord(row?.order ?? rowValue);
+    if (!order) continue;
+    const id = asString(order.id) || String(asNumber(order.id) ?? "");
+    const date = getBratislavaDateKey(asString(order.date));
+    if (!id || !date) continue;
+
+    const alternatives = (Array.isArray(row?.alternatives) ? row.alternatives : [])
+      .map(asRecord)
+      .filter((entry): entry is UnknownRecord => Boolean(entry))
+      .map((entry) => ({
+        id: asNumber(entry.id ?? entry.altId) ?? 0,
+        name: asString(entry.name ?? entry.mealName),
+      }))
+      .filter((entry) => entry.id > 0 && entry.name);
+    const canteens = (Array.isArray(row?.canteens) ? row.canteens : [])
+      .map(asRecord)
+      .filter((entry): entry is UnknownRecord => Boolean(entry))
+      .map((entry) => ({
+        id: asNumber(entry.id) ?? 0,
+        name: asString(entry.name),
+        code: asString(entry.code),
+      }))
+      .filter((entry) => entry.id > 0 && entry.name);
+
+    orders.set(id, {
+      id,
+      date,
+      mealKindId: asNumber(order.mealKindId) ?? 0,
+      mealKind: asString(order.mealKind) || asString(order.mealKindShortcut),
+      alternative: asNumber(order.alternative),
+      name: asString(order.name),
+      canteenId: asNumber(order.canteenId) ?? 0,
+      canteen: asString(order.canteen),
+      count: asNumber(order.count) ?? 1,
+      price: formatPrice(order),
+      inExchange: order.inExchange === true || order.orderInExchange === true,
+      canCancel: order.canCancel === true,
+      canChangeAlternative: order.canChangeAlt === true,
+      canChangeCanteen: order.canChangeCanteen === true,
+      alternatives,
+      canteens,
+    });
+  }
+
+  return [...orders.values()].sort((left, right) => left.date.localeCompare(right.date));
+}
+
+const VALIDATION_MESSAGES: Record<number, string> = {
+  0: "success",
+  1: "canteen_access_forbidden",
+  13: "day_access_forbidden",
+  14: "meal_access_forbidden",
+  15: "canteen_closed",
+  16: "menu_not_approved",
+  17: "meal_unavailable",
+  18: "meal_unavailable_in_canteen",
+  21: "account_not_yet_valid",
+  22: "account_expired",
+  41: "meal_unavailable",
+  42: "menu_not_approved",
+  43: "ordering_closed",
+};
+
+const ORDER_MESSAGES: Record<number, string> = {
+  0: "success",
+  99979: "monthly_limit_reached",
+  99980: "served_limit_reached",
+  99981: "not_allowed",
+  99991: "exchange_item_unavailable",
+  99993: "insufficient_funds",
+  99994: "cooking_limit_reached",
+  99995: "daily_limit_reached",
+  99996: "voucher_limit_reached",
+};
+
+export function parseWebKreditOperation(payload: unknown): {
+  successful: boolean;
+  code: string;
+} {
+  const data = asRecord(payload);
+  const rows = Array.isArray(data?.results) ? data.results : [];
+  if (rows.length === 0) return { successful: false, code: "invalid_response" };
+
+  const parsed = rows.map(asRecord).filter((entry): entry is UnknownRecord => Boolean(entry));
+  const failure = parsed.find((entry) => entry.isSuccessful !== true || asNumber(entry.validationResult) !== 0 || asNumber(entry.orderResult) !== 0);
+  if (!failure) return { successful: true, code: "success" };
+
+  const validationCode = asNumber(failure.validationResult);
+  const orderCode = asNumber(failure.orderResult);
+  if (validationCode !== null && validationCode !== 0) {
+    return { successful: false, code: VALIDATION_MESSAGES[validationCode] || `validation_${validationCode}` };
+  }
+  if (orderCode !== null && orderCode !== 0) {
+    return { successful: false, code: ORDER_MESSAGES[orderCode] || `order_${orderCode}` };
+  }
+  return { successful: false, code: "rejected" };
+}
+
 export function parseWebKreditCanteens(payload: unknown): {
   canteens: Canteen[];
   selectedCanteenId: number;
   message: string;
+  canOrder: boolean;
 } {
   const data = asRecord(payload);
   const canteens = (Array.isArray(data?.canteens) ? data.canteens : [])
@@ -293,5 +473,6 @@ export function parseWebKreditCanteens(payload: unknown): {
       ? requestedDefault
       : canteens[0]?.id ?? 1,
     message: asString(data?.message),
+    canOrder: data?.canOrder === true,
   };
 }

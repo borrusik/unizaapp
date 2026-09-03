@@ -1,6 +1,7 @@
 "use client";
 
 import type { AcademicYearOption } from "@/lib/uniza-parsers";
+import { AppIcon } from "@/components/AppIcon";
 
 type Semester = "winter" | "summer";
 
@@ -16,6 +17,7 @@ type AcademicPeriodControlsProps = {
   winterCount: number;
   summerCount: number;
   disabled?: boolean;
+  hideSemester?: boolean;
 };
 
 export function AcademicPeriodControls({
@@ -30,6 +32,7 @@ export function AcademicPeriodControls({
   winterCount,
   summerCount,
   disabled = false,
+  hideSemester = false,
 }: AcademicPeriodControlsProps) {
   const winterShortLabel = winterLabel.split(/\s+/)[0];
   const summerShortLabel = summerLabel.split(/\s+/)[0];
@@ -41,23 +44,19 @@ export function AcademicPeriodControls({
         <span className="label">{academicYearLabel}</span>
       </div>
 
-      <div className="academic-year-scroll" role="group" aria-label={academicYearLabel}>
-        {years.map((year) => {
-          const active = year.startYear === selectedStartYear;
-          return (
-            <button
-              key={year.startYear}
-              type="button"
-              className={`academic-year-chip ${active ? "active" : ""}`}
-              aria-pressed={active}
-              disabled={disabled}
-              onClick={() => onYearChange(year.startYear)}
-            >
-              <span>{year.startYear}/{year.startYear + 1}</span>
-            </button>
-          );
-        })}
-      </div>
+      <label className="academic-year-select">
+        <select
+          aria-label={academicYearLabel}
+          value={selectedStartYear || ""}
+          disabled={disabled}
+          onChange={(event) => onYearChange(Number(event.target.value))}
+        >
+          {years.map((year) => (
+            <option key={year.startYear} value={year.startYear}>{year.label}</option>
+          ))}
+        </select>
+        <span aria-hidden="true"><AppIcon name="chevron-down" size={18} /></span>
+      </label>
 
       {semesterLabel && (
         <div className="academic-period-heading semester-heading">
@@ -65,7 +64,7 @@ export function AcademicPeriodControls({
         </div>
       )}
 
-      <div className={`semester-slider ${semester === "summer" ? "summer-active" : ""}`}>
+      {!hideSemester ? <div className={`semester-slider ${semester === "summer" ? "summer-active" : ""}`}>
         <span className="semester-slider-indicator" aria-hidden="true" />
         <button
           type="button"
@@ -85,7 +84,7 @@ export function AcademicPeriodControls({
           <span className="semester-slider-label">{summerShortLabel}</span>
           <span className="semester-slider-count">{summerCount}</span>
         </button>
-      </div>
+      </div> : null}
     </section>
   );
 }

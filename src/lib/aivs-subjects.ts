@@ -6,6 +6,7 @@ export type ParsedAivsSubject = {
   name: string;
   infoHref: string;
   moodleHref: string;
+  termsHref: string;
 };
 
 function normalizeSubjectName(value: string): string {
@@ -45,6 +46,7 @@ export function parseAivsSubjects(html: string): {
 
     const infoHref = firstCell.find("a[href*='planinfo']").first().attr("href") || "";
     const moodleHref = $(row).find('a[target="tmoodle"]').first().attr("href") || "";
+    const termsHref = $(row).find("a[href*='terminy_s.php']").first().attr("href") || "";
     const key = `${semester}:${code.toLocaleUpperCase("sk")}`;
     const existing = subjects.get(key);
 
@@ -53,10 +55,11 @@ export function parseAivsSubjects(html: string): {
       // instead of rendering duplicate rows or discarding richer metadata.
       existing.infoHref ||= infoHref;
       existing.moodleHref ||= moodleHref;
+      existing.termsHref ||= termsHref;
       return;
     }
 
-    subjects.set(key, { semester, code, name, infoHref, moodleHref });
+    subjects.set(key, { semester, code, name, infoHref, moodleHref, termsHref });
   });
 
   const parsed = [...subjects.values()];

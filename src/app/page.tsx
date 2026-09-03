@@ -80,10 +80,12 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="login-persistence-note">
-            <AppIcon name="lock" size={17} />
-            <span>{t("login_password_saved")}</span>
-          </div>
+          <label className="login-remember">
+            <input type="hidden" name="remember" value="off" />
+            <input type="checkbox" name="remember" value="on" defaultChecked />
+            <span className="login-remember-box"><AppIcon name="check" size={15} /></span>
+            <span><strong>{t("login_password_saved")}</strong><small>{t("login_safe_msg")}</small></span>
+          </label>
 
           {error && <div role="alert" className="login-error">{error}</div>}
 
@@ -98,11 +100,6 @@ export default function LoginPage() {
         </form>
 
         <div className="login-meta animate-fade-in">
-          <div className="login-security">
-            <AppIcon name="shield" size={20} />
-            <span>{t("login_safe_msg")}</span>
-          </div>
-
           <a
             href="https://www.instagram.com/borrusik/"
             target="_blank"

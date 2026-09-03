@@ -4,6 +4,7 @@ import Link from "next/link";
 import useSWR from "swr";
 import {
   getGrades,
+  getExamTerms,
   getSchedule,
   getSubjects,
   getUserInfo,
@@ -11,6 +12,7 @@ import {
 import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AppIcon, type AppIconName } from "@/components/AppIcon";
+import { getBratislavaDateKey } from "@/lib/uniza-parsers";
 
 const SCHEDULE_DAYS = ["", "Pondelok", "Utorok", "Streda", "Štvrtok", "Piatok", "Sobota"];
 const BRATISLAVA_TIME = new Intl.DateTimeFormat("en-GB", {
@@ -36,14 +38,15 @@ function currentBratislavaMinutes(now: Date) {
 
 async function fetchHomeData() {
   const { getStravaInfo } = await import("@/lib/strava");
-  const [user, schedule, subjects, grades, food] = await Promise.all([
+  const [user, schedule, subjects, grades, exams, food] = await Promise.all([
     getUserInfo().catch(() => null),
     getSchedule().catch(() => []),
     getSubjects().catch(() => null),
     getGrades().catch(() => null),
+    getExamTerms().catch(() => null),
     getStravaInfo().catch(() => null),
   ]);
-  return { user, schedule, subjects, grades, food };
+  return { user, schedule, subjects, grades, exams, food };
 }
 
 export default function HomePage() {
@@ -73,6 +76,8 @@ export default function HomePage() {
     (grade) => grade.grade && grade.grade !== "—" && grade.grade !== "FX",
   ).length;
   const balance = data?.food ? `${data.food.balance.toFixed(2).replace(".", ",")} €` : "—";
+  const todayKey = getBratislavaDateKey(now);
+  const nextExam = data?.exams?.terms.find((term) => term.date >= todayKey) || null;
 
   const rows: Array<{
     href: string;
@@ -97,6 +102,18 @@ export default function HomePage() {
       icon: "award",
       title: t("nav_grades") as string,
       detail: isLoading ? "—" : `${passedGrades}/${currentGrades.length} ${t("home_grades_passed")}`,
+    },
+    {
+      href: "/dashboard/exams",
+      icon: "calendar",
+      title: t("home_exams") as string,
+      detail: nextExam ? `${nextExam.date.split("-").reverse().join(".")} · ${nextExam.subject}` : t("exams_empty") as string,
+    },
+    {
+      href: "/dashboard/services",
+      icon: "building",
+      title: t("home_services") as string,
+      detail: "AIVS, Moodle, mapa, email",
     },
   ];
 

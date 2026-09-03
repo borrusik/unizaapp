@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { getSubjects } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
 import { AppIcon } from "@/components/AppIcon";
+import { SubjectHeaderArt } from "@/components/SubjectHeaderArt";
 
 export default function SubjectsPage() {
   const [semester, setSemester] = useState<"winter" | "summer">("winter");
   const [academicYearStart, setAcademicYearStart] = useState<number>();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
+    if (Number.isInteger(stored) && stored > 2000) setAcademicYearStart(stored);
+  }, []);
 
   const { data, isLoading, mutate } = useSWR(
     ["uniza_subjects", academicYearStart ?? "current"],
@@ -55,11 +61,15 @@ export default function SubjectsPage() {
       </div>
 
       <div className="container">
+        <SubjectHeaderArt />
         <AcademicPeriodControls
           academicYearLabel={t("common_academic_year") as string}
           years={subjects.academicYears}
           selectedStartYear={subjects.selectedStartYear}
-          onYearChange={setAcademicYearStart}
+          onYearChange={(startYear) => {
+            setAcademicYearStart(startYear);
+            window.localStorage.setItem("uniza:academic-year:v1", String(startYear));
+          }}
           semester={semester}
           onSemesterChange={setSemester}
           winterLabel={t("subjects_winter") as string}

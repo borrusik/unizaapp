@@ -55,7 +55,8 @@ export default function DashboardLayout({
       <nav className="bottom-nav">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href
-            || (tab.href === "/dashboard" && pathname === "/dashboard/subjects");
+            || (tab.href === "/dashboard" && (pathname === "/dashboard/subjects" || pathname === "/dashboard/services"))
+            || (tab.href === "/dashboard/grades" && pathname === "/dashboard/exams");
           return (
             <Link
               key={tab.href}

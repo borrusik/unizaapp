@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { getUserInfo, getGrades, getIntegrationStatus } from "@/lib/scraper";
 import { LogoutButton } from "./LogoutButton";
 import { ClientText } from "@/components/ClientText";
@@ -7,9 +8,9 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { useState } from "react";
 import useSWR from "swr";
-import { UNIZA_URLS } from "@/lib/uniza";
 import { useTranslation } from "@/hooks/useTranslation";
-import { AppIcon, type AppIconName } from "@/components/AppIcon";
+import { AppIcon } from "@/components/AppIcon";
+import { BrowserNotifications } from "./BrowserNotifications";
 
 export default function ProfilePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -66,24 +67,6 @@ export default function ProfilePage() {
   const avgGrade = scored.length > 0 && scoredCredits > 0
     ? (scored.reduce((sum, g) => sum + gradeValues[g.grade] * g.credits, 0) / scoredCredits).toFixed(2)
     : "—";
-
-  const officialSystems = [
-    {
-      name: "AIVS / Vzdelávanie",
-      href: UNIZA_URLS.education,
-      status: integration.education,
-      icon: "book" as AppIconName,
-    },
-    {
-      name: "WebKredit",
-      href: UNIZA_URLS.catering,
-      status: integration.catering,
-      icon: "restaurant" as AppIconName,
-    },
-    { name: t("system_academic_calendar"), href: UNIZA_URLS.academicCalendar, icon: "calendar" as AppIconName },
-    { name: t("system_campus_map"), href: UNIZA_URLS.campus, icon: "map-pin" as AppIconName },
-    { name: t("system_helpdesk"), href: UNIZA_URLS.helpdesk, icon: "info" as AppIconName },
-  ];
 
   return (
     <div>
@@ -152,32 +135,10 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div style={{ marginBottom: "8px", padding: "0 4px" }}>
-          <span className="label">{t("profile_systems")}</span>
-        </div>
         <div className="profile-open-group" style={{ marginBottom: "12px" }}>
-          {officialSystems.map((system) => (
-            <a
-              key={system.href}
-              href={system.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="profile-open-row"
-              style={{ textDecoration: "none" }}
-            >
-              <span className="profile-system-name">
-                <AppIcon name={system.icon} size={19} />
-                {system.name}
-              </span>
-              {typeof system.status === "boolean" ? (
-                <span className={`badge ${system.status ? "badge-credits" : "badge-neutral"}`}>
-                  {system.status ? t("integration_connected") : t("integration_reconnect")}
-                </span>
-              ) : (
-                <AppIcon name="external-link" size={17} />
-              )}
-            </a>
-          ))}
+          <div className="profile-open-row"><span className="profile-system-name"><AppIcon name="book" size={19} />AIVS</span><span className={`badge ${integration.education ? "badge-credits" : "badge-neutral"}`}>{integration.education ? t("integration_connected") : t("integration_reconnect")}</span></div>
+          <div className="profile-open-row"><span className="profile-system-name"><AppIcon name="restaurant" size={19} />WebKredit</span><span className={`badge ${integration.catering ? "badge-credits" : "badge-neutral"}`}>{integration.catering ? t("integration_connected") : t("integration_reconnect")}</span></div>
+          <Link href="/dashboard/services" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="building" size={19} />{t("services_title")}</span><AppIcon name="chevron-right" size={17} /></Link>
         </div>
         <p className="text-xs" style={{ margin: "0 4px 24px" }}>
           {integration.passwordStored
@@ -203,35 +164,10 @@ export default function ProfilePage() {
 
         <LanguageSwitcher />
         <ThemeSwitcher />
+        <BrowserNotifications />
 
         <LogoutButton />
 
-        <div style={{ textAlign: "center", marginTop: "28px", color: "var(--text-tertiary)", fontSize: "12px" }}>
-          <p>UNIZA Student App v1.0</p>
-          <a
-            href="https://github.com/borrusik/unizaapp"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover-scale"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              marginTop: "16px",
-              color: "var(--text-secondary)",
-              textDecoration: "none",
-              fontWeight: 500,
-              padding: "6px 16px",
-              borderRadius: "20px",
-              borderBottom: "1px solid var(--border)",
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"></path>
-            </svg>
-            Source Code on GitHub
-          </a>
-        </div>
       </div>
     </div>
   );
