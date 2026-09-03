@@ -6,6 +6,7 @@ export type Lang = "sk" | "en" | "uk" | "ru";
 
 export const dictionary = {
   sk: {
+    nav_home: "Domov",
     nav_subjects: "Predmety",
     nav_schedule: "Rozvrh",
     nav_grades: "Známky",
@@ -14,6 +15,18 @@ export const dictionary = {
     common_refresh: "Obnoviť údaje",
     common_back: "Späť",
     common_academic_year: "Akademický rok",
+
+    // Home
+    home_title: "Domov",
+    home_greeting: "Dobrý deň",
+    home_today: "Dnes",
+    home_next_class: "Nasledujúca hodina",
+    home_no_more_classes: "Dnes už nemáš ďalšiu hodinu",
+    home_schedule_today: "Dnešný rozvrh",
+    home_classes: "hodín",
+    home_subjects_year: "v tomto akademickom roku",
+    home_grades_passed: "splnených",
+    home_open_menu: "Otvoriť menu",
 
     // Subjects
     subjects_title: "Moje predmety",
@@ -143,6 +156,7 @@ export const dictionary = {
     subject_guarantor: "Garant predmetu",
   },
   en: {
+    nav_home: "Home",
     nav_subjects: "Subjects",
     nav_schedule: "Schedule",
     nav_grades: "Grades",
@@ -151,6 +165,17 @@ export const dictionary = {
     common_refresh: "Refresh data",
     common_back: "Back",
     common_academic_year: "Academic year",
+
+    home_title: "Home",
+    home_greeting: "Good day",
+    home_today: "Today",
+    home_next_class: "Next class",
+    home_no_more_classes: "You have no more classes today",
+    home_schedule_today: "Today's schedule",
+    home_classes: "classes",
+    home_subjects_year: "this academic year",
+    home_grades_passed: "completed",
+    home_open_menu: "Open menu",
 
     subjects_title: "My Subjects",
     subjects_winter: "Winter Semester",
@@ -273,6 +298,7 @@ export const dictionary = {
     subject_guarantor: "Guarantor",
   },
   uk: {
+    nav_home: "Головна",
     nav_subjects: "Дисципліни",
     nav_schedule: "Розклад",
     nav_grades: "Оцінки",
@@ -281,6 +307,17 @@ export const dictionary = {
     common_refresh: "Оновити дані",
     common_back: "Назад",
     common_academic_year: "Академічний рік",
+
+    home_title: "Головна",
+    home_greeting: "Добрий день",
+    home_today: "Сьогодні",
+    home_next_class: "Наступна пара",
+    home_no_more_classes: "Сьогодні більше немає пар",
+    home_schedule_today: "Розклад на сьогодні",
+    home_classes: "занять",
+    home_subjects_year: "у цьому навчальному році",
+    home_grades_passed: "пройдено",
+    home_open_menu: "Відкрити меню",
 
     subjects_title: "Мої предмети",
     subjects_winter: "Зимовий семестр",
@@ -403,6 +440,7 @@ export const dictionary = {
     subject_guarantor: "Гарант предмету",
   },
   ru: {
+    nav_home: "Главная",
     nav_subjects: "Предметы",
     nav_schedule: "Расписание",
     nav_grades: "Оценки",
@@ -411,6 +449,17 @@ export const dictionary = {
     common_refresh: "Обновить данные",
     common_back: "Назад",
     common_academic_year: "Академический год",
+
+    home_title: "Главная",
+    home_greeting: "Добрый день",
+    home_today: "Сегодня",
+    home_next_class: "Следующая пара",
+    home_no_more_classes: "Сегодня больше нет пар",
+    home_schedule_today: "Расписание на сегодня",
+    home_classes: "занятий",
+    home_subjects_year: "в этом учебном году",
+    home_grades_passed: "пройдено",
+    home_open_menu: "Открыть меню",
 
     subjects_title: "Мои предметы",
     subjects_winter: "Зимний семестр",

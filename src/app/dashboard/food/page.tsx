@@ -27,20 +27,27 @@ export default function StravaPage() {
   const [canteenId, setCanteenId] = useState(1);
   const [selectedDate, setSelectedDate] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const fetcher = async (force = false) => {
-    const { getStravaInfo, getStravaMenu, getStravaHistory } = await import("@/lib/strava");
-    const [info, menu, history] = await Promise.all([
+    const { getStravaInfo, getStravaMenu } = await import("@/lib/strava");
+    const [info, menu] = await Promise.all([
       getStravaInfo(force),
       getStravaMenu(canteenId, undefined, force),
-      getStravaHistory(force),
     ]);
-    return { info, menu, history: history || [] };
+    return { info, menu };
   };
 
   const { data, isLoading, mutate } = useSWR(
     ["uniza_strava_all", canteenId],
     () => fetcher(false),
+  );
+  const { data: historyData, isLoading: historyLoading, mutate: mutateHistory } = useSWR(
+    historyOpen ? "uniza_strava_history" : null,
+    async () => {
+      const { getStravaHistory } = await import("@/lib/strava");
+      return getStravaHistory(false);
+    },
   );
 
   const handleRefresh = async () => {
@@ -48,6 +55,10 @@ export default function StravaPage() {
     setIsRefreshing(true);
     try {
       await mutate(() => fetcher(true), { revalidate: false });
+      if (historyOpen) {
+        const { getStravaHistory } = await import("@/lib/strava");
+        await mutateHistory(() => getStravaHistory(true), { revalidate: false });
+      }
     } finally {
       setIsRefreshing(false);
     }
@@ -55,7 +66,7 @@ export default function StravaPage() {
 
   const info = data?.info || null;
   const menu = data?.menu;
-  const history = data?.history || [];
+  const history = historyData || [];
   const availableDates = menu?.requestedDates || [];
   const activeDate = selectedDate && availableDates.includes(selectedDate)
     ? selectedDate
@@ -112,15 +123,6 @@ export default function StravaPage() {
               </div>
             </div>
 
-            {menu?.message && (
-              <div className="card" style={{ marginBottom: "16px", padding: "14px 16px", borderColor: "var(--warning)", background: "color-mix(in srgb, var(--warning) 10%, var(--surface))" }}>
-                <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                  <AppIcon name="info" size={19} />
-                  <span className="text-sm" style={{ color: "var(--text-primary)", lineHeight: 1.45 }}>{menu.message}</span>
-                </div>
-              </div>
-            )}
-
             <div className="food-section-heading">
               <h2>{t("food_menu")}</h2>
               <span className="food-source">{t("food_public_source")}</span>
@@ -166,9 +168,19 @@ export default function StravaPage() {
               </div>
             )}
 
-            {history.length > 0 && (
-              <div style={{ marginTop: "32px", marginBottom: "20px" }}>
-                <div className="food-section-heading"><h2>{t("food_history")}</h2></div>
+            <details
+              className="food-history-details"
+              onToggle={(event) => setHistoryOpen(event.currentTarget.open)}
+            >
+              <summary>
+                <span>{t("food_history")}</span>
+                <AppIcon name="chevron-down" size={19} />
+              </summary>
+              {historyLoading ? (
+                <div className="food-history-loading skeleton" />
+              ) : history.length === 0 ? (
+                <p className="text-sm food-history-empty">{t("food_no_history")}</p>
+              ) : (
                 <div className="food-history-list stagger">
                   {history.slice(0, 10).map((item, index) => (
                     <div key={`${item.date}-${index}`} className="food-history-row animate-fade-in" style={{ opacity: 0 }}>
@@ -183,8 +195,8 @@ export default function StravaPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </details>
           </div>
         )}
       </div>

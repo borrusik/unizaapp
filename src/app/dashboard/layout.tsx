@@ -23,8 +23,8 @@ export default function DashboardLayout({
   const tabs: Array<{ href: string; labelKey: keyof typeof dictionary.sk; icon: AppIconName }> = [
     {
       href: "/dashboard",
-      labelKey: "nav_subjects",
-      icon: "book",
+      labelKey: "nav_home",
+      icon: "home",
     },
     {
       href: "/dashboard/schedule",
@@ -54,7 +54,8 @@ export default function DashboardLayout({
 
       <nav className="bottom-nav">
         {tabs.map((tab) => {
-          const isActive = pathname === tab.href;
+          const isActive = pathname === tab.href
+            || (tab.href === "/dashboard" && pathname === "/dashboard/subjects");
           return (
             <Link
               key={tab.href}
