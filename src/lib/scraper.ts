@@ -122,6 +122,7 @@ async function getPhpSession(email: string, password: string): Promise<string | 
 }
 
 const PAGE_CACHE = new Map<string, { html: string; timestamp: number }>();
+const PAGE_REQUESTS = new Map<string, Promise<string>>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const sessionRefreshRequests = new Map<string, Promise<string | null>>();
 
@@ -159,38 +160,52 @@ async function fetchPage(sessionId: string, page: string, force = false): Promis
     }
   }
 
-  let html = await fetchDecoded(`${BASE_URL}/${page}`, {
-    headers: { Cookie: `PHPSESSID=${sessionId}` },
-  });
+  const requestKey = `${cacheKey}_${force ? "refresh" : "normal"}`;
+  const pending = PAGE_REQUESTS.get(requestKey);
+  if (pending) return pending;
 
-  // Restore an expired upstream session from the encrypted credential cookie when configured.
-  if (html.includes('name="heslo"') || html.includes('<title>Prihlásenie</title>')) {
-    const cookieStore = await cookies();
-    const newSessionId = await restoreExpiredSession(sessionId);
-    if (newSessionId) {
-      cookieStore.set("uniza_phpsessid", newSessionId, {
-        httpOnly: true,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-      });
-      html = await fetchDecoded(`${BASE_URL}/${page}`, {
-        headers: { Cookie: `PHPSESSID=${newSessionId}` },
-      });
-      PAGE_CACHE.set(`${newSessionId}_${page}`, { html, timestamp: Date.now() });
-      return html;
+  const request = (async () => {
+    let html = await fetchDecoded(`${BASE_URL}/${page}`, {
+      headers: { Cookie: `PHPSESSID=${sessionId}` },
+    });
+
+    // Restore an expired upstream session from the encrypted credential cookie when configured.
+    if (html.includes('name="heslo"') || html.includes('<title>Prihlásenie</title>')) {
+      const cookieStore = await cookies();
+      const newSessionId = await restoreExpiredSession(sessionId);
+      if (newSessionId) {
+        cookieStore.set("uniza_phpsessid", newSessionId, {
+          httpOnly: true,
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+        });
+        html = await fetchDecoded(`${BASE_URL}/${page}`, {
+          headers: { Cookie: `PHPSESSID=${newSessionId}` },
+        });
+        PAGE_CACHE.set(`${newSessionId}_${page}`, { html, timestamp: Date.now() });
+        return html;
+      }
+
+      cookieStore.delete("uniza_phpsessid");
+      await clearStravaSession();
+      return "";
+    } else {
+      // Prevent memory leaks
+      if (PAGE_CACHE.size > 500) PAGE_CACHE.clear();
+      PAGE_CACHE.set(cacheKey, { html, timestamp: Date.now() });
     }
 
-    cookieStore.delete("uniza_phpsessid");
-    await clearStravaSession();
-    return "";
-  } else {
-    // Prevent memory leaks
-    if (PAGE_CACHE.size > 500) PAGE_CACHE.clear();
-    PAGE_CACHE.set(cacheKey, { html, timestamp: Date.now() });
-  }
+    return html;
+  })();
 
-  return html;
+  if (PAGE_REQUESTS.size > 500) PAGE_REQUESTS.clear();
+  PAGE_REQUESTS.set(requestKey, request);
+  try {
+    return await request;
+  } finally {
+    if (PAGE_REQUESTS.get(requestKey) === request) PAGE_REQUESTS.delete(requestKey);
+  }
 }
 
 const ACADEMIC_YEAR_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -260,18 +275,26 @@ async function getStudyAcademicYears(
   }
 
   const request = (async () => {
-    const pages = await Promise.all(
-      selection.options.map(async (year) => ({
-        year,
-        html: await fetchPage(sessionId, `predmety_s.php?ra=${year.startYear}`, force),
-      })),
-    );
-    const available = pages
-      .filter(({ html }) => {
+    const available: AcademicYearOption[] = [];
+    let foundStudyYear = false;
+    const ordered = selection.options.toSorted((left, right) => right.startYear - left.startYear);
+
+    // Most students only need the current and one or two previous years.
+    // Probe in small parallel batches and stop after the first empty year below
+    // their study range instead of requesting the entire AIVS archive.
+    for (let index = 0; index < ordered.length; index += 3) {
+      const batch = ordered.slice(index, index + 3);
+      const results = await Promise.all(batch.map(async (year) => {
+        const html = await fetchPage(sessionId, `predmety_s.php?ra=${year.startYear}`, force);
         const parsed = parseAivsSubjects(html);
-        return parsed.winter.length + parsed.summer.length > 0;
-      })
-      .map(({ year }) => year);
+        return { year, hasSubjects: parsed.winter.length + parsed.summer.length > 0 };
+      }));
+
+      const yearsWithSubjects = results.filter((result) => result.hasSubjects);
+      if (yearsWithSubjects.length > 0) foundStudyYear = true;
+      available.push(...yearsWithSubjects.map((result) => result.year));
+      if (foundStudyYear && results.at(-1)?.hasSubjects === false) break;
+    }
 
     const fallback = selection.options.find(
       (year) => year.startYear === selection.selectedStartYear,
@@ -736,24 +759,28 @@ async function getExamTermsInternal(
   }
   const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
   try {
-    const subjectsHtml = await fetchPage(sessionId, `predmety_s.php?ra=${year.selectedStartYear}`, force);
-    const parsed = parseAivsSubjects(subjectsHtml);
-    const subjects = [...parsed.winter, ...parsed.summer].filter((subject) => subject.termsHref);
-    const pages = await Promise.all(subjects.map(async (subject) => {
-      const url = resolveExamTermsUrl(subject.termsHref);
-      if (!url) return [];
-      const parsedUrl = new URL(url);
-      const page = `${parsedUrl.pathname.replace("/vzdelavanie/", "")}${parsedUrl.search}`;
-      const html = await fetchPage(sessionId, page, force);
-      return parseAivsExamTerms(html, subject.name, subject.code, year.selectedStartYear, subject.termsHref);
-    }));
-    const unique = new Map<string, InternalExamTerm>();
-    for (const term of pages.flat()) unique.set(term.id, term);
-    return { terms: [...unique.values()].sort((left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`)), ...year };
+    return { terms: await loadExamTermsForYear(sessionId, year.selectedStartYear, force), ...year };
   } catch (error) {
     console.error("Failed to load AIVS exam terms:", error instanceof Error ? error.message : "unknown");
     return { terms: [], ...year };
   }
+}
+
+async function loadExamTermsForYear(sessionId: string, academicYearStart: number, force = false) {
+  const subjectsHtml = await fetchPage(sessionId, `predmety_s.php?ra=${academicYearStart}`, force);
+  const parsed = parseAivsSubjects(subjectsHtml);
+  const subjects = [...parsed.winter, ...parsed.summer].filter((subject) => subject.termsHref);
+  const pages = await Promise.all(subjects.map(async (subject) => {
+    const url = resolveExamTermsUrl(subject.termsHref);
+    if (!url) return [];
+    const parsedUrl = new URL(url);
+    const page = `${parsedUrl.pathname.replace("/vzdelavanie/", "")}${parsedUrl.search}`;
+    const html = await fetchPage(sessionId, page, force);
+    return parseAivsExamTerms(html, subject.name, subject.code, academicYearStart, subject.termsHref);
+  }));
+  const unique = new Map<string, InternalExamTerm>();
+  for (const term of pages.flat()) unique.set(term.id, term);
+  return [...unique.values()].sort((left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`));
 }
 
 export async function getExamTerms(
@@ -765,6 +792,20 @@ export async function getExamTerms(
     ...result,
     terms: result.terms.map(toPublicExamTerm),
   };
+}
+
+export async function getExamTermsForYear(academicYearStart: number): Promise<ExamTerm[]> {
+  if (!Number.isInteger(academicYearStart) || academicYearStart < 2000 || academicYearStart > 2200) return [];
+  const sessionId = await getSession();
+  if (!sessionId) return [];
+  const selection = await getAcademicYearOptions();
+  if (!selection.options.some((year) => year.startYear === academicYearStart)) return [];
+  try {
+    return (await loadExamTermsForYear(sessionId, academicYearStart)).map(toPublicExamTerm);
+  } catch (error) {
+    console.error("Failed to load AIVS exam terms:", error instanceof Error ? error.message : "unknown");
+    return [];
+  }
 }
 
 function toPublicExamTerm(term: InternalExamTerm): ExamTerm {

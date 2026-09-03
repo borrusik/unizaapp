@@ -23,6 +23,7 @@ function stateLabel(item: MenuItem, t: ReturnType<typeof useTranslation>["t"]) {
 export default function StravaPage() {
   const { t, lang } = useTranslation();
   const [canteenId, setCanteenId] = useState(1);
+  const [preferencesReady, setPreferencesReady] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -38,6 +39,7 @@ export default function StravaPage() {
   useEffect(() => {
     const stored = Number(window.localStorage.getItem(CANTEEN_STORAGE_KEY));
     if (Number.isInteger(stored) && stored > 0 && stored < 1_000) setCanteenId(stored);
+    setPreferencesReady(true);
   }, []);
 
   const fetcher = async (force = false) => {
@@ -46,7 +48,7 @@ export default function StravaPage() {
     return { info, menu, orders };
   };
 
-  const { data, isLoading, mutate } = useSWR(["uniza_strava_all", canteenId], () => fetcher(false));
+  const { data, isLoading, mutate } = useSWR(preferencesReady ? ["uniza_strava_all", canteenId] : null, () => fetcher(false), { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false });
   const { data: historyData, isLoading: historyLoading, mutate: mutateHistory } = useSWR(
     historyOpen ? "uniza_strava_history" : null,
     async () => (await import("@/lib/strava")).getStravaHistory(false),
@@ -137,7 +139,7 @@ export default function StravaPage() {
       </div>
 
       <div className="container">
-        {isLoading && !data ? (
+        {!preferencesReady || isLoading && !data ? (
           <div className="food-loading"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div>
         ) : (
           <div className="animate-slide-up">

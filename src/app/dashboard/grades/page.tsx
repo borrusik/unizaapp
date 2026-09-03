@@ -20,8 +20,9 @@ export default function GradesPage() {
   const fetcher = async () => getGrades(academicYearStart);
 
   const { data, isLoading, mutate } = useSWR(
-    ["uniza_grades", academicYearStart ?? "current"],
+    mounted ? ["uniza_grades", academicYearStart ?? "current"] : null,
     fetcher,
+    { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false },
   );
 
   const handleRefresh = async () => {
@@ -37,10 +38,9 @@ export default function GradesPage() {
   const loading = !mounted || (isLoading && (!data || (data.winter.length === 0 && data.summer.length === 0)));
 
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 0);
     const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
     if (Number.isInteger(stored) && stored > 2000) setAcademicYearStart(stored);
-    return () => clearTimeout(t);
+    setMounted(true);
   }, []);
   const grades = data || {
     winter: [],

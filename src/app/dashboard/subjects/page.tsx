@@ -12,17 +12,20 @@ import { SubjectHeaderArt } from "@/components/SubjectHeaderArt";
 export default function SubjectsPage() {
   const [semester, setSemester] = useState<"winter" | "summer">("winter");
   const [academicYearStart, setAcademicYearStart] = useState<number>();
+  const [preferencesReady, setPreferencesReady] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
     const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
     if (Number.isInteger(stored) && stored > 2000) setAcademicYearStart(stored);
+    setPreferencesReady(true);
   }, []);
 
   const { data, isLoading, mutate } = useSWR(
-    ["uniza_subjects", academicYearStart ?? "current"],
+    preferencesReady ? ["uniza_subjects", academicYearStart ?? "current"] : null,
     () => getSubjects(academicYearStart),
+    { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false },
   );
 
   const handleRefresh = async () => {
@@ -35,7 +38,7 @@ export default function SubjectsPage() {
     }
   };
 
-  const loading = isLoading && !data;
+  const loading = !preferencesReady || (isLoading && !data);
   const subjects = data || {
     winter: [],
     summer: [],

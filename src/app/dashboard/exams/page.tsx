@@ -29,6 +29,7 @@ function ExamRow({ term, locale, t, onAction }: { term: ExamTerm; locale: string
 export default function ExamsPage() {
   const { t, lang } = useTranslation();
   const [academicYearStart, setAcademicYearStart] = useState<number>();
+  const [preferencesReady, setPreferencesReady] = useState(false);
   const [selected, setSelected] = useState<{ term: ExamTerm; action: "register" | "cancel" } | null>(null);
   const [result, setResult] = useState<IntegrationOperationResult | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -37,9 +38,10 @@ export default function ExamsPage() {
   useEffect(() => {
     const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
     if (Number.isInteger(stored) && stored > 2000) setAcademicYearStart(stored);
+    setPreferencesReady(true);
   }, []);
 
-  const { data, isLoading, mutate } = useSWR(["uniza_exams", academicYearStart ?? "current"], async () => (await import("@/lib/scraper")).getExamTerms(academicYearStart));
+  const { data, isLoading, mutate } = useSWR(preferencesReady ? ["uniza_exams", academicYearStart ?? "current"] : null, async () => (await import("@/lib/scraper")).getExamTerms(academicYearStart), { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false });
   const today = getBratislavaDateKey(new Date());
   const terms = useMemo(() => data?.terms || [], [data?.terms]);
   const upcoming = useMemo(() => terms.filter((term) => term.date >= today), [terms, today]);
@@ -73,7 +75,7 @@ export default function ExamsPage() {
       <div className="container">
         <AcademicPeriodControls academicYearLabel={t("common_academic_year") as string} years={years} selectedStartYear={selectedYear} onYearChange={(year) => { setAcademicYearStart(year); window.localStorage.setItem("uniza:academic-year:v1", String(year)); }} semester="winter" onSemesterChange={() => undefined} winterLabel="" summerLabel="" winterCount={0} summerCount={0} disabled={isLoading || years.length === 0} hideSemester />
         {result ? <div className={`operation-message ${result.status}`} role="status"><AppIcon name={result.status === "success" ? "check" : "warning"} size={19} /><span>{result.message}</span><button type="button" onClick={() => setResult(null)} aria-label="Close"><AppIcon name="x" size={17} /></button></div> : null}
-        {isLoading && !data ? <div className="exam-list">{[1,2,3].map((item) => <div key={item} className="exam-row skeleton" />)}</div> : (
+        {!preferencesReady || isLoading && !data ? <div className="exam-list">{[1,2,3].map((item) => <div key={item} className="exam-row skeleton" />)}</div> : (
           <>
             <div className="section-heading-row"><h2>{t("exams_upcoming")}</h2>{upcoming.length > 0 ? <button type="button" className="text-action" onClick={() => downloadIcs(upcoming.map((term) => ({ uid: `exam-${term.academicYearStart}-${term.id}`, title: term.subject, date: term.date, timeStart: term.time, location: term.room, description: [term.type, term.teacher, term.note].filter(Boolean).join(" · ") })), "uniza-exams.ics")}><AppIcon name="download" size={16} />{t("exams_export")}</button> : null}</div>
             {upcoming.length ? <div className="exam-list">{upcoming.map((term) => <ExamRow key={term.id} term={term} {...rowProps} />)}</div> : <div className="empty-state compact"><AppIcon name="calendar" size={36} /><p>{t("exams_empty")}</p></div>}

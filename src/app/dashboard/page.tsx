@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import useSWR from "swr";
-import {
-  getGrades,
-  getExamTerms,
-  getSchedule,
-  getSubjects,
-  getUserInfo,
-} from "@/lib/scraper";
+import { getHomeAcademic, getHomeExams, getHomeFood, getHomePrimary } from "@/lib/home";
 import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AppIcon, type AppIconName } from "@/components/AppIcon";
@@ -36,26 +30,18 @@ function currentBratislavaMinutes(now: Date) {
   return parts.hour * 60 + parts.minute;
 }
 
-async function fetchHomeData() {
-  const { getStravaInfo } = await import("@/lib/strava");
-  const [user, schedule, subjects, grades, exams, food] = await Promise.all([
-    getUserInfo().catch(() => null),
-    getSchedule().catch(() => []),
-    getSubjects().catch(() => null),
-    getGrades().catch(() => null),
-    getExamTerms().catch(() => null),
-    getStravaInfo().catch(() => null),
-  ]);
-  return { user, schedule, subjects, grades, exams, food };
-}
-
 export default function HomePage() {
   const { t } = useTranslation();
-  const { data, isLoading } = useSWR("uniza_home", fetchHomeData);
+  const swrOptions = { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false };
+  const { data: primary, isLoading } = useSWR("uniza_home_primary", getHomePrimary, swrOptions);
+  const { data: academic } = useSWR(primary ? "uniza_home_academic" : null, getHomeAcademic, swrOptions);
+  const { data: food } = useSWR(primary ? "uniza_home_food" : null, getHomeFood, swrOptions);
+  const selectedYear = academic?.subjects?.selectedStartYear ?? academic?.grades?.selectedStartYear;
+  const { data: exams } = useSWR(selectedYear ? ["uniza_home_exams", selectedYear] : null, () => getHomeExams(selectedYear!), swrOptions);
   const now = new Date();
   const dayName = SCHEDULE_DAYS[getBratislavaDayIndex(now)] || "";
   const nowMinutes = currentBratislavaMinutes(now);
-  const todayClasses = (data?.schedule || [])
+  const todayClasses = (primary?.schedule || [])
     .filter((item) => item.day === dayName)
     .toSorted((a, b) => toMinutes(a.timeStart) - toMinutes(b.timeStart));
   const nextClass = todayClasses.find((item) => toMinutes(item.timeEnd) >= nowMinutes) || null;
@@ -63,21 +49,21 @@ export default function HomePage() {
     ? getScheduleTiming(nextClass.timeStart, nextClass.timeEnd, now, true)
     : null;
 
-  const firstName = data?.user?.name?.split(" ")[0] || "";
-  const subjectCount = data?.subjects
-    ? data.subjects.winter.length + data.subjects.summer.length
+  const firstName = primary?.user?.name?.split(" ")[0] || "";
+  const subjectCount = academic?.subjects
+    ? academic.subjects.winter.length + academic.subjects.summer.length
     : null;
-  const currentGrades = data?.grades
-    ? [...data.grades.winter, ...data.grades.summer].filter(
-      (grade) => grade.academicYearStart === data.grades?.selectedStartYear,
+  const currentGrades = academic?.grades
+    ? [...academic.grades.winter, ...academic.grades.summer].filter(
+      (grade) => grade.academicYearStart === academic.grades?.selectedStartYear,
     )
     : [];
   const passedGrades = currentGrades.filter(
     (grade) => grade.grade && grade.grade !== "—" && grade.grade !== "FX",
   ).length;
-  const balance = data?.food ? `${data.food.balance.toFixed(2).replace(".", ",")} €` : "—";
+  const balance = food ? `${food.balance.toFixed(2).replace(".", ",")} €` : "—";
   const todayKey = getBratislavaDateKey(now);
-  const nextExam = data?.exams?.terms.find((term) => term.date >= todayKey) || null;
+  const nextExam = exams?.find((term) => term.date >= todayKey) || null;
 
   const rows: Array<{
     href: string;
@@ -101,7 +87,7 @@ export default function HomePage() {
       href: "/dashboard/grades",
       icon: "award",
       title: t("nav_grades") as string,
-      detail: isLoading ? "—" : `${passedGrades}/${currentGrades.length} ${t("home_grades_passed")}`,
+      detail: !academic ? "—" : `${passedGrades}/${currentGrades.length} ${t("home_grades_passed")}`,
     },
     {
       href: "/dashboard/exams",
