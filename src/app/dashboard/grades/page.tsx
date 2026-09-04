@@ -5,7 +5,6 @@ import { getGrades } from "@/lib/scraper";
 import type { Grade } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
-import { formatAcademicYear } from "@/lib/uniza-parsers";
 import { AppIcon } from "@/components/AppIcon";
 
 import useSWR from "swr";
@@ -56,14 +55,6 @@ export default function GradesPage() {
   );
   const completed = current.filter((grade) => grade.grade && grade.grade !== "—");
   const pending = current.filter((grade) => !grade.grade || grade.grade === "—");
-  const historical = allForSemester.filter(
-    (grade) => grade.academicYearStart !== grades.selectedStartYear,
-  );
-  const historicalGroups = historical.reduce<Map<number | null, Grade[]>>((groups, grade) => {
-    const key = grade.academicYearStart;
-    groups.set(key, [...(groups.get(key) ?? []), grade]);
-    return groups;
-  }, new Map());
 
   const gradeClassMap: Record<string, string> = {
     A: "badge-a", B: "badge-b", C: "badge-c", D: "badge-d", E: "badge-e", FX: "badge-fx",
@@ -202,31 +193,6 @@ export default function GradesPage() {
               </>
             )}
 
-            {historical.length > 0 && (
-              <details className="historical-results">
-                <summary>
-                  <span className="historical-results-icon" aria-hidden="true"><AppIcon name="history" size={19} /></span>
-                  <span>
-                    <strong>{t("grades_previous_results")}</strong>
-                    <small>{t("grades_previous_hint")}</small>
-                  </span>
-                  <span className="historical-results-count">{historical.length}</span>
-                  <span className="historical-results-chevron" aria-hidden="true"><AppIcon name="chevron-down" size={18} /></span>
-                </summary>
-                <div className="historical-results-content">
-                  {[...historicalGroups.entries()]
-                    .sort(([left], [right]) => (right ?? 0) - (left ?? 0))
-                    .map(([startYear, items]) => (
-                      <div key={startYear ?? "other"} className="historical-year-group">
-                        <div className="historical-year-label">
-                          {startYear ? formatAcademicYear(startYear) : t("grades_other_year")}
-                        </div>
-                        {renderGradeRows(items)}
-                      </div>
-                    ))}
-                </div>
-              </details>
-            )}
           </div>
         )}
       </div>

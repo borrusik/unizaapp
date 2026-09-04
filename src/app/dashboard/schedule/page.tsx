@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, memo } from "react";
-import { getSchedule, type ScheduleItem } from "@/lib/scraper";
+import { getScheduleData, type ScheduleItem } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing";
 import { AppIcon } from "@/components/AppIcon";
@@ -110,9 +110,12 @@ export default function SchedulePage() {
   const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetcher = async (force = false) => getSchedule(force);
+  const fetcher = async (force = false) => getScheduleData(force);
 
-  const { data, isLoading, mutate } = useSWR("uniza_schedule", () => fetcher(false));
+  const { data, isLoading, mutate } = useSWR("uniza_schedule", () => fetcher(false), {
+    dedupingInterval: 5 * 60 * 1000,
+    revalidateOnFocus: false,
+  });
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -124,7 +127,7 @@ export default function SchedulePage() {
     }
   };
 
-  const loading = !mounted || ((isLoading || isRefreshing) && (!data || data.length === 0));
+  const loading = !mounted || ((isLoading || isRefreshing) && (!data || data.items.length === 0));
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 0);
@@ -136,7 +139,12 @@ export default function SchedulePage() {
     };
   }, []);
 
-  const dayItems = useMemo(() => (data || []).filter((item) => item.day === selectedDay), [data, selectedDay]);
+  const dayItems = useMemo(
+    () => (data?.items || []).filter((item) => item.day === selectedDay),
+    [data, selectedDay],
+  );
+  const scheduleUnavailable = data?.status === "unavailable";
+  const scheduleFailed = data?.status === "error" || data?.status === "unauthenticated";
 
   const exportDay = () => {
     const start = getBratislavaDateKey(now);
@@ -186,50 +194,62 @@ export default function SchedulePage() {
 
       <div className="container">
         {/* Day Pills with dates */}
-        <div className="day-pills">
-          {dayNames.map((dayNameOriginal, i) => {
-            const shortDays = (t("schedule_days_short") as unknown as string[]) || ["Po", "Ut", "St", "Št", "Pi"];
-            const allShortDays = isWeekend ? [...shortDays, "Vík"] : shortDays;
-            const todayMarker = isToday(dayNameOriginal);
-            const isActive = selectedDay === dayNameOriginal;
+        {!scheduleUnavailable && !scheduleFailed ? (
+          <div className="day-pills">
+            {dayNames.map((dayNameOriginal, i) => {
+              const shortDays = (t("schedule_days_short") as unknown as string[]) || ["Po", "Ut", "St", "Št", "Pi"];
+              const allShortDays = isWeekend ? [...shortDays, "Vík"] : shortDays;
+              const todayMarker = isToday(dayNameOriginal);
+              const isActive = selectedDay === dayNameOriginal;
 
-            return (
-              <button
-                type="button"
-                aria-pressed={isActive}
-                key={dayNameOriginal}
-                className={`day-pill ${isActive ? "active" : ""}`}
-                onClick={() => setSelectedDay(dayNameOriginal)}
-                style={{
-                  position: "relative",
-                  flex: "1 0 auto",
-                  minWidth: dayNames.length > 5 ? "calc(100% / 6 - 8px)" : "auto",
-                  ...(todayMarker && !isActive
-                    ? { borderColor: "var(--primary)", color: "var(--primary)" }
-                    : {}),
-                }}
-              >
-                <span>{allShortDays[i]}</span>
-                {todayMarker && !isActive && (
-                  <span style={{
-                    position: "absolute",
-                    bottom: "4px",
-                    width: "4px",
-                    height: "4px",
-                    borderRadius: "50%",
-                    background: "var(--primary)",
-                  }} />
-                )}
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  type="button"
+                  aria-pressed={isActive}
+                  key={dayNameOriginal}
+                  className={`day-pill ${isActive ? "active" : ""}`}
+                  onClick={() => setSelectedDay(dayNameOriginal)}
+                  style={{
+                    position: "relative",
+                    flex: "1 0 auto",
+                    minWidth: dayNames.length > 5 ? "calc(100% / 6 - 8px)" : "auto",
+                    ...(todayMarker && !isActive
+                      ? { borderColor: "var(--primary)", color: "var(--primary)" }
+                      : {}),
+                  }}
+                >
+                  <span>{allShortDays[i]}</span>
+                  {todayMarker && !isActive && (
+                    <span style={{
+                      position: "absolute",
+                      bottom: "4px",
+                      width: "4px",
+                      height: "4px",
+                      borderRadius: "50%",
+                      background: "var(--primary)",
+                    }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="card skeleton" style={{ height: "100px" }} />
             ))}
+          </div>
+        ) : scheduleUnavailable || scheduleFailed ? (
+          <div className="empty-state schedule-source-state">
+            <AppIcon name="warning" size={42} />
+            <div className="card-title">
+              {t(scheduleUnavailable ? "schedule_unavailable_title" : "schedule_error_title")}
+            </div>
+            <p className="text-sm">
+              {t(scheduleUnavailable ? "schedule_unavailable_desc" : "schedule_error_desc")}
+            </p>
           </div>
         ) : dayItems.length === 0 ? (
           <div className="empty-state" style={{ paddingTop: "80px" }}>

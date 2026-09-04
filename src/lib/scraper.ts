@@ -16,6 +16,8 @@ import {
 import { canPersistCredentials, clearCredentials, readCredentials, saveCredentials } from "@/lib/credentials";
 import { parseAivsSubjects } from "@/lib/aivs-subjects";
 import { parseAivsExamTerms, type ExamTerm, type InternalExamTerm } from "@/lib/aivs-exams";
+import { parseAivsFaculty } from "@/lib/aivs-profile";
+import { getAivsScheduleSourceState } from "@/lib/aivs-schedule";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -488,6 +490,11 @@ export type ScheduleItem = {
   timeInfo?: string;
 };
 
+export type ScheduleData = {
+  items: ScheduleItem[];
+  status: "ready" | "empty" | "unavailable" | "unauthenticated" | "error";
+};
+
 export type AcademicPeriodData = {
   selectedStartYear: number;
   academicYear: string;
@@ -537,13 +544,7 @@ export async function getUserInfo(
       }
 
       // Parse Faculty from predmetyHtml (e.g. "Fakulta: Fakulta riadenia a informatiky")
-      const $predm = cheerio.load(predmetyHtml);
-      const predmText = $predm("body").text().replace(/\s+/g, ' ');
-      // Look for "Fakulta: " and capture up to "Miesto:", "Štud", "Akad", etc.
-      const pFaculty = predmText.match(/Fakulta:\s*(Fakulta [a-zA-ZáäčďéíĺľňóôŕšťúýžÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ\s]+?)\s*(?:Akad|Štud|Miest|Predm|Zimn|Letn|\d)/i);
-      if (pFaculty && pFaculty[1]) {
-        faculty = pFaculty[1].trim();
-      }
+      faculty = parseAivsFaculty(predmetyHtml) || faculty;
 
       // Parse Program (odbor) from svysledkyHtml 
       // Look for format like: "Akademický rok 2025 / 2026 5ZYI14 - informatika"
@@ -903,9 +904,9 @@ export async function cancelExam(termId: string, academicYearStart: number) {
 // ─────────────────────────────────────────────
 
 
-export async function getSchedule(force = false): Promise<ScheduleItem[]> {
+export async function getScheduleData(force = false): Promise<ScheduleData> {
   const sessionId = await getSession();
-  if (!sessionId) return [];
+  if (!sessionId) return { items: [], status: "unauthenticated" };
 
   try {
     const year = await resolveAcademicYear();
@@ -914,6 +915,10 @@ export async function getSchedule(force = false): Promise<ScheduleItem[]> {
       `rozvrh2.php?ra=${year.selectedStartYear}`,
       force,
     );
+    const sourceState = getAivsScheduleSourceState(html);
+    if (sourceState !== "available") {
+      return { items: [], status: sourceState };
+    }
     const $ = cheerio.load(html);
 
     const items: ScheduleItem[] = [];
@@ -1018,11 +1023,19 @@ export async function getSchedule(force = false): Promise<ScheduleItem[]> {
       const key = [item.day, item.timeStart, item.timeEnd, item.subject, item.room, item.teacher, item.type].join("|");
       if (!uniqueItems.has(key)) uniqueItems.set(key, item);
     }
-    return [...uniqueItems.values()];
+    const parsedItems = [...uniqueItems.values()];
+    return {
+      items: parsedItems,
+      status: parsedItems.length > 0 ? "ready" : "empty",
+    };
   } catch (e) {
     console.error("Error parsing schedule:", e);
-    return [];
+    return { items: [], status: "error" };
   }
+}
+
+export async function getSchedule(force = false): Promise<ScheduleItem[]> {
+  return (await getScheduleData(force)).items;
 }
 
 // ─────────────────────────────────────────────

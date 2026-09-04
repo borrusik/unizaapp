@@ -21,7 +21,35 @@ import {
 } from "./uniza-parsers.ts";
 import { parseAivsSubjects } from "./aivs-subjects.ts";
 import { parseAivsExamTerms } from "./aivs-exams.ts";
+import { parseAivsFaculty } from "./aivs-profile.ts";
+import { getAivsScheduleSourceState } from "./aivs-schedule.ts";
 import { createIcsCalendar } from "./calendar.ts";
+
+test("AIVS faculty parsing supports names that end with Fakulta", () => {
+  assert.equal(
+    parseAivsFaculty("<main>Fakulta: Strojnícka fakulta Akademický rok: 2026 / 2027</main>"),
+    "Strojnícka fakulta",
+  );
+  assert.equal(
+    parseAivsFaculty("<main>Fakulta: Fakulta riadenia a informatiky Študijný program: informatika</main>"),
+    "Fakulta riadenia a informatiky",
+  );
+});
+
+test("AIVS unavailable schedule is not treated as a free day", () => {
+  assert.equal(
+    getAivsScheduleSourceState("<main><p>Rozvrh je neprístupný.</p></main>"),
+    "unavailable",
+  );
+  assert.equal(
+    getAivsScheduleSourceState("<main><div class='rozvrh_tyzden'>Pondelok</div></main>"),
+    "available",
+  );
+  assert.equal(
+    getAivsScheduleSourceState('<form><input name="heslo"></form>'),
+    "unauthenticated",
+  );
+});
 
 test("AIVS subjects are deduplicated per semester and useful links are merged", () => {
   const parsed = parseAivsSubjects(`

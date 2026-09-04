@@ -7,7 +7,6 @@ import { getSubjects } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
 import { AppIcon } from "@/components/AppIcon";
-import { SubjectHeaderArt } from "@/components/SubjectHeaderArt";
 
 export default function SubjectsPage() {
   const [semester, setSemester] = useState<"winter" | "summer">("winter");
@@ -64,7 +63,6 @@ export default function SubjectsPage() {
       </div>
 
       <div className="container">
-        <SubjectHeaderArt />
         <AcademicPeriodControls
           academicYearLabel={t("common_academic_year") as string}
           years={subjects.academicYears}

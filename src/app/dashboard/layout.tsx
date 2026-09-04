@@ -27,19 +27,9 @@ export default function DashboardLayout({
       icon: "home",
     },
     {
-      href: "/dashboard/schedule",
-      labelKey: "nav_schedule",
-      icon: "calendar",
-    },
-    {
-      href: "/dashboard/grades",
-      labelKey: "nav_grades",
-      icon: "award",
-    },
-    {
-      href: "/dashboard/food",
-      labelKey: "nav_food",
-      icon: "restaurant",
+      href: "/dashboard/subjects",
+      labelKey: "nav_study",
+      icon: "book",
     },
     {
       href: "/dashboard/profile",
@@ -55,8 +45,12 @@ export default function DashboardLayout({
       <nav className="bottom-nav">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href
-            || (tab.href === "/dashboard" && (pathname === "/dashboard/subjects" || pathname === "/dashboard/services"))
-            || (tab.href === "/dashboard/grades" && pathname === "/dashboard/exams");
+            || (tab.href === "/dashboard/subjects" && [
+              "/dashboard/schedule",
+              "/dashboard/grades",
+              "/dashboard/exams",
+              "/dashboard/subject",
+            ].some((prefix) => pathname.startsWith(prefix)));
           return (
             <Link
               key={tab.href}
