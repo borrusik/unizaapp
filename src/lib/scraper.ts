@@ -18,6 +18,7 @@ import { parseAivsSubjects } from "@/lib/aivs-subjects";
 import { parseAivsExamTerms, type ExamTerm, type InternalExamTerm } from "@/lib/aivs-exams";
 import { parseAivsFaculty } from "@/lib/aivs-profile";
 import { getAivsScheduleSourceState } from "@/lib/aivs-schedule";
+import { getAivsResultsTableYear, selectAivsGradeResult } from "@/lib/aivs-grades";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -692,6 +693,12 @@ export async function getGrades(
       // Only process data rows (odd/evn class)
       if (!$(row).hasClass("odd") && !$(row).hasClass("evn")) return;
 
+      const resultsTable = $(row).closest("table.data.tien");
+      if (resultsTable.length === 0) return;
+      const tableAcademicYear = getAivsResultsTableYear(
+        resultsTable.prevAll("table:not(.data)").first().text(),
+      );
+
       const tds = $(row).find("td");
       if (tds.length < 9) return;
 
@@ -705,17 +712,24 @@ export async function getGrades(
 
       // Column indices: 0=Predmet, 1=Pov, 2=Ukon, 3=Body semester, 4=Zápočet, 5=Zn, 6=Skúška, 7=Zn(final), 8=Kred, 9=Body
       const type = $(tds[1]).text().trim();
-      const examDate = $(tds[6]).text().trim();
-      const finalGrade = $(tds[7]).text().trim();
+      const completionType = $(tds[2]).text().trim();
+      const result = selectAivsGradeResult(
+        completionType,
+        $(tds[4]).text(),
+        $(tds[5]).text(),
+        $(tds[6]).text(),
+        $(tds[7]).text(),
+      );
       const creditsText = $(tds[8]).text().trim();
       const credits = parseFloat(creditsText) || 0;
       const points = $(tds[9])?.text()?.trim() || "";
-      const datedAcademicYear = getAcademicYearStartFromSlovakDate(examDate);
+      const datedAcademicYear = getAcademicYearStartFromSlovakDate(result.date);
       const identity = [
+        tableAcademicYear ?? "unknown-year",
         currentSemester,
         code.toLocaleUpperCase("sk"),
-        examDate,
-        finalGrade,
+        result.date,
+        result.grade,
         credits,
         points,
       ].join("|");
@@ -725,15 +739,15 @@ export async function getGrades(
       const grade: Grade = {
         subject,
         code,
-        grade: finalGrade || "—",
+        grade: result.grade,
         credits,
-        date: examDate || "",
+        date: result.date,
         type,
         points: points || "—",
         // The upstream results table is cumulative and identical for multiple
         // selected years. Dates are authoritative for completed courses; the
         // selected subject list identifies still-ungraded courses.
-        academicYearStart: datedAcademicYear ?? (
+        academicYearStart: tableAcademicYear ?? datedAcademicYear ?? (
           selectedSubjectCodes.has(code) ? year.selectedStartYear : null
         ),
       };

@@ -23,6 +23,7 @@ import { parseAivsSubjects } from "./aivs-subjects.ts";
 import { parseAivsExamTerms } from "./aivs-exams.ts";
 import { parseAivsFaculty } from "./aivs-profile.ts";
 import { getAivsScheduleSourceState } from "./aivs-schedule.ts";
+import { getAivsResultsTableYear, selectAivsGradeResult } from "./aivs-grades.ts";
 import { createIcsCalendar } from "./calendar.ts";
 
 test("AIVS faculty parsing supports names that end with Fakulta", () => {
@@ -77,6 +78,33 @@ test("AIVS grade dates map to the correct academic year", () => {
   assert.equal(getAcademicYearStartFromSlovakDate("1.9.2026"), 2026);
   assert.equal(getAcademicYearStartFromSlovakDate("31.2.2026"), null);
   assert.equal(getAcademicYearStartFromSlovakDate(""), null);
+});
+
+test("AIVS assessment courses use the credit grade column", () => {
+  assert.deepEqual(
+    selectAivsGradeResult("H", "14.1.2026", "A", "", ""),
+    { date: "14.1.2026", grade: "A" },
+  );
+  assert.deepEqual(
+    selectAivsGradeResult("S", "10.1.2026", "A", "28.1.2026", "B"),
+    { date: "28.1.2026", grade: "B" },
+  );
+  assert.deepEqual(
+    selectAivsGradeResult("S", "10.1.2026", "A", "", ""),
+    { date: "", grade: "—" },
+  );
+});
+
+test("AIVS cumulative grade tables keep repeated subjects in their own year", () => {
+  assert.equal(
+    getAivsResultsTableYear("Akademický rok 2026 / 2027 5ZYI24 - informatika"),
+    2026,
+  );
+  assert.equal(
+    getAivsResultsTableYear("Akademický rok 2025 / 2026 5ZYI14 - informatika"),
+    2025,
+  );
+  assert.equal(getAivsResultsTableYear("Akademický rok 2026 / 2028"), null);
 });
 
 test("schedule progress is shown only for the currently selected day", () => {
