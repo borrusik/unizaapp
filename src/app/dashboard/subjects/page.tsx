@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { getSubjects } from "@/lib/scraper";
@@ -10,19 +10,16 @@ import { AppIcon } from "@/components/AppIcon";
 
 export default function SubjectsPage() {
   const [semester, setSemester] = useState<"winter" | "summer">("winter");
-  const [academicYearStart, setAcademicYearStart] = useState<number>();
-  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [academicYearStart, setAcademicYearStart] = useState<number | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
+    return Number.isInteger(stored) && stored > 2000 ? stored : undefined;
+  });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { t } = useTranslation();
 
-  useEffect(() => {
-    const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
-    if (Number.isInteger(stored) && stored > 2000) setAcademicYearStart(stored);
-    setPreferencesReady(true);
-  }, []);
-
   const { data, isLoading, mutate } = useSWR(
-    preferencesReady ? ["uniza_subjects", academicYearStart ?? "current"] : null,
+    ["uniza_subjects", academicYearStart ?? "current"],
     () => getSubjects(academicYearStart),
     { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false },
   );
@@ -37,7 +34,7 @@ export default function SubjectsPage() {
     }
   };
 
-  const loading = !preferencesReady || (isLoading && !data);
+  const loading = (isLoading || isRefreshing) && !data;
   const subjects = data || {
     winter: [],
     summer: [],
@@ -53,7 +50,7 @@ export default function SubjectsPage() {
         <div className="top-bar-title">{t("subjects_title")}</div>
         <button
           type="button"
-          aria-label={t("common_refresh") as string}
+          aria-label={t("common_refresh")}
           onClick={handleRefresh}
           disabled={isRefreshing}
           className="icon-button"
@@ -64,7 +61,7 @@ export default function SubjectsPage() {
 
       <div className="container">
         <AcademicPeriodControls
-          academicYearLabel={t("common_academic_year") as string}
+          academicYearLabel={t("common_academic_year")}
           years={subjects.academicYears}
           selectedStartYear={subjects.selectedStartYear}
           onYearChange={(startYear) => {
@@ -73,8 +70,8 @@ export default function SubjectsPage() {
           }}
           semester={semester}
           onSemesterChange={setSemester}
-          winterLabel={t("subjects_winter") as string}
-          summerLabel={t("subjects_summer") as string}
+          winterLabel={t("subjects_winter")}
+          summerLabel={t("subjects_summer")}
           winterCount={subjects.winter.length}
           summerCount={subjects.summer.length}
           disabled={loading || subjects.academicYears.length === 0}
@@ -106,7 +103,7 @@ export default function SubjectsPage() {
                       rel="noopener noreferrer"
                       className="subject-action"
                       aria-label={`${t("dashboard_moodle")}: ${subject.name}`}
-                      title={t("dashboard_moodle") as string}
+                      title={t("dashboard_moodle")}
                     >
                       <AppIcon name="external-link" size={19} />
                     </a>
@@ -116,7 +113,7 @@ export default function SubjectsPage() {
                       href={`/dashboard/subject?url=${encodeURIComponent(subject.infoUrl)}&name=${encodeURIComponent(subject.name)}`}
                       className="subject-action"
                       aria-label={`${t("dashboard_info_list")}: ${subject.name}`}
-                      title={t("dashboard_info_list") as string}
+                      title={t("dashboard_info_list")}
                     >
                       <AppIcon name="clipboard" size={19} />
                     </Link>

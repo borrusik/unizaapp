@@ -6,20 +6,22 @@ import type { Grade } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
 import { AppIcon } from "@/components/AppIcon";
-
 import useSWR from "swr";
 
 export default function GradesPage() {
   const [semester, setSemester] = useState<"winter" | "summer">("winter");
-  const [academicYearStart, setAcademicYearStart] = useState<number>();
-  const [mounted, setMounted] = useState(false);
+  const [academicYearStart, setAcademicYearStart] = useState<number | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
+    return Number.isInteger(stored) && stored > 2000 ? stored : undefined;
+  });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { t } = useTranslation();
 
   const fetcher = async () => getGrades(academicYearStart);
 
   const { data, isLoading, mutate } = useSWR(
-    mounted ? ["uniza_grades", academicYearStart ?? "current"] : null,
+    ["uniza_grades", academicYearStart ?? "current"],
     fetcher,
     { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false },
   );
@@ -34,13 +36,8 @@ export default function GradesPage() {
     }
   };
 
-  const loading = !mounted || (isLoading && (!data || (data.winter.length === 0 && data.summer.length === 0)));
+  const loading = (isLoading || isRefreshing) && (!data || (data.winter.length === 0 && data.summer.length === 0));
 
-  useEffect(() => {
-    const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
-    if (Number.isInteger(stored) && stored > 2000) setAcademicYearStart(stored);
-    setMounted(true);
-  }, []);
   const grades = data || {
     winter: [],
     summer: [],
@@ -61,7 +58,7 @@ export default function GradesPage() {
   };
 
   const gradeColorMap: Record<string, string> = {
-    A: "var(--success)", B: "#5ac8fa", C: "var(--warning)", D: "var(--purple)", E: "var(--danger)", FX: "var(--danger)",
+    A: "var(--success)", B: "#5ac8fa", C: "var(--warning)", D: "var(--purple)", E: "var(--orange)", FX: "var(--danger)",
   };
 
   const earnedCredits = current
@@ -88,10 +85,10 @@ export default function GradesPage() {
         return (
           <div key={`${item.code}-${item.date}-${item.type}`} className="card-row">
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="card-title grade-subject-title">
+              <div className="card-title grade-subject-title" style={{ fontSize: "15px", fontWeight: 650 }}>
                 {item.subject}
               </div>
-              <div className="text-xs grade-meta">
+              <div className="text-xs grade-meta" style={{ marginTop: "3px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
                 <span>{item.code}</span>
                 {item.credits > 0 && <><span>·</span><span>{item.credits} {t("grades_credits_short")}</span></>}
                 {item.date && <><span>·</span><span>{item.date}</span></>}
@@ -101,6 +98,13 @@ export default function GradesPage() {
             <div
               className={`grade-circle ${cls}`}
               style={{
+                width: "38px",
+                height: "38px",
+                borderRadius: "10px",
+                display: "grid",
+                placeItems: "center",
+                fontWeight: 800,
+                fontSize: "15px",
                 background: displayGrade === "—" ? "var(--surface-secondary)" : undefined,
                 color: displayGrade === "—" ? "var(--text-tertiary)" : color,
               }}
@@ -119,7 +123,7 @@ export default function GradesPage() {
         <div className="top-bar-title">{t("grades_title")}</div>
         <button
           type="button"
-          aria-label={t("common_refresh") as string}
+          aria-label={t("common_refresh")}
           onClick={handleRefresh}
           disabled={isRefreshing}
           className="icon-button"
@@ -130,7 +134,7 @@ export default function GradesPage() {
 
       <div className="container">
         <AcademicPeriodControls
-          academicYearLabel={t("common_academic_year") as string}
+          academicYearLabel={t("common_academic_year")}
           years={grades.academicYears}
           selectedStartYear={grades.selectedStartYear}
           onYearChange={(startYear) => {
@@ -139,8 +143,8 @@ export default function GradesPage() {
           }}
           semester={semester}
           onSemesterChange={setSemester}
-          winterLabel={t("grades_winter") as string}
-          summerLabel={t("grades_summer") as string}
+          winterLabel={t("grades_winter")}
+          summerLabel={t("grades_summer")}
           winterCount={grades.winter.filter((grade) => grade.academicYearStart === grades.selectedStartYear).length}
           summerCount={grades.summer.filter((grade) => grade.academicYearStart === grades.selectedStartYear).length}
           disabled={loading || grades.academicYears.length === 0}
@@ -169,7 +173,7 @@ export default function GradesPage() {
               </div>
             ) : (
               <>
-                <div className="grades-stats">
+                <div className="grades-stats" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "24px" }}>
                   <div className="stat-card">
                     <div className="stat-value" style={{ color: "var(--primary)", fontSize: "24px" }}>{earnedCredits}</div>
                     <div className="stat-label">ECTS</div>
@@ -192,7 +196,6 @@ export default function GradesPage() {
                 ) : null}
               </>
             )}
-
           </div>
         )}
       </div>

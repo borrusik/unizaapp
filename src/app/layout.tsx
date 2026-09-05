@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
 import "./globals.css";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -15,7 +16,7 @@ const GA_ID = "G-PBTXW0SJSY";
 
 export const metadata: Metadata = {
   title: "UNIZA Student",
-  description: "Mobile student portal for Žilinská univerzita",
+  description: "Mobile & Desktop student portal for Žilinská univerzita",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -78,9 +79,11 @@ export default async function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        <div id="app-wrapper">
-          {children}
-        </div>
+        <LanguageProvider>
+          <div id="app-wrapper">
+            {children}
+          </div>
+        </LanguageProvider>
         {/* Google Analytics with nonce for CSP compliance */}
         <Script
           id="gtag-script"

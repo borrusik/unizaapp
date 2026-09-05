@@ -2,20 +2,30 @@
 
 import { useState, useEffect, useMemo, memo } from "react";
 import { getScheduleData, type ScheduleItem } from "@/lib/scraper";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useTranslation, type TranslationKey } from "@/hooks/useTranslation";
 import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing";
 import { AppIcon } from "@/components/AppIcon";
 import { downloadIcs } from "@/lib/calendar";
 import { getBratislavaDateKey, listDateKeys } from "@/lib/uniza-parsers";
-
 import useSWR from "swr";
 
-// Internal standard days
 const REGULAR_DAYS = ["Pondelok", "Utorok", "Streda", "Štvrtok", "Piatok"];
 
-function getTodayDayName(t: (key: keyof typeof import("@/hooks/useTranslation").dictionary.sk) => unknown): string {
-  const jsDay = getBratislavaDayIndex(); // 0=Sun, 1=Mon...
-  if (jsDay === 0 || jsDay === 6) return t("schedule_weekend_tab") as string; // weekend -> show Víkend
+function toMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : -1;
+}
+
+function formatDuration(mins: number): string {
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function getTodayDayName(t: (key: TranslationKey) => unknown): string {
+  const jsDay = getBratislavaDayIndex();
+  if (jsDay === 0 || jsDay === 6) return t("schedule_weekend_tab") as string;
   return REGULAR_DAYS[jsDay - 1];
 }
 
@@ -39,15 +49,13 @@ const ScheduleCard = memo(({
     <div
       className="schedule-card animate-scale-in"
       style={{
-        opacity: 0,
-        ...(timing.isLive ? {
-          borderColor: "var(--primary)",
-          boxShadow: "0 0 0 2px var(--primary-light), var(--shadow-card)"
-        } : {})
+        opacity: 1,
+        border: timing.isLive ? "1px solid var(--primary)" : "1px solid var(--border)",
+        boxShadow: timing.isLive ? "0 0 0 2px var(--primary-light), var(--shadow-md)" : "var(--shadow-card)",
       }}
     >
       <div className="schedule-time-block">
-        <div className="schedule-time-start" style={{ color: timing.isLive ? "var(--primary)" : "inherit" }}>
+        <div className="schedule-time-start" style={{ color: timing.isLive ? "var(--primary)" : "inherit", fontWeight: 800 }}>
           {item.timeStart}
         </div>
         <div className="schedule-time-end">{item.timeEnd}</div>
@@ -62,39 +70,43 @@ const ScheduleCard = memo(({
       <div className="schedule-divider" style={{ background: timing.isLive ? "var(--primary)" : item.color }} />
 
       <div className="schedule-info">
-        <div className="schedule-subject-name">{item.subject}</div>
+        <div className="schedule-subject-name" style={{ fontSize: "16px", fontWeight: 700 }}>
+          {item.subject}
+        </div>
+
         {item.room && (
-          <div className="schedule-meta">
+          <div className="schedule-meta" style={{ marginTop: "4px" }}>
             <AppIcon name="map-pin" size={13} />
-            {item.room}
+            <strong>{item.room}</strong>
             {item.teacher && (
               <>
                 <span style={{ margin: "0 2px" }}>·</span>
                 <AppIcon name="user" size={13} />
-                {item.teacher}
+                <span>{item.teacher}</span>
               </>
             )}
           </div>
         )}
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap", marginTop: "6px" }}>
           <span
             className="schedule-type-badge"
-            style={{ background: item.color + "26", color: item.color }}
+            style={{ background: item.color + "22", color: item.color, fontWeight: 700 }}
           >
             {typeLabel(item.type)}
           </span>
 
           {timing.isLive && (
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)" }} className="animate-fade-in">
-              {t("schedule_min_left" as keyof typeof import("@/hooks/useTranslation").dictionary.sk)} {timing.minsLeft} min
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)", display: "flex", alignItems: "center", gap: "4px" }}>
+              <span className="pulse-dot" />
+              {t("schedule_min_left")} {timing.minsLeft} min
             </span>
           )}
         </div>
 
         {timing.isLive && (
-          <div style={{ width: "100%", height: "4px", background: "var(--surface-secondary)", borderRadius: "2px", marginTop: "6px", overflow: "hidden" }}>
-            <div style={{ width: `${timing.progress}%`, height: "100%", background: "var(--primary)", transition: "width 1s linear" }} />
+          <div className="bento-progress-track" style={{ marginTop: "8px" }}>
+            <div className="bento-progress-fill" style={{ width: `${timing.progress}%` }} />
           </div>
         )}
       </div>
@@ -107,7 +119,6 @@ export default function SchedulePage() {
   const { t } = useTranslation();
   const [selectedDay, setSelectedDay] = useState(() => getTodayDayName(t));
   const [now, setNow] = useState(new Date());
-  const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetcher = async (force = false) => getScheduleData(force);
@@ -127,20 +138,17 @@ export default function SchedulePage() {
     }
   };
 
-  const loading = !mounted || ((isLoading || isRefreshing) && (!data || data.items.length === 0));
+  const loading = (isLoading || isRefreshing) && (!data || data.items.length === 0);
 
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 0);
-    // Update time every minute for the live class progress
     const timer = setInterval(() => setNow(new Date()), 60000);
-    return () => {
-      clearTimeout(t);
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   const dayItems = useMemo(
-    () => (data?.items || []).filter((item) => item.day === selectedDay),
+    () => (data?.items || [])
+      .filter((item) => item.day === selectedDay)
+      .toSorted((a, b) => toMinutes(a.timeStart) - toMinutes(b.timeStart)),
     [data, selectedDay],
   );
   const scheduleUnavailable = data?.status === "unavailable";
@@ -164,11 +172,10 @@ export default function SchedulePage() {
   };
 
   const typeLabel = (type: string): string => {
-    type DictKey = keyof typeof import("@/hooks/useTranslation").dictionary.sk;
     switch (type) {
-      case "lecture": return t("schedule_lecture" as DictKey) as string;
-      case "exercise": return t("schedule_exercise" as DictKey) as string;
-      case "lab": return t("schedule_lab" as DictKey) as string;
+      case "lecture": return t("schedule_lecture");
+      case "exercise": return t("schedule_exercise");
+      case "lab": return t("schedule_lab");
       default: return type;
     }
   };
@@ -182,18 +189,35 @@ export default function SchedulePage() {
   const currentDayIndex = getBratislavaDayIndex(now);
   const isWeekend = currentDayIndex === 0 || currentDayIndex === 6;
   const dayNames = isWeekend ? [...REGULAR_DAYS, t("schedule_weekend_tab") as string] : REGULAR_DAYS;
+
   return (
     <div>
       <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title">{t("schedule_title")}</div>
         <div className="top-bar-actions">
-          <button type="button" aria-label={t("exams_export") as string} onClick={exportDay} disabled={dayItems.length === 0} className="icon-button"><AppIcon name="download" size={20} /></button>
-          <button type="button" aria-label={t("common_refresh") as string} onClick={handleRefresh} disabled={isRefreshing} className="icon-button"><AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} /></button>
+          <button
+            type="button"
+            aria-label={t("exams_export")}
+            onClick={exportDay}
+            disabled={dayItems.length === 0}
+            className="icon-button"
+          >
+            <AppIcon name="download" size={20} />
+          </button>
+          <button
+            type="button"
+            aria-label={t("common_refresh")}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="icon-button"
+          >
+            <AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} />
+          </button>
         </div>
       </div>
 
       <div className="container">
-        {/* Day Pills with dates */}
+        {/* Day Pills */}
         {!scheduleUnavailable && !scheduleFailed ? (
           <div className="day-pills">
             {dayNames.map((dayNameOriginal, i) => {
@@ -255,38 +279,40 @@ export default function SchedulePage() {
           <div className="empty-state" style={{ paddingTop: "80px" }}>
             <AppIcon name="empty-calendar" size={48} />
             <div style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px", color: "var(--text-primary)" }}>
-              {selectedDay === t("schedule_weekend_tab") ? t("schedule_weekend_title") as string : t("schedule_no_classes_title") as string}
+              {selectedDay === t("schedule_weekend_tab") ? t("schedule_weekend_title") : t("schedule_no_classes_title")}
             </div>
             <div style={{ fontSize: "15px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
               {selectedDay === t("schedule_weekend_tab")
-                ? t("schedule_weekend_desc") as string
-                : t("schedule_no_classes_desc") as string}
+                ? t("schedule_weekend_desc")
+                : t("schedule_no_classes_desc")}
             </div>
           </div>
         ) : (
-          <div className="stagger animate-slide-up" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {dayItems.map((item) => (
-              <ScheduleCard
-                key={item.id}
-                item={item}
-                now={now}
-                isCurrentDay={isToday(selectedDay)}
-                typeLabel={typeLabel}
-                t={t}
-              />
-            ))}
+          <div className="stagger animate-slide-up" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {dayItems.map((item, idx) => {
+              const prevItem = idx > 0 ? dayItems[idx - 1] : null;
+              const breakMins = prevItem ? toMinutes(item.timeStart) - toMinutes(prevItem.timeEnd) : 0;
+
+              return (
+                <div key={item.id}>
+                  {breakMins >= 15 && (
+                    <div className="timeline-break">
+                      <span>☕ Prestávka {formatDuration(breakMins)}</span>
+                    </div>
+                  )}
+                  <ScheduleCard
+                    item={item}
+                    now={now}
+                    isCurrentDay={isToday(selectedDay)}
+                    typeLabel={typeLabel}
+                    t={t}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        .spin {
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
     </div>
   );
 }
