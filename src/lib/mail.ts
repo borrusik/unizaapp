@@ -60,6 +60,7 @@ export type MailboxPage = {
   folders: MailFolder[];
   folder: string;
   messages: MailSummary[];
+  selectedMessage: MailDetail | null;
   total: number;
   page: number;
   hasMore: boolean;
@@ -192,6 +193,73 @@ async function requireExistingFolder(client: ImapFlow, path: string): Promise<st
   return match.path;
 }
 
+async function readMailDetail(client: ImapFlow, uid: number, markSeen = true): Promise<MailDetail> {
+  const safeUid = validateUid(uid);
+  const message = await client.fetchOne(
+    safeUid,
+    {
+      uid: true,
+      flags: true,
+      envelope: true,
+      internalDate: true,
+      size: true,
+      bodyStructure: true,
+      source: { maxLength: MAX_SOURCE_BYTES },
+    },
+    { uid: true },
+  );
+  if (!message || !message.source) throw new Error("Message not found or too large");
+  if (message.size && message.size > MAX_SOURCE_BYTES) throw new Error("Message is too large to display");
+
+  const parsed = await simpleParser(message.source, {
+    skipImageLinks: true,
+    maxHtmlLengthToParse: 2 * 1024 * 1024,
+  });
+  const safeHtml = typeof parsed.html === "string"
+    ? sanitizeHtml(parsed.html, {
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+        allowedAttributes: {
+          a: ["href", "title", "target", "rel"],
+          img: ["alt", "title"],
+          table: ["cellpadding", "cellspacing"],
+          td: ["colspan", "rowspan"],
+          th: ["colspan", "rowspan"],
+        },
+        allowedSchemes: ["http", "https", "mailto"],
+        transformTags: {
+          a: sanitizeHtml.simpleTransform("a", { target: "_blank", rel: "noopener noreferrer" }),
+        },
+      })
+    : "";
+
+  const unread = !message.flags?.has("\\Seen");
+  if (markSeen && unread) await client.messageFlagsAdd(safeUid, ["\\Seen"], { uid: true });
+  const from = normalizeAddresses(message.envelope?.from);
+  return {
+    uid: message.uid,
+    subject: parsed.subject?.trim().slice(0, 500) || message.envelope?.subject?.trim().slice(0, 500) || "(no subject)",
+    from,
+    to: normalizeAddresses(message.envelope?.to),
+    cc: normalizeAddresses(message.envelope?.cc),
+    date: toIso(parsed.date ?? message.envelope?.date ?? message.internalDate),
+    preview: cleanPreview(parsed.text),
+    unread: markSeen ? false : unread,
+    flagged: Boolean(message.flags?.has("\\Flagged")),
+    hasAttachments: parsed.attachments.some((attachment) => !attachment.related),
+    text: (parsed.text ?? "").slice(0, 2 * 1024 * 1024),
+    html: safeHtml,
+    attachments: parsed.attachments
+      .map((attachment, index) => ({ attachment, index }))
+      .filter(({ attachment }) => !attachment.related)
+      .map(({ attachment, index }) => ({
+        index,
+        filename: (attachment.filename || `attachment-${index + 1}`).replace(/[\0\r\n]/g, "").slice(0, 180),
+        contentType: attachment.contentType || "application/octet-stream",
+        size: attachment.size,
+      })),
+  };
+}
+
 export async function getMailbox(
   folder = "INBOX",
   page = 1,
@@ -200,7 +268,7 @@ export async function getMailbox(
   return withMailClient(async (client) => {
     const folders = await listFolders(client);
     const selected = folders.some((item) => item.path === folder) ? folder : "INBOX";
-    const lock = await client.getMailboxLock(selected, { readOnly: true });
+    const lock = await client.getMailboxLock(selected);
     try {
       const normalizedPage = Math.max(1, Math.min(1000, Math.trunc(page) || 1));
       const normalizedSearch = search.replace(/[\0\r\n]/g, " ").trim().slice(0, MAX_SEARCH_LENGTH);
@@ -215,6 +283,7 @@ export async function getMailbox(
           folders,
           folder: selected,
           messages: [],
+          selectedMessage: null,
           total: allUids.length,
           page: normalizedPage,
           hasMore: false,
@@ -242,11 +311,13 @@ export async function getMailbox(
           hasAttachments: hasAttachment(message.bodyStructure),
         } satisfies MailSummary];
       });
+      const selectedMessage = await readMailDetail(client, pageUids[0], false).catch(() => null);
 
       return {
         folders,
         folder: selected,
         messages,
+        selectedMessage,
         total: allUids.length,
         page: normalizedPage,
         hasMore: start + pageUids.length < allUids.length,
@@ -263,68 +334,7 @@ export async function getMailMessage(folder: string, uid: number): Promise<MailD
     const safeUid = validateUid(uid);
     const lock = await client.getMailboxLock(selected);
     try {
-      const message = await client.fetchOne(
-        safeUid,
-        {
-          uid: true,
-          flags: true,
-          envelope: true,
-          internalDate: true,
-          size: true,
-          bodyStructure: true,
-          source: { maxLength: MAX_SOURCE_BYTES },
-        },
-        { uid: true },
-      );
-      if (!message || !message.source) throw new Error("Message not found or too large");
-      if (message.size && message.size > MAX_SOURCE_BYTES) throw new Error("Message is too large to display");
-
-      const parsed = await simpleParser(message.source, {
-        skipImageLinks: true,
-        maxHtmlLengthToParse: 2 * 1024 * 1024,
-      });
-      const safeHtml = typeof parsed.html === "string"
-        ? sanitizeHtml(parsed.html, {
-            allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
-            allowedAttributes: {
-              a: ["href", "title", "target", "rel"],
-              img: ["alt", "title"],
-              table: ["cellpadding", "cellspacing"],
-              td: ["colspan", "rowspan"],
-              th: ["colspan", "rowspan"],
-            },
-            allowedSchemes: ["http", "https", "mailto"],
-            transformTags: {
-              a: sanitizeHtml.simpleTransform("a", { target: "_blank", rel: "noopener noreferrer" }),
-            },
-          })
-        : "";
-
-      await client.messageFlagsAdd(safeUid, ["\\Seen"], { uid: true });
-      const from = normalizeAddresses(message.envelope?.from);
-      return {
-        uid: message.uid,
-        subject: parsed.subject?.trim().slice(0, 500) || message.envelope?.subject?.trim().slice(0, 500) || "(no subject)",
-        from,
-        to: normalizeAddresses(message.envelope?.to),
-        cc: normalizeAddresses(message.envelope?.cc),
-        date: toIso(parsed.date ?? message.envelope?.date ?? message.internalDate),
-        preview: cleanPreview(parsed.text),
-        unread: false,
-        flagged: Boolean(message.flags?.has("\\Flagged")),
-        hasAttachments: parsed.attachments.some((attachment) => !attachment.related),
-        text: (parsed.text ?? "").slice(0, 2 * 1024 * 1024),
-        html: safeHtml,
-        attachments: parsed.attachments
-          .map((attachment, index) => ({ attachment, index }))
-          .filter(({ attachment }) => !attachment.related)
-          .map(({ attachment, index }) => ({
-            index,
-            filename: (attachment.filename || `attachment-${index + 1}`).replace(/[\0\r\n]/g, "").slice(0, 180),
-            contentType: attachment.contentType || "application/octet-stream",
-            size: attachment.size,
-          })),
-      };
+      return await readMailDetail(client, safeUid);
     } finally {
       lock.release();
     }

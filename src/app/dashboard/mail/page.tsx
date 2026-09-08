@@ -80,6 +80,31 @@ function formatDate(value: string | null, lang: Lang): string {
   ).format(date);
 }
 
+function MailboxSkeleton() {
+  return (
+    <>
+      <aside className="mail-folders mail-folders-skeleton" aria-hidden="true">
+        <div className="mail-folder-title skeleton-line" />
+        {[1, 2, 3, 4, 5].map((item) => <div className="mail-folder skeleton" key={item} />)}
+      </aside>
+      <section className="mail-list-panel" aria-hidden="true">
+        <div className="mail-search skeleton" />
+        <div className="mail-message-list">
+          {[1, 2, 3, 4, 5, 6].map((item) => <div className="mail-message-row skeleton" key={item} />)}
+        </div>
+      </section>
+      <article className="mail-reader mail-reader-skeleton" aria-hidden="true">
+        <div className="mail-reader-content">
+          <div className="skeleton-line mail-skeleton-title" />
+          <div className="skeleton-line mail-skeleton-meta" />
+          <div className="skeleton-line mail-skeleton-meta short" />
+          <div className="mail-skeleton-body skeleton" />
+        </div>
+      </article>
+    </>
+  );
+}
+
 export default function MailPage() {
   const { lang } = useTranslation();
   const copy = COPY[lang];
@@ -93,15 +118,29 @@ export default function MailPage() {
   const [isSending, startSending] = useTransition();
 
   const mailboxKey = useMemo(() => ["uniza_mailbox", folder, page, search] as const, [folder, page, search]);
-  const { data, error, isLoading, mutate } = useSWR(mailboxKey, ([, selectedFolder, selectedPage, selectedSearch]) =>
+  const { data, error, isLoading, isValidating, mutate } = useSWR(mailboxKey, ([, selectedFolder, selectedPage, selectedSearch]) =>
     getMailbox(selectedFolder, selectedPage, selectedSearch),
     { revalidateOnFocus: false, dedupingInterval: 20_000 },
   );
-  const { data: detail, isLoading: detailLoading, mutate: mutateDetail } = useSWR(
-    selectedUid ? ["uniza_mail_message", folder, selectedUid] as const : null,
+  const initialDetail = data?.selectedMessage ?? null;
+  const shouldFetchSelected = selectedUid !== null && selectedUid !== initialDetail?.uid;
+  const { data: fetchedDetail, isLoading: selectedDetailLoading, mutate: mutateDetail } = useSWR(
+    shouldFetchSelected ? ["uniza_mail_message", folder, selectedUid] as const : null,
     ([, selectedFolder, uid]) => getMailMessage(selectedFolder, uid),
-    { revalidateOnFocus: false },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+      onSuccess: (message) => {
+        void mutate((current) => current ? {
+          ...current,
+          messages: current.messages.map((item) => item.uid === message.uid ? { ...item, unread: false } : item),
+        } : current, { revalidate: false });
+      },
+    },
   );
+  const detail = selectedUid === null || selectedUid === initialDetail?.uid ? initialDetail : fetchedDetail;
+  const activeUid = selectedUid ?? initialDetail?.uid ?? null;
+  const detailLoading = shouldFetchSelected && selectedDetailLoading;
 
   const selectFolder = (path: string) => {
     setFolder(path);
@@ -116,13 +155,39 @@ export default function MailPage() {
     setSearch(query.trim());
   };
 
+  const selectMessage = (uid: number) => {
+    setSelectedUid(uid);
+    const summary = data?.messages.find((message) => message.uid === uid);
+    if (summary?.unread && initialDetail?.uid === uid) {
+      void setMailFlag(folder, uid, "seen", true).then(() => mutate((current) => current ? {
+        ...current,
+        messages: current.messages.map((message) => message.uid === uid ? { ...message, unread: false } : message),
+        selectedMessage: current.selectedMessage?.uid === uid
+          ? { ...current.selectedMessage, unread: false }
+          : current.selectedMessage,
+        folders: current.folders.map((item) => item.path === folder
+          ? { ...item, unseen: Math.max(0, item.unseen - 1) }
+          : item),
+      } : current, { revalidate: false })).catch(() => undefined);
+    }
+  };
+
   const toggleFlag = async () => {
     if (!detail) return;
-    await setMailFlag(folder, detail.uid, "flagged", !detail.flagged);
-    await Promise.all([
-      mutateDetail({ ...detail, flagged: !detail.flagged }, { revalidate: false }),
-      mutate(),
-    ]);
+    const flagged = !detail.flagged;
+    await setMailFlag(folder, detail.uid, "flagged", flagged);
+    const updateMailbox = mutate((current) => current ? {
+      ...current,
+      messages: current.messages.map((message) => message.uid === detail.uid ? { ...message, flagged } : message),
+      selectedMessage: current.selectedMessage?.uid === detail.uid
+        ? { ...current.selectedMessage, flagged }
+        : current.selectedMessage,
+    } : current, { revalidate: false });
+    if (shouldFetchSelected) {
+      await Promise.all([mutateDetail({ ...detail, flagged }, { revalidate: false }), updateMailbox]);
+    } else {
+      await updateMailbox;
+    }
   };
 
   const submitMessage = (event: FormEvent<HTMLFormElement>) => {
@@ -147,15 +212,25 @@ export default function MailPage() {
   return (
     <div className="mail-page-shell">
       <header className="top-bar mail-top-bar">
-        <div className="top-bar-title">{copy.title}</div>
-        <button type="button" className="mail-compose-button" onClick={() => { setComposeOpen(true); setSendState("idle"); }}>
-          <AppIcon name="edit" size={18} />
-          <span>{copy.compose}</span>
-        </button>
+        <div className="mail-title-block">
+          <div className="top-bar-title">{copy.title}</div>
+          <span>{data ? `${data.total} ${copy.results}` : copy.loading}</span>
+        </div>
+        <div className="mail-header-actions">
+          <button type="button" className="icon-button" aria-label={copy.loading} disabled={isValidating} onClick={() => mutate()}>
+            <AppIcon name="refresh" size={19} className={isValidating ? "spin" : ""} />
+          </button>
+          <button type="button" className="mail-compose-button" onClick={() => { setComposeOpen(true); setSendState("idle"); }}>
+            <AppIcon name="edit" size={18} />
+            <span>{copy.compose}</span>
+          </button>
+        </div>
       </header>
 
       <div className="mail-layout">
-        <aside className="mail-folders" aria-label={copy.folders}>
+        {isLoading && !data ? <MailboxSkeleton /> : null}
+        {error && !data ? <div className="mail-state mail-error mail-layout-error"><AppIcon name="warning" size={28} /><p>{copy.reconnect}</p></div> : null}
+        {data ? <aside className="mail-folders" aria-label={copy.folders}>
           <div className="mail-folder-title">{copy.folders}</div>
           {(data?.folders ?? []).map((item) => (
             <button
@@ -169,9 +244,9 @@ export default function MailPage() {
               {item.unseen > 0 ? <strong>{item.unseen}</strong> : null}
             </button>
           ))}
-        </aside>
+        </aside> : null}
 
-        <section className={`mail-list-panel ${selectedUid ? "has-selection" : ""}`}>
+        {data ? <section className={`mail-list-panel ${activeUid ? "has-selection" : ""}`}>
           <form className="mail-search" onSubmit={submitSearch}>
             <AppIcon name="search" size={18} />
             <input value={query} onChange={(event) => setQuery(event.target.value)} maxLength={120} placeholder={copy.search} aria-label={copy.search} />
@@ -179,16 +254,15 @@ export default function MailPage() {
           </form>
 
           {error ? <div className="mail-state mail-error"><AppIcon name="warning" size={28} /><p>{copy.reconnect}</p></div> : null}
-          {isLoading ? <div className="mail-state"><div className="spinner" /><p>{copy.loading}</p></div> : null}
-          {!error && !isLoading && data?.messages.length === 0 ? <div className="mail-state"><AppIcon name="mail" size={32} /><p>{copy.empty}</p></div> : null}
+          {!error && data.messages.length === 0 ? <div className="mail-state"><AppIcon name="mail" size={32} /><p>{copy.empty}</p></div> : null}
 
           <div className="mail-message-list">
-            {data?.messages.map((message) => (
+            {data.messages.map((message) => (
               <button
                 type="button"
                 key={message.uid}
-                className={`mail-message-row ${message.unread ? "unread" : ""} ${selectedUid === message.uid ? "active" : ""}`}
-                onClick={() => setSelectedUid(message.uid)}
+                className={`mail-message-row ${message.unread ? "unread" : ""} ${activeUid === message.uid ? "active" : ""}`}
+                onClick={() => selectMessage(message.uid)}
               >
                 <span className="mail-unread-dot" aria-label={message.unread ? copy.unread : undefined} />
                 <span className="mail-message-copy">
@@ -201,7 +275,7 @@ export default function MailPage() {
             ))}
           </div>
 
-          {data && data.total > 0 ? (
+          {data.total > 0 ? (
             <footer className="mail-pagination">
               <span>{data.total} {copy.results}</span>
               <div>
@@ -210,12 +284,12 @@ export default function MailPage() {
               </div>
             </footer>
           ) : null}
-        </section>
+        </section> : null}
 
-        <article className={`mail-reader ${selectedUid ? "open" : ""}`}>
+        {data ? <article className={`mail-reader ${selectedUid ? "open" : ""}`}>
           {selectedUid ? <button type="button" className="mail-reader-back" onClick={() => setSelectedUid(null)}><AppIcon name="arrow-left" size={18} />{copy.inbox}</button> : null}
           {detailLoading ? <div className="mail-state"><div className="spinner" /></div> : null}
-          {!selectedUid ? <div className="mail-state mail-reader-empty"><AppIcon name="mail" size={36} /><p>{copy.choose}</p></div> : null}
+          {!detail && !detailLoading ? <div className="mail-state mail-reader-empty"><AppIcon name="mail" size={36} /><p>{copy.choose}</p></div> : null}
           {detail ? (
             <div className="mail-reader-content">
               <div className="mail-reader-header">
@@ -248,7 +322,7 @@ export default function MailPage() {
               ) : null}
             </div>
           ) : null}
-        </article>
+        </article> : null}
       </div>
 
       {composeOpen ? (
