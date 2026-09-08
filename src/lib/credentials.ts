@@ -22,7 +22,10 @@ export function canPersistCredentials(): boolean {
   return getEncryptionKey() !== null;
 }
 
-export async function saveCredentials(credentials: SavedCredentials): Promise<boolean> {
+export async function saveCredentials(
+  credentials: SavedCredentials,
+  options: { persistent?: boolean } = {},
+): Promise<boolean> {
   const key = getEncryptionKey();
   if (!key) return false;
 
@@ -42,7 +45,7 @@ export async function saveCredentials(credentials: SavedCredentials): Promise<bo
   cookieStore.set(COOKIE_NAME, value, {
     httpOnly: true,
     path: "/",
-    maxAge: COOKIE_MAX_AGE_SECONDS,
+    ...(options.persistent === false ? {} : { maxAge: COOKIE_MAX_AGE_SECONDS }),
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
   });

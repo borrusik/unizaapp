@@ -6,6 +6,7 @@ import {
   resolveExamTermsUrl,
   resolveMoodleUrl,
   resolveSubjectInfoUrl,
+  UNIZA_URLS,
 } from "./uniza.ts";
 import { getBratislavaDayIndex, getScheduleTiming } from "./schedule-timing.ts";
 import {
@@ -149,6 +150,10 @@ test("Moodle links stay on approved UNIZA paths", () => {
   );
   assert.equal(resolveMoodleUrl("javascript:alert(1)"), null);
   assert.equal(resolveMoodleUrl("https://example.com/moodle/course/view.php?id=1"), null);
+});
+
+test("student mail fallback points to the official direct webmail", () => {
+  assert.equal(UNIZA_URLS.studentMail, "https://webmail.stud.uniza.sk/");
 });
 
 test("exam action URLs are restricted to the official AIVS terms endpoint", () => {

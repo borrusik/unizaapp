@@ -16,11 +16,11 @@ function toMinutes(value: string) {
   return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : -1;
 }
 
-function formatDuration(mins: number): string {
-  if (mins < 60) return `${mins} min`;
+function formatDuration(mins: number, hourUnit: string, minuteUnit: string): string {
+  if (mins < 60) return `${mins} ${minuteUnit}`;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return m > 0 ? `${h} ${hourUnit} ${m} ${minuteUnit}` : `${h} ${hourUnit}`;
 }
 
 function getTodayDayName(t: (key: TranslationKey) => unknown): string {
@@ -216,7 +216,7 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <div className="container">
+      <div className="container schedule-container">
         {/* Day Pills */}
         {!scheduleUnavailable && !scheduleFailed ? (
           <div className="day-pills">
@@ -288,16 +288,22 @@ export default function SchedulePage() {
             </div>
           </div>
         ) : (
-          <div className="stagger animate-slide-up" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div className="schedule-list stagger animate-slide-up">
             {dayItems.map((item, idx) => {
               const prevItem = idx > 0 ? dayItems[idx - 1] : null;
               const breakMins = prevItem ? toMinutes(item.timeStart) - toMinutes(prevItem.timeEnd) : 0;
 
               return (
-                <div key={item.id}>
+                <div className="schedule-entry" key={item.id}>
                   {breakMins >= 15 && (
                     <div className="timeline-break">
-                      <span>☕ Prestávka {formatDuration(breakMins)}</span>
+                      <span>
+                        ☕ {t("schedule_break")} {formatDuration(
+                          breakMins,
+                          t("schedule_hour_short"),
+                          t("schedule_minute_short"),
+                        )}
+                      </span>
                     </div>
                   )}
                   <ScheduleCard

@@ -19,7 +19,7 @@ export default function ServicesPage() {
       : lang === "uk"
         ? { placeholder: "Ім’я або прізвище", button: "Знайти", empty: "Нічого не знайдено" }
         : { placeholder: "Имя или фамилия", button: "Найти", empty: "Ничего не найдено" };
-  const services: Array<{ name: string; description: string; href: string; icon: AppIconName }> = [
+  const services: Array<{ name: string; description: string; href: string; icon: AppIconName; internal?: boolean }> = [
     { name: "AIVS / Vzdelávanie", description: t("nav_grades") as string, href: UNIZA_URLS.education, icon: "book" },
     { name: "Moodle", description: t("nav_subjects") as string, href: UNIZA_URLS.moodle, icon: "clipboard" },
     { name: "WebKredit", description: t("nav_food") as string, href: UNIZA_URLS.catering, icon: "restaurant" },
@@ -27,7 +27,7 @@ export default function ServicesPage() {
     { name: t("services_directory") as string, description: "Kontakty UNIZA", href: UNIZA_URLS.directory, icon: "search" },
     { name: t("system_academic_calendar") as string, description: "Termíny akademického roka", href: UNIZA_URLS.academicCalendar, icon: "calendar" },
     { name: t("services_news") as string, description: "uniza.sk", href: UNIZA_URLS.news, icon: "info" },
-    { name: t("services_mail") as string, description: "Webmail a sieťové služby", href: UNIZA_URLS.studentMail, icon: "mail" },
+    { name: t("services_mail") as string, description: "UNIZA Student Mail", href: "/dashboard/mail", icon: "mail", internal: true },
     { name: t("services_library") as string, description: "UK UNIZA", href: UNIZA_URLS.library, icon: "library" },
     { name: t("system_helpdesk") as string, description: "helpdesk.uniza.sk", href: UNIZA_URLS.helpdesk, icon: "shield" },
   ];
@@ -41,7 +41,7 @@ export default function ServicesPage() {
           <div><AppIcon name="search" size={19} /><input id="directory-query" name="query" minLength={2} maxLength={80} placeholder={searchCopy.placeholder} autoComplete="off" /><button type="submit" disabled={pending}>{pending ? "…" : searchCopy.button}</button></div>
         </form>
         {searched ? <div className="directory-results">{people.length ? people.map((person) => <article key={`${person.name}-${person.email}`}><strong>{person.name}</strong><span>{person.job}</span><small>{[person.room, person.phone].filter(Boolean).join(" · ")}</small>{person.email ? <a href={`mailto:${person.email}`}>{person.email}</a> : null}</article>) : <p>{searchCopy.empty}</p>}</div> : null}
-        <div className="services-list">{services.map((service) => <a key={service.href} href={service.href} target="_blank" rel="noopener noreferrer" className="service-row"><span className="service-icon"><AppIcon name={service.icon} size={21} /></span><span><strong>{service.name}</strong><small>{service.description}</small></span><AppIcon name="external-link" size={17} /></a>)}</div>
+        <div className="services-list">{services.map((service) => service.internal ? <Link key={service.href} href={service.href} className="service-row"><span className="service-icon"><AppIcon name={service.icon} size={21} /></span><span><strong>{service.name}</strong><small>{service.description}</small></span><AppIcon name="chevron-right" size={17} /></Link> : <a key={service.href} href={service.href} target="_blank" rel="noopener noreferrer" className="service-row"><span className="service-icon"><AppIcon name={service.icon} size={21} /></span><span><strong>{service.name}</strong><small>{service.description}</small></span><AppIcon name="external-link" size={17} /></a>)}</div>
         <a href="https://www.instagram.com/borrusik/" target="_blank" rel="noopener noreferrer" className="service-support"><AppIcon name="instagram" size={22} /><span><strong>{t("support_instagram")}</strong><small>{t("support_instagram_hint")}</small></span><AppIcon name="external-link" size={17} /></a>
       </div>
     </div>

@@ -33,7 +33,7 @@ export default function DashboardLayout({
     { href: "/dashboard/schedule", labelKey: "nav_schedule", icon: "calendar" },
     { href: "/dashboard/subjects", labelKey: "nav_study", icon: "book" },
     { href: "/dashboard/food", labelKey: "nav_food", icon: "restaurant" },
-    { href: "/dashboard/profile", labelKey: "nav_profile", icon: "user" },
+    { href: "/dashboard/mail", labelKey: "nav_mail", icon: "mail" },
   ];
 
   // Desktop sidebar navigation links
@@ -44,6 +44,7 @@ export default function DashboardLayout({
     { href: "/dashboard/grades", labelKey: "nav_grades", icon: "award" },
     { href: "/dashboard/exams", labelKey: "home_exams", icon: "clipboard" },
     { href: "/dashboard/food", labelKey: "nav_food", icon: "restaurant" },
+    { href: "/dashboard/mail", labelKey: "nav_mail", icon: "mail" },
     { href: "/dashboard/services", labelKey: "home_services", icon: "building" },
     { href: "/dashboard/profile", labelKey: "nav_profile", icon: "user" },
   ];
@@ -86,19 +87,6 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div style={{ paddingTop: "16px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link
-            href="/dashboard/profile"
-            style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, textDecoration: "none" }}
-          >
-            <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "var(--surface-secondary)", border: "1px solid var(--border)", display: "grid", placeItems: "center", fontSize: "12px", fontWeight: 700, color: "var(--primary)" }}>
-              <AppIcon name="user" size={16} />
-            </div>
-            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
-              {t("nav_profile")}
-            </span>
-          </Link>
-        </div>
       </aside>
 
       {/* Main Content Area */}

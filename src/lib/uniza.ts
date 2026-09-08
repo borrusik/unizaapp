@@ -8,7 +8,7 @@ export const UNIZA_URLS = {
   helpdesk: "https://helpdesk.uniza.sk/",
   directory: "https://www.uniza.sk/index.php/zamestnanci/vseobecne-informacie/adresar-zamestnancov",
   news: "https://www.uniza.sk/index.php",
-  studentMail: "https://www.uniza.sk/index.php/studenti/vseobecne-informacie/webmail-a-sietove-sluzby",
+  studentMail: "https://webmail.stud.uniza.sk/",
   library: "https://ukzu.uniza.sk/",
 } as const;
 

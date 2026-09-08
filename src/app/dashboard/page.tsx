@@ -94,12 +94,17 @@ export default function HomePage() {
     { href: "/dashboard/subjects", icon: "book", title: t("nav_subjects") },
     { href: "/dashboard/grades", icon: "award", title: t("nav_grades") },
     { href: "/dashboard/food", icon: "restaurant", title: t("nav_food") },
+    { href: "/dashboard/mail", icon: "mail", title: t("services_mail") },
+    { href: "/dashboard/services", icon: "building", title: t("home_services") },
   ];
 
   return (
     <div>
       <div className="top-bar home-top-bar">
         <div className="top-bar-title">UNIZA Student</div>
+        <Link href="/dashboard/profile" className="icon-button" aria-label={t("nav_profile")}>
+          <AppIcon name="user" size={20} />
+        </Link>
       </div>
 
       <div className="container home-page animate-slide-up">

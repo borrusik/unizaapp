@@ -51,6 +51,7 @@ export default function ProfilePage() {
   const integration = data?.integration || {
     education: false,
     catering: false,
+    mail: false,
     passwordStored: false,
   };
 
@@ -138,6 +139,7 @@ export default function ProfilePage() {
         <div className="profile-open-group" style={{ marginBottom: "12px" }}>
           <div className="profile-open-row"><span className="profile-system-name"><AppIcon name="book" size={19} />AIVS</span><span className={`badge ${integration.education ? "badge-credits" : "badge-neutral"}`}>{integration.education ? t("integration_connected") : t("integration_reconnect")}</span></div>
           <div className="profile-open-row"><span className="profile-system-name"><AppIcon name="restaurant" size={19} />WebKredit</span><span className={`badge ${integration.catering ? "badge-credits" : "badge-neutral"}`}>{integration.catering ? t("integration_connected") : t("integration_reconnect")}</span></div>
+          <Link href="/dashboard/mail" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="mail" size={19} />{t("services_mail")}</span><span className={`badge ${integration.mail ? "badge-credits" : "badge-neutral"}`}>{integration.mail ? t("integration_connected") : t("integration_reconnect")}</span></Link>
           <Link href="/dashboard/services" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="building" size={19} />{t("services_title")}</span><AppIcon name="chevron-right" size={17} /></Link>
         </div>
         <p className="text-xs" style={{ margin: "0 4px 24px" }}>

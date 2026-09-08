@@ -400,12 +400,18 @@ export async function login(formData: FormData) {
     sameSite: "strict",
   });
   const cateringConnected = await storeStravaSession(stravaSession);
-  const credentialsStored = remember ? await saveCredentials({ email, password }) : false;
+  // Mail uses IMAP/SMTP and therefore needs the UNIZA password for each server-side
+  // request. Keep it only in the authenticated encrypted cookie. Without "remember"
+  // the browser discards this cookie at the end of the session.
+  const credentialsStored = await saveCredentials(
+    { email, password },
+    { persistent: remember },
+  );
 
   return {
     success: true,
     integrations: { education: true, catering: cateringConnected },
-    credentialsStored,
+    credentialsStored: remember && credentialsStored,
   };
 }
 
@@ -445,11 +451,13 @@ export async function getSession(): Promise<string | null> {
 export async function getIntegrationStatus() {
   const cookieStore = await cookies();
   const cateringSession = await getStoredStravaSession();
+  const savedCredentials = canPersistCredentials() ? await readCredentials() : null;
 
   return {
     education: Boolean(cookieStore.get("uniza_phpsessid")?.value),
     catering: Boolean(cateringSession),
-    passwordStored: canPersistCredentials() && Boolean(await readCredentials()),
+    mail: Boolean(savedCredentials?.email.toLowerCase().endsWith("@stud.uniza.sk")),
+    passwordStored: Boolean(savedCredentials),
   };
 }
 
