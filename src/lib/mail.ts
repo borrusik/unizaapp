@@ -3,8 +3,8 @@
 import { ImapFlow, type MessageAddressObject, type MessageStructureObject } from "imapflow";
 import { simpleParser } from "mailparser";
 import nodemailer from "nodemailer";
-import sanitizeHtml from "sanitize-html";
 import { readCredentials } from "@/lib/credentials";
+import { sanitizeMailHtml } from "@/lib/mail-content";
 import { rateLimit } from "@/lib/rate-limit";
 
 const MAIL_HOST = "mail.stud.uniza.sk";
@@ -193,7 +193,7 @@ async function requireExistingFolder(client: ImapFlow, path: string): Promise<st
   return match.path;
 }
 
-async function readMailDetail(client: ImapFlow, uid: number, markSeen = true): Promise<MailDetail> {
+async function readMailDetail(client: ImapFlow, folder: string, uid: number, markSeen = true): Promise<MailDetail> {
   const safeUid = validateUid(uid);
   const message = await client.fetchOne(
     safeUid,
@@ -216,20 +216,12 @@ async function readMailDetail(client: ImapFlow, uid: number, markSeen = true): P
     maxHtmlLengthToParse: 2 * 1024 * 1024,
   });
   const safeHtml = typeof parsed.html === "string"
-    ? sanitizeHtml(parsed.html, {
-        allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
-        allowedAttributes: {
-          a: ["href", "title", "target", "rel"],
-          img: ["alt", "title"],
-          table: ["cellpadding", "cellspacing"],
-          td: ["colspan", "rowspan"],
-          th: ["colspan", "rowspan"],
-        },
-        allowedSchemes: ["http", "https", "mailto"],
-        transformTags: {
-          a: sanitizeHtml.simpleTransform("a", { target: "_blank", rel: "noopener noreferrer" }),
-        },
-      })
+    ? sanitizeMailHtml(
+        parsed.html,
+        folder,
+        message.uid,
+        parsed.attachments.map((attachment, index) => ({ contentId: attachment.contentId, index })),
+      )
     : "";
 
   const unread = !message.flags?.has("\\Seen");
@@ -311,7 +303,7 @@ export async function getMailbox(
           hasAttachments: hasAttachment(message.bodyStructure),
         } satisfies MailSummary];
       });
-      const selectedMessage = await readMailDetail(client, pageUids[0], false).catch(() => null);
+      const selectedMessage = await readMailDetail(client, selected, pageUids[0], false).catch(() => null);
 
       return {
         folders,
@@ -334,7 +326,7 @@ export async function getMailMessage(folder: string, uid: number): Promise<MailD
     const safeUid = validateUid(uid);
     const lock = await client.getMailboxLock(selected);
     try {
-      return await readMailDetail(client, safeUid);
+      return await readMailDetail(client, selected, safeUid);
     } finally {
       lock.release();
     }

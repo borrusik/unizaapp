@@ -27,6 +27,34 @@ import { getAivsScheduleSourceState } from "./aivs-schedule.ts";
 import { getAivsResultsTableYear, selectAivsGradeResult } from "./aivs-grades.ts";
 import { createIcsCalendar } from "./calendar.ts";
 import { parseInstagramMenuCaption } from "./instagram-menu.ts";
+import { normalizeMailContentId, sanitizeMailHtml } from "./mail-content.ts";
+
+test("mail HTML keeps safe links and rejects active content", () => {
+  const html = sanitizeMailHtml(
+    `<script>alert(1)</script><a href="javascript:alert(1)">bad</a><a href="https://uniza.sk/path">safe</a>`,
+    "INBOX",
+    42,
+    [],
+  );
+  assert.doesNotMatch(html, /script|javascript:/i);
+  assert.match(html, /href="https:\/\/uniza\.sk\/path"/);
+  assert.match(html, /target="_blank"/);
+  assert.match(html, /rel="noopener noreferrer"/);
+});
+
+test("mail HTML resolves CID images and protects remote image requests", () => {
+  assert.equal(normalizeMailContentId(" <Photo@UNIZA> "), "photo@uniza");
+  const html = sanitizeMailHtml(
+    `<img src="cid:Photo@UNIZA" alt="Inline"><img src="https://images.example/menu.jpg"><img src="http://unsafe.example/pixel.gif">`,
+    "Study & notices",
+    77,
+    [{ contentId: "<photo@uniza>", index: 3 }],
+  );
+  assert.match(html, /folder=Study%20%26%20notices&amp;uid=77&amp;index=3&amp;disposition=inline/);
+  assert.match(html, /src="https:\/\/images\.example\/menu\.jpg"/);
+  assert.match(html, /referrerpolicy="no-referrer"/);
+  assert.doesNotMatch(html, /unsafe\.example/);
+});
 
 test("AIVS faculty parsing supports names that end with Fakulta", () => {
   assert.equal(

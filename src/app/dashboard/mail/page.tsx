@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, type ReactNode, useMemo, useState, useTransition } from "react";
 import useSWR from "swr";
 import { AppIcon } from "@/components/AppIcon";
 import { useTranslation, type Lang } from "@/hooks/useTranslation";
@@ -9,6 +9,7 @@ import {
   getMailMessage,
   setMailFlag,
   type MailAddress,
+  type MailAttachment,
   type MailFolder,
 } from "@/lib/mail";
 
@@ -22,6 +23,7 @@ const COPY = {
     send: "Odoslať", sending: "Odosielam…", cancel: "Zrušiť", sentOk: "Správa bola odoslaná",
     sendFailed: "Správu sa nepodarilo odoslať", attachments: "Prílohy", attach: "Priložiť súbory",
     previous: "Novšie", next: "Staršie", results: "správ", unread: "Neprečítané", flagged: "Označené",
+    preview: "Zobraziť", download: "Stiahnuť", closePreview: "Zavrieť náhľad", openInNewTab: "Otvoriť na novej karte",
   },
   en: {
     title: "Mail", compose: "New message", search: "Search mail", inbox: "Inbox", sent: "Sent",
@@ -32,6 +34,7 @@ const COPY = {
     send: "Send", sending: "Sending…", cancel: "Cancel", sentOk: "Message sent",
     sendFailed: "The message could not be sent", attachments: "Attachments", attach: "Attach files",
     previous: "Newer", next: "Older", results: "messages", unread: "Unread", flagged: "Flagged",
+    preview: "Preview", download: "Download", closePreview: "Close preview", openInNewTab: "Open in a new tab",
   },
   uk: {
     title: "Пошта", compose: "Новий лист", search: "Пошук у пошті", inbox: "Вхідні", sent: "Надіслані",
@@ -42,6 +45,7 @@ const COPY = {
     send: "Надіслати", sending: "Надсилання…", cancel: "Скасувати", sentOk: "Лист надіслано",
     sendFailed: "Не вдалося надіслати лист", attachments: "Вкладення", attach: "Додати файли",
     previous: "Новіші", next: "Старіші", results: "листів", unread: "Непрочитані", flagged: "Позначені",
+    preview: "Переглянути", download: "Завантажити", closePreview: "Закрити перегляд", openInNewTab: "Відкрити в новій вкладці",
   },
   ru: {
     title: "Почта", compose: "Новое письмо", search: "Поиск по почте", inbox: "Входящие", sent: "Отправленные",
@@ -52,6 +56,7 @@ const COPY = {
     send: "Отправить", sending: "Отправляю…", cancel: "Отмена", sentOk: "Письмо отправлено",
     sendFailed: "Не удалось отправить письмо", attachments: "Вложения", attach: "Прикрепить файлы",
     previous: "Новее", next: "Старее", results: "писем", unread: "Непрочитанные", flagged: "Отмеченные",
+    preview: "Просмотр", download: "Скачать", closePreview: "Закрыть просмотр", openInNewTab: "Открыть в новой вкладке",
   },
 } as const;
 
@@ -78,6 +83,53 @@ function formatDate(value: string | null, lang: Lang): string {
     { sk: "sk-SK", en: "en-GB", uk: "uk-UA", ru: "ru-RU" }[lang],
     { dateStyle: "medium", timeStyle: "short" },
   ).format(date);
+}
+
+const PREVIEWABLE_ATTACHMENT_TYPES = new Set([
+  "application/pdf",
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "text/csv",
+  "text/plain",
+]);
+
+function normalizedContentType(value: string): string {
+  return value.split(";", 1)[0].trim().toLowerCase();
+}
+
+function mailAttachmentUrl(folder: string, uid: number, index: number, inline = false): string {
+  const parameters = new URLSearchParams({ folder, uid: String(uid), index: String(index) });
+  if (inline) parameters.set("disposition", "inline");
+  return `/api/mail/attachment?${parameters.toString()}`;
+}
+
+function MailTextBody({ text }: { text: string }) {
+  const parts: ReactNode[] = [];
+  const pattern = /(https?:\/\/[^\s<>]+|[\w.+-]+@[\w.-]+\.[a-z]{2,})/gi;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > cursor) parts.push(text.slice(cursor, match.index));
+    const rawValue = match[0];
+    const value = rawValue.replace(/[),.!?;:]+$/g, "");
+    const suffix = rawValue.slice(value.length);
+    const href = value.includes("@") && !value.toLowerCase().startsWith("http") ? `mailto:${value}` : value;
+    const imageLink = /^https:\/\/[^\s?#]+\.(?:gif|jpe?g|png|webp)(?:[?#].*)?$/i.test(value);
+    parts.push(imageLink ? (
+      <span className="mail-linked-image" key={`${match.index}-${value}`}>
+        <a href={href} target="_blank" rel="noopener noreferrer">{value}</a>
+        {/* eslint-disable-next-line @next/next/no-img-element -- remote mail images cannot use the Next image optimizer */}
+        <img src={href} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+      </span>
+    ) : <a key={`${match.index}-${value}`} href={href} target="_blank" rel="noopener noreferrer">{value}</a>);
+    if (suffix) parts.push(suffix);
+    cursor = match.index + rawValue.length;
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return <div className="mail-body-text">{parts}</div>;
 }
 
 function MailboxSkeleton() {
@@ -114,6 +166,7 @@ export default function MailPage() {
   const [search, setSearch] = useState("");
   const [selectedUid, setSelectedUid] = useState<number | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<MailAttachment | null>(null);
   const [sendState, setSendState] = useState<"idle" | "sent" | "error">("idle");
   const [isSending, startSending] = useTransition();
 
@@ -146,6 +199,7 @@ export default function MailPage() {
     setFolder(path);
     setPage(1);
     setSelectedUid(null);
+    setPreviewAttachment(null);
   };
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
@@ -156,6 +210,7 @@ export default function MailPage() {
   };
 
   const selectMessage = (uid: number) => {
+    setPreviewAttachment(null);
     setSelectedUid(uid);
     const summary = data?.messages.find((message) => message.uid === uid);
     if (summary?.unread && initialDetail?.uid === uid) {
@@ -304,26 +359,61 @@ export default function MailPage() {
                   <AppIcon name="star" size={20} />
                 </button>
               </div>
-              {detail.html ? <div className="mail-body-html" dangerouslySetInnerHTML={{ __html: detail.html }} /> : <div className="mail-body-text">{detail.text}</div>}
+              {detail.html ? <div className="mail-body-html" dangerouslySetInnerHTML={{ __html: detail.html }} /> : <MailTextBody text={detail.text} />}
               {detail.attachments.length ? (
                 <div className="mail-attachments">
                   <h2>{copy.attachments}</h2>
-                  {detail.attachments.map((attachment) => (
-                    <a
-                      key={`${attachment.index}-${attachment.filename}`}
-                      href={`/api/mail/attachment?folder=${encodeURIComponent(folder)}&uid=${detail.uid}&index=${attachment.index}`}
-                      className="mail-attachment"
-                    >
-                      <AppIcon name="paperclip" size={17} />
-                      <span><strong>{attachment.filename}</strong><small>{Math.max(1, Math.round(attachment.size / 1024))} KB</small></span>
-                    </a>
-                  ))}
+                  <div className="mail-attachment-grid">{detail.attachments.map((attachment) => {
+                    const contentType = normalizedContentType(attachment.contentType);
+                    const previewable = PREVIEWABLE_ATTACHMENT_TYPES.has(contentType);
+                    const image = contentType.startsWith("image/") && previewable;
+                    const inlineUrl = mailAttachmentUrl(folder, detail.uid, attachment.index, true);
+                    const downloadUrl = mailAttachmentUrl(folder, detail.uid, attachment.index);
+                    return (
+                      <section className={`mail-attachment ${image ? "is-image" : ""}`} key={`${attachment.index}-${attachment.filename}`}>
+                        {image ? (
+                          <button type="button" className="mail-attachment-thumbnail" onClick={() => setPreviewAttachment(attachment)} aria-label={`${copy.preview}: ${attachment.filename}`}>
+                            {/* eslint-disable-next-line @next/next/no-img-element -- authenticated attachment URL cannot use the Next image optimizer */}
+                            <img src={inlineUrl} alt={attachment.filename} loading="lazy" referrerPolicy="no-referrer" />
+                          </button>
+                        ) : <span className="mail-attachment-icon"><AppIcon name="paperclip" size={18} /></span>}
+                        <span className="mail-attachment-copy"><strong>{attachment.filename}</strong><small>{Math.max(1, Math.round(attachment.size / 1024))} KB · {contentType}</small></span>
+                        <span className="mail-attachment-actions">
+                          {previewable ? <button type="button" onClick={() => setPreviewAttachment(attachment)}>{copy.preview}</button> : null}
+                          <a href={downloadUrl} download>{copy.download}</a>
+                        </span>
+                      </section>
+                    );
+                  })}</div>
                 </div>
               ) : null}
             </div>
           ) : null}
         </article> : null}
       </div>
+
+      {previewAttachment && detail ? (
+        <div className="mail-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setPreviewAttachment(null); }}>
+          <section className="mail-preview-dialog" role="dialog" aria-modal="true" aria-label={`${copy.preview}: ${previewAttachment.filename}`}>
+            <header>
+              <div><strong>{previewAttachment.filename}</strong><small>{normalizedContentType(previewAttachment.contentType)}</small></div>
+              <button type="button" className="icon-button" aria-label={copy.closePreview} onClick={() => setPreviewAttachment(null)}><AppIcon name="x" size={19} /></button>
+            </header>
+            <div className="mail-preview-content">
+              {normalizedContentType(previewAttachment.contentType).startsWith("image/") ? (
+                // eslint-disable-next-line @next/next/no-img-element -- authenticated attachment URL cannot use the Next image optimizer
+                <img src={mailAttachmentUrl(folder, detail.uid, previewAttachment.index, true)} alt={previewAttachment.filename} referrerPolicy="no-referrer" />
+              ) : (
+                <iframe title={previewAttachment.filename} src={mailAttachmentUrl(folder, detail.uid, previewAttachment.index, true)} sandbox="" />
+              )}
+            </div>
+            <footer>
+              <a href={mailAttachmentUrl(folder, detail.uid, previewAttachment.index, true)} target="_blank" rel="noopener noreferrer"><AppIcon name="external-link" size={16} />{copy.openInNewTab}</a>
+              <a href={mailAttachmentUrl(folder, detail.uid, previewAttachment.index)} download><AppIcon name="download" size={16} />{copy.download}</a>
+            </footer>
+          </section>
+        </div>
+      ) : null}
 
       {composeOpen ? (
         <div className="dialog-backdrop mail-compose-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target && !isSending) setComposeOpen(false); }}>
