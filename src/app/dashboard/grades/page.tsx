@@ -118,7 +118,7 @@ export default function GradesPage() {
   );
 
   return (
-    <div>
+    <div className="dashboard-page dashboard-page-standard">
       <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title">{t("grades_title")}</div>
         <button

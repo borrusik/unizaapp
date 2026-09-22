@@ -70,7 +70,7 @@ export default function ExamsPage() {
   const rowProps = { locale: LOCALES[lang], t, onAction: (term: ExamTerm, action: "register" | "cancel") => setSelected({ term, action }) };
 
   return (
-    <div>
+    <div className="dashboard-page dashboard-page-standard">
       <div className="top-bar page-title-row"><div className="top-bar-title">{t("exams_title")}</div><button type="button" className="icon-button" onClick={refresh} disabled={isRefreshing} aria-label={t("common_refresh") as string}><AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} /></button></div>
       <div className="container">
         <AcademicPeriodControls academicYearLabel={t("common_academic_year") as string} years={years} selectedStartYear={selectedYear} onYearChange={(year) => { setAcademicYearStart(year); window.localStorage.setItem("uniza:academic-year:v1", String(year)); }} semester="winter" onSemesterChange={() => undefined} winterLabel="" summerLabel="" winterCount={0} summerCount={0} disabled={isLoading || years.length === 0} hideSemester />

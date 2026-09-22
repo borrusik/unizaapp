@@ -47,7 +47,7 @@ function SubjectInfoContent() {
     : [];
 
   return (
-    <div style={{ paddingBottom: "40px" }}>
+    <div className="dashboard-page dashboard-page-standard" style={{ paddingBottom: "40px" }}>
       {/* Premium Header */}
       <div style={{
         position: "sticky",

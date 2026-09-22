@@ -83,7 +83,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div>
+    <div className="dashboard-page dashboard-page-profile">
       <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title"><ClientText n="profile_title" /></div>
         <button
@@ -97,7 +97,7 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      <div className="container animate-slide-up">
+      <div className="container profile-page animate-slide-up">
         <div className="profile-identity">
           <div className="avatar">
             {user.name && user.name !== "Načítavam..." ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "?"}

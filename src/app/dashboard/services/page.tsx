@@ -33,7 +33,7 @@ export default function ServicesPage() {
   ];
 
   return (
-    <div>
+    <div className="dashboard-page dashboard-page-standard">
       <div className="top-bar page-title-row"><div className="top-bar-title">{t("services_title")}</div><Link prefetch={false} href="/dashboard" className="icon-button" aria-label={t("common_back") as string}><AppIcon name="x" size={20} /></Link></div>
       <div className="container services-page">
         <form className="directory-search" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const query = String(form.get("query") || "").trim(); if (query.length < 2) return; startTransition(async () => { setPeople(await searchUnizaDirectory(query)); setSearched(true); }); }}>

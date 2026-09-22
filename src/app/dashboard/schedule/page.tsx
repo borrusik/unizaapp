@@ -191,7 +191,7 @@ export default function SchedulePage() {
   const dayNames = isWeekend ? [...REGULAR_DAYS, t("schedule_weekend_tab") as string] : REGULAR_DAYS;
 
   return (
-    <div>
+    <div className="dashboard-page dashboard-page-narrow">
       <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title">{t("schedule_title")}</div>
         <div className="top-bar-actions">

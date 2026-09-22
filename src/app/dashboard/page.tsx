@@ -90,7 +90,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div>
+    <div className="dashboard-page dashboard-page-wide">
       <div className="top-bar home-top-bar">
         <div className="top-bar-title">UNIZA Student</div>
         <Link prefetch={false} href="/dashboard/profile" className="icon-button" aria-label={t("nav_profile")}>

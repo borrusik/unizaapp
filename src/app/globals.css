@@ -516,6 +516,37 @@ select {
   }
 }
 
+/* Page-level responsive rails. Dense utility screens should not stretch from
+   the sidebar to the far edge of an ultrawide display. */
+.dashboard-page {
+  --page-max: 1120px;
+  min-height: 100vh;
+}
+
+.dashboard-page-wide {
+  --page-max: 1320px;
+}
+
+.dashboard-page-narrow {
+  --page-max: 1040px;
+}
+
+.dashboard-page-profile {
+  --page-max: 960px;
+}
+
+@media (min-width: 768px) {
+  .dashboard-page > .container {
+    width: 100%;
+    max-width: var(--page-max);
+    margin-inline: auto;
+  }
+
+  .dashboard-page > .top-bar {
+    padding-inline: max(32px, calc((100% - var(--page-max)) / 2 + 32px));
+  }
+}
+
 /* ============================================
    HEADER / TOP BAR
    ============================================ */
@@ -1131,13 +1162,18 @@ select {
 }
 
 .profile-open-row-value {
-  max-width: 58%;
+  min-width: 0;
+  max-width: none;
   color: var(--text-secondary);
   font-size: 13px;
   text-align: right;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .profile-copy-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.72fr) minmax(0, 1.28fr);
   width: 100%;
   border: 0;
   background: transparent;
@@ -1157,9 +1193,10 @@ select {
 }
 
 .profile-copy-value {
-  display: flex;
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 20px;
   align-items: center;
-  justify-content: flex-end;
   gap: 9px;
   min-width: 0;
   color: var(--text-secondary);
@@ -2866,11 +2903,27 @@ select {
 
 @media (min-width: 1280px) {
   .schedule-list {
+    gap: 14px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .home-shortcuts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .services-list {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-    gap: 14px 18px;
+    column-gap: 28px;
+    border-top: 0;
   }
 
+  .services-list .service-row:nth-child(-n + 2) {
+    border-top: 1px solid var(--border);
+  }
 }
 
 .bottom-nav {
@@ -2918,6 +2971,30 @@ select {
 }
 
 @media (max-width: 767px) {
+  .top-bar {
+    padding: 18px 20px 14px;
+  }
+
+  .top-bar-title {
+    font-size: 28px;
+    line-height: 1.12;
+    letter-spacing: -0.65px;
+  }
+
+  .profile-copy-row {
+    grid-template-columns: minmax(118px, 0.88fr) minmax(0, 1.12fr);
+    align-items: start;
+    gap: 12px;
+  }
+
+  .profile-copy-value {
+    align-items: start;
+  }
+
+  .profile-copy-value svg {
+    margin-top: 1px;
+  }
+
   .bottom-nav {
     left: 0;
     width: 100%;

@@ -45,7 +45,7 @@ export default function SubjectsPage() {
   const current = subjects[semester];
 
   return (
-    <div>
+    <div className="dashboard-page dashboard-page-standard">
       <div className="top-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="top-bar-title">{t("subjects_title")}</div>
         <button

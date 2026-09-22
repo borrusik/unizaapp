@@ -133,7 +133,7 @@ export default function StravaPage() {
   const priceLabel = lang === "sk" ? "Cena" : lang === "en" ? "Price" : lang === "uk" ? "Ціна" : "Цена";
 
   return (
-    <div>
+    <div className="dashboard-page dashboard-page-standard">
       <div className="top-bar food-top-bar">
         <div><div className="top-bar-title">{t("food_title")}</div><div className="text-sm">{t("food_subtitle")}</div></div>
         <button type="button" aria-label={t("common_refresh") as string} onClick={handleRefresh} disabled={isRefreshing} className="icon-button"><AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} /></button>
