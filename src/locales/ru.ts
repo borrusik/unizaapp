@@ -12,6 +12,10 @@ export const ru: TranslationDictionary = {
   common_refresh: "Обновить данные",
   common_back: "Назад",
   common_academic_year: "Академический год",
+  common_copy: "Копировать",
+  common_copied: "Скопировано",
+  food_instagram_menu: "Дневное меню из Instagram",
+  food_instagram_source: "Открыть публикацию",
 
   home_title: "Главная",
   home_greeting: "Добрый день",

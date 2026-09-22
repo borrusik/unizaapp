@@ -12,6 +12,10 @@ export const en: TranslationDictionary = {
   common_refresh: "Refresh data",
   common_back: "Back",
   common_academic_year: "Academic year",
+  common_copy: "Copy",
+  common_copied: "Copied",
+  food_instagram_menu: "Daily menu from Instagram",
+  food_instagram_source: "Open post",
 
   home_title: "Home",
   home_greeting: "Good day",

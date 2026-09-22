@@ -26,6 +26,7 @@ import { parseAivsFaculty } from "./aivs-profile.ts";
 import { getAivsScheduleSourceState } from "./aivs-schedule.ts";
 import { getAivsResultsTableYear, selectAivsGradeResult } from "./aivs-grades.ts";
 import { createIcsCalendar } from "./calendar.ts";
+import { parseInstagramMenuCaption } from "./instagram-menu.ts";
 
 test("AIVS faculty parsing supports names that end with Fakulta", () => {
   assert.equal(
@@ -106,6 +107,32 @@ test("AIVS cumulative grade tables keep repeated subjects in their own year", ()
     2025,
   );
   assert.equal(getAivsResultsTableYear("Akademický rok 2026 / 2028"), null);
+});
+
+test("Instagram canteen captions are parsed into dated menu sections", () => {
+  const menu = parseInstagramMenuCaption(`DENNÉ MENU
+Pondelok 14.9.2026
+
+Polievka
+Pohronská
+Menu I
+Vyprážaný kurací gordon bleu, pučené zemiaky, uhorkový šalát
+Menu III
+Domáce zemiakové placky, zakysanka
+Pult FCC osmička
+Vyprážaný syr, hranolky, tatárska omáčka, zelenina
+Menu IX
+Bravčová panenka, pikantná omáčka, ryža
+
+Prajeme Vám dobrú chuť.`, "https://www.instagram.com/p/example/");
+
+  assert.equal(menu?.date, "2026-09-14");
+  assert.equal(menu?.sections.length, 5);
+  assert.deepEqual(menu?.sections[2], {
+    name: "Menu III",
+    items: ["Domáce zemiakové placky, zakysanka"],
+  });
+  assert.equal(menu?.permalink, "https://www.instagram.com/p/example/");
 });
 
 test("schedule progress is shown only for the currently selected day", () => {

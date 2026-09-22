@@ -78,6 +78,7 @@ export default function DashboardLayout({
               <Link
                 key={link.href}
                 href={link.href}
+                prefetch={false}
                 className={`desktop-nav-link ${active ? "active" : ""}`}
               >
                 <AppIcon name={link.icon} size={19} />
@@ -102,6 +103,7 @@ export default function DashboardLayout({
             <Link
               key={tab.href}
               href={tab.href}
+              prefetch={false}
               className={`nav-item ${active ? "active" : ""}`}
             >
               <AppIcon name={tab.icon} className="nav-icon" />

@@ -12,6 +12,10 @@ export const uk: TranslationDictionary = {
   common_refresh: "Оновити дані",
   common_back: "Назад",
   common_academic_year: "Академічний рік",
+  common_copy: "Копіювати",
+  common_copied: "Скопійовано",
+  food_instagram_menu: "Денне меню з Instagram",
+  food_instagram_source: "Відкрити допис",
 
   home_title: "Головна",
   home_greeting: "Добрий день",

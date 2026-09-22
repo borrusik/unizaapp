@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { getUserInfo, getGrades, getIntegrationStatus } from "@/lib/scraper";
+import { getProfileDashboard } from "@/lib/profile";
 import { LogoutButton } from "./LogoutButton";
 import { ClientText } from "@/components/ClientText";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -14,16 +14,10 @@ import { BrowserNotifications } from "./BrowserNotifications";
 
 export default function ProfilePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const { t } = useTranslation();
 
-  const fetcher = async (force = false) => {
-    const [user, gradesRes, integration] = await Promise.all([
-      getUserInfo(undefined, undefined, force),
-      getGrades(undefined, force).catch(() => ({ winter: [], summer: [] })),
-      getIntegrationStatus(),
-    ]);
-    return { user, grades: gradesRes || { winter: [], summer: [] }, integration };
-  };
+  const fetcher = (force = false) => getProfileDashboard(force);
 
   const { data, mutate } = useSWR("uniza_user_profile", () => fetcher(false));
 
@@ -68,6 +62,25 @@ export default function ProfilePage() {
   const avgGrade = scored.length > 0 && scoredCredits > 0
     ? (scored.reduce((sum, g) => sum + gradeValues[g.grade] * g.credits, 0) / scoredCredits).toFixed(2)
     : "—";
+
+  const copyProfileValue = async (field: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      window.setTimeout(() => setCopiedField((current) => current === field ? null : current), 1600);
+    } catch {
+      // Clipboard access can be denied by browser or OS policy. Keep the row
+      // usable without surfacing an unhandled promise rejection.
+    }
+  };
+
+  const profileFields = [
+    { id: "faculty", label: t("profile_faculty"), value: user.faculty },
+    { id: "program", label: t("profile_program"), value: user.program },
+    { id: "personalNumber", label: t("profile_id"), value: user.personalNumber },
+    { id: "group", label: t("profile_group"), value: user.group },
+    { id: "academicYear", label: t("profile_acad_year"), value: user.academicYear },
+  ];
 
   return (
     <div>
@@ -114,33 +127,31 @@ export default function ProfilePage() {
           <span className="label"><ClientText n="profile_info" /></span>
         </div>
         <div className="profile-open-group">
-          <div className="profile-open-row">
-            <span className="profile-open-row-label"><ClientText n="profile_faculty" /></span>
-            <span className="profile-open-row-value">{user.faculty}</span>
-          </div>
-          <div className="profile-open-row">
-            <span className="profile-open-row-label"><ClientText n="profile_program" /></span>
-            <span className="profile-open-row-value">{user.program}</span>
-          </div>
-          <div className="profile-open-row">
-            <span className="profile-open-row-label"><ClientText n="profile_id" /></span>
-            <span className="profile-open-row-value">{user.personalNumber}</span>
-          </div>
-          <div className="profile-open-row">
-            <span className="profile-open-row-label"><ClientText n="profile_group" /></span>
-            <span className="profile-open-row-value">{user.group}</span>
-          </div>
-          <div className="profile-open-row">
-            <span className="profile-open-row-label"><ClientText n="profile_acad_year" /></span>
-            <span className="profile-open-row-value">{user.academicYear}</span>
-          </div>
+          {profileFields.map((field) => {
+            const copied = copiedField === field.id;
+            return (
+              <button
+                key={field.id}
+                type="button"
+                className="profile-open-row profile-copy-row"
+                aria-label={`${copied ? t("common_copied") : t("common_copy")}: ${field.label}`}
+                onClick={() => copyProfileValue(field.id, field.value)}
+              >
+                <span className="profile-open-row-label">{field.label}</span>
+                <span className="profile-copy-value">
+                  <span className="profile-open-row-value">{field.value}</span>
+                  <AppIcon name={copied ? "check" : "clipboard"} size={17} />
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="profile-open-group" style={{ marginBottom: "12px" }}>
           <div className="profile-open-row"><span className="profile-system-name"><AppIcon name="book" size={19} />AIVS</span><span className={`badge ${integration.education ? "badge-credits" : "badge-neutral"}`}>{integration.education ? t("integration_connected") : t("integration_reconnect")}</span></div>
           <div className="profile-open-row"><span className="profile-system-name"><AppIcon name="restaurant" size={19} />WebKredit</span><span className={`badge ${integration.catering ? "badge-credits" : "badge-neutral"}`}>{integration.catering ? t("integration_connected") : t("integration_reconnect")}</span></div>
-          <Link href="/dashboard/mail" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="mail" size={19} />{t("services_mail")}</span><span className={`badge ${integration.mail ? "badge-credits" : "badge-neutral"}`}>{integration.mail ? t("integration_connected") : t("integration_reconnect")}</span></Link>
-          <Link href="/dashboard/services" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="building" size={19} />{t("services_title")}</span><AppIcon name="chevron-right" size={17} /></Link>
+          <Link prefetch={false} href="/dashboard/mail" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="mail" size={19} />{t("services_mail")}</span><span className={`badge ${integration.mail ? "badge-credits" : "badge-neutral"}`}>{integration.mail ? t("integration_connected") : t("integration_reconnect")}</span></Link>
+          <Link prefetch={false} href="/dashboard/services" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="building" size={19} />{t("services_title")}</span><AppIcon name="chevron-right" size={17} /></Link>
         </div>
         <p className="text-xs" style={{ margin: "0 4px 24px" }}>
           {integration.passwordStored

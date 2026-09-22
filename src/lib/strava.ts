@@ -262,6 +262,22 @@ export async function getStravaOrders(
   }
 }
 
+/**
+ * Load the initial WebKredit screen through one Server Action request.
+ * Calling the three exported actions separately from a client component creates
+ * three HTTP round trips even when the client wraps them in Promise.all().
+ */
+export async function getStravaDashboard(canteenId = 1, force = false) {
+  const { getInstagramDailyMenus } = await import("@/lib/instagram");
+  const [info, menu, orders, instagramMenus] = await Promise.all([
+    getStravaInfo(force),
+    getStravaMenu(canteenId, undefined, force),
+    getStravaOrders(undefined, undefined, force),
+    getInstagramDailyMenus(force),
+  ]);
+  return { info, menu, orders, instagramMenus };
+}
+
 type CompositeSelection = { id: number; amount: number };
 export type PlaceStravaOrderInput = {
   date: string;

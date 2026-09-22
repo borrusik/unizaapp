@@ -43,9 +43,8 @@ export default function StravaPage() {
   }, []);
 
   const fetcher = async (force = false) => {
-    const { getStravaInfo, getStravaMenu, getStravaOrders } = await import("@/lib/strava");
-    const [info, menu, orders] = await Promise.all([getStravaInfo(force), getStravaMenu(canteenId, undefined, force), getStravaOrders(undefined, undefined, force)]);
-    return { info, menu, orders };
+    const { getStravaDashboard } = await import("@/lib/strava");
+    return getStravaDashboard(canteenId, force);
   };
 
   const { data, isLoading, mutate } = useSWR(preferencesReady ? ["uniza_strava_all", canteenId] : null, () => fetcher(false), { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false });
@@ -71,10 +70,12 @@ export default function StravaPage() {
   const info = data?.info || null;
   const menu = data?.menu;
   const orders = data?.orders || [];
+  const instagramMenus = data?.instagramMenus || [];
   const history = historyData || [];
   const availableDates = menu?.requestedDates || [];
   const activeDate = selectedDate && availableDates.includes(selectedDate) ? selectedDate : availableDates[0] || "";
   const activeDay = menu?.days.find((day) => day.date === activeDate);
+  const instagramMenu = instagramMenus.find((item) => item.date === activeDate) || null;
   const activeItems = activeDay?.groups.flatMap((group) => group.items) || [];
   const totalComponentWeight = useMemo(() => Object.values(componentAmounts).reduce((sum, amount) => sum + amount, 0), [componentAmounts]);
   const componentsValid = !selectedMeal?.composites.length || (totalComponentWeight > 0 && (selectedMeal.compositeMaxWeight === null || totalComponentWeight <= selectedMeal.compositeMaxWeight));
@@ -161,6 +162,23 @@ export default function StravaPage() {
 
             <div className="food-section-heading"><h2>{t("food_menu")}</h2><span className="food-source">WebKredit</span></div>
             <div className="food-date-tabs">{availableDates.map((date) => <button type="button" key={date} aria-pressed={activeDate === date} onClick={() => setSelectedDate(date)} className={`food-date-tab ${activeDate === date ? "active" : ""}`}>{formatMenuDate(date, LOCALES[lang])}</button>)}</div>
+
+            {instagramMenu ? (
+              <section className="instagram-menu-card" aria-label={t("food_instagram_menu") as string}>
+                <div className="instagram-menu-heading">
+                  <span><AppIcon name="instagram" size={19} />{t("food_instagram_menu")}</span>
+                  {instagramMenu.permalink ? <a href={instagramMenu.permalink} target="_blank" rel="noopener noreferrer">{t("food_instagram_source")}<AppIcon name="external-link" size={14} /></a> : null}
+                </div>
+                <div className="instagram-menu-sections">
+                  {instagramMenu.sections.map((section) => (
+                    <div key={section.name} className="instagram-menu-section">
+                      <strong>{section.name}</strong>
+                      {section.items.map((item, index) => <span key={`${section.name}-${index}`}>{item}</span>)}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             {activeItems.length === 0 ? (
               <div className="empty-state"><AppIcon name={menu?.unavailable ? "warning" : "restaurant"} size={38} /><p className="text-sm">{menu?.unavailable ? t("food_menu_unavailable") : t("food_no_menu_day")}</p><a href={UNIZA_URLS.diningMenu} target="_blank" rel="noopener noreferrer" className="text-action">{t("food_open_official")}<AppIcon name="external-link" size={15} /></a></div>

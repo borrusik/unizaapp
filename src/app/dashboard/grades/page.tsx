@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getGrades } from "@/lib/scraper";
 import type { Grade } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";

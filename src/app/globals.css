@@ -582,6 +582,15 @@ select {
 .btn-compact { min-height: 34px; padding: 0 13px; border-radius: 10px; background: var(--primary); color: #151515; }
 .text-action.danger { color: var(--danger); }
 .food-menu-sections { display: grid; gap: 22px; }
+.instagram-menu-card { margin: 0 0 24px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.instagram-menu-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.instagram-menu-heading > span, .instagram-menu-heading a { display: inline-flex; align-items: center; gap: 7px; }
+.instagram-menu-heading > span { color: var(--text-primary); font-size: 13px; font-weight: 750; }
+.instagram-menu-heading a { color: var(--primary); font-size: 12px; font-weight: 700; text-decoration: none; }
+.instagram-menu-sections { display: grid; gap: 12px; }
+.instagram-menu-section { display: grid; gap: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
+.instagram-menu-section strong { color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.instagram-menu-section span { color: var(--text-primary); font-size: 14px; line-height: 1.45; }
 .dialog-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; align-items: end; padding: 16px; background: rgb(0 0 0 / .48); }
 .action-dialog { width: min(100%, 480px); max-height: min(86vh, 720px); margin: 0 auto; padding: 24px; overflow: auto; border-radius: 20px; background: var(--surface); box-shadow: 0 24px 70px rgb(0 0 0 / .24); }
 .dialog-icon { display: grid; width: 44px; height: 44px; margin-bottom: 16px; place-items: center; border-radius: 13px; background: var(--primary-light); color: var(--primary); }
@@ -1126,6 +1135,39 @@ select {
   color: var(--text-secondary);
   font-size: 13px;
   text-align: right;
+}
+
+.profile-copy-row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile-copy-row:hover {
+  background: var(--surface-hover);
+}
+
+.profile-copy-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.profile-copy-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.profile-copy-value svg {
+  flex: 0 0 auto;
+  color: var(--primary);
 }
 
 .profile-system-name {

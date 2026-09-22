@@ -111,6 +111,7 @@ export default function SubjectsPage() {
                   {subject.infoUrl ? (
                     <Link
                       href={`/dashboard/subject?url=${encodeURIComponent(subject.infoUrl)}&name=${encodeURIComponent(subject.name)}`}
+                      prefetch={false}
                       className="subject-action"
                       aria-label={`${t("dashboard_info_list")}: ${subject.name}`}
                       title={t("dashboard_info_list")}

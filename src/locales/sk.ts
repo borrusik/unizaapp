@@ -10,6 +10,10 @@ export const sk = {
   common_refresh: "Obnoviť údaje",
   common_back: "Späť",
   common_academic_year: "Akademický rok",
+  common_copy: "Kopírovať",
+  common_copied: "Skopírované",
+  food_instagram_menu: "Denné menu z Instagramu",
+  food_instagram_source: "Otvoriť príspevok",
 
   // Home
   home_title: "Domov",

@@ -190,7 +190,7 @@ export function proxy(request: NextRequest) {
   // ── Build strict CSP header with nonce ──
   const cspHeader = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' blob: data: https://www.google-analytics.com https://www.googletagmanager.com`,
     `font-src 'self'`,

@@ -37,17 +37,8 @@ export default function HomePage() {
     dedupingInterval: 5 * 60 * 1000,
     revalidateOnFocus: false,
   });
-
-  // Secondary data fetched gracefully in background
-  const { data: stravaInfo } = useSWR("uniza_home_strava", async () => {
-    const { getStravaInfo } = await import("@/lib/strava");
-    return getStravaInfo(false);
-  }, { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false });
-
-  const { data: gradesData } = useSWR("uniza_home_grades", async () => {
-    const { getGrades } = await import("@/lib/scraper");
-    return getGrades();
-  }, { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false });
+  const stravaInfo = primary?.stravaInfo;
+  const gradesData = primary?.gradesData;
 
   const now = new Date();
   const dayName = SCHEDULE_DAYS[getBratislavaDayIndex(now)] || "";
@@ -102,7 +93,7 @@ export default function HomePage() {
     <div>
       <div className="top-bar home-top-bar">
         <div className="top-bar-title">UNIZA Student</div>
-        <Link href="/dashboard/profile" className="icon-button" aria-label={t("nav_profile")}>
+        <Link prefetch={false} href="/dashboard/profile" className="icon-button" aria-label={t("nav_profile")}>
           <AppIcon name="user" size={20} />
         </Link>
       </div>
@@ -126,7 +117,7 @@ export default function HomePage() {
         </div>
 
         {/* Hero Live Class Card */}
-        <Link href="/dashboard/schedule" className="bento-card bento-hero" style={{ textDecoration: "none" }}>
+        <Link prefetch={false} href="/dashboard/schedule" className="bento-card bento-hero" style={{ textDecoration: "none" }}>
           {isLoading ? (
             <div className="home-next-skeleton skeleton" style={{ minHeight: "120px" }} />
           ) : scheduleUnavailable || scheduleFailed ? (
@@ -219,7 +210,7 @@ export default function HomePage() {
         {/* Bento Grid: ISIC Balance + Study Progress */}
         <div className="bento-grid">
           {/* ISIC & Strava Card */}
-          <Link href="/dashboard/food" className="bento-card">
+          <Link prefetch={false} href="/dashboard/food" className="bento-card">
             <div>
               <div className="bento-card-header">
                 <span className="bento-card-title">
@@ -243,7 +234,7 @@ export default function HomePage() {
           </Link>
 
           {/* ECTS & GPA Card */}
-          <Link href="/dashboard/grades" className="bento-card">
+          <Link prefetch={false} href="/dashboard/grades" className="bento-card">
             <div>
               <div className="bento-card-header">
                 <span className="bento-card-title">
@@ -282,7 +273,7 @@ export default function HomePage() {
               <span className="section-title" style={{ fontSize: "16px" }}>
                 {t("home_schedule_today")} ({todayClasses.length})
               </span>
-              <Link href="/dashboard/schedule" style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)" }}>
+              <Link prefetch={false} href="/dashboard/schedule" style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)" }}>
                 {t("schedule_title")} →
               </Link>
             </div>
@@ -330,7 +321,7 @@ export default function HomePage() {
 
           <nav className="home-shortcuts" aria-label={t("home_services")}>
             {shortcuts.map((shortcut) => (
-              <Link key={shortcut.href} href={shortcut.href} className="home-shortcut">
+              <Link prefetch={false} key={shortcut.href} href={shortcut.href} className="home-shortcut">
                 <span className="home-shortcut-icon">
                   <AppIcon name={shortcut.icon} size={22} />
                 </span>
