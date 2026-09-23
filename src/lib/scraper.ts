@@ -966,8 +966,28 @@ export async function getScheduleData(force = false): Promise<ScheduleData> {
 
   const cookieStore = await cookies();
   const groupCookie = cookieStore.get(SCHEDULE_GROUP_COOKIE)?.value?.trim() || "";
-  const scheduleGroup = groupCookie.length <= 80 ? groupCookie : "";
+  let scheduleGroup = groupCookie.length <= 80 ? groupCookie : "";
   const year = await resolveAcademicYear();
+  if (!scheduleGroup) {
+    try {
+      const profileHtml = await fetchPage(
+        sessionId,
+        `index.php?ra=${year.selectedStartYear}`,
+        false,
+      );
+      scheduleGroup = parseGroupFromProfileHtml(profileHtml);
+      if (scheduleGroup) {
+        cookieStore.set(SCHEDULE_GROUP_COOKIE, scheduleGroup, {
+          httpOnly: true,
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+        });
+      }
+    } catch {
+      // Falling back to the authenticated per-session fetch keeps the page usable.
+    }
+  }
   const cached = scheduleGroup
     ? await readSharedSchedule(scheduleGroup, year.selectedStartYear)
     : null;
