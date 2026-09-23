@@ -27,7 +27,13 @@ import { getAivsScheduleSourceState } from "./aivs-schedule.ts";
 import { getAivsResultsTableYear, selectAivsGradeResult } from "./aivs-grades.ts";
 import { createIcsCalendar } from "./calendar.ts";
 import { parseInstagramMenuCaption } from "./instagram-menu.ts";
-import { extractBalancedJson, parseInstagramBotHtml } from "./instagram-scrape.ts";
+import {
+  extractBalancedJson,
+  instagramShortcodeFromMediaId,
+  isBratislavaInstagramWatchWindow,
+  parseInstagramBotHtml,
+  parseInstagramProfileBotHtml,
+} from "./instagram-scrape.ts";
 import { normalizeMailContentId, sanitizeMailHtml } from "./mail-content.ts";
 
 test("mail HTML keeps safe links and rejects active content", () => {
@@ -193,6 +199,38 @@ test("Instagram JSON extraction handles braces and escaped quotes inside strings
   const source = 'before {"caption":"menu } \\\"today\\\"","nested":{"ok":true}} after';
   const json = extractBalancedJson(source, source.indexOf("{"));
   assert.deepEqual(JSON.parse(json), { caption: 'menu } "today"', nested: { ok: true } });
+});
+
+test("Instagram profile data discovers new post links without hardcoded shortcodes", () => {
+  const profile = { username: "menzazilina" };
+  const timeline = {
+    edges: [{
+      node: {
+        pk: "3992432929376479487",
+        caption: { text: "DENNÉ MENU\nStreda 23.9.2026\nMenu I\nJedlo" },
+        image_versions2: { candidates: [{ url: "https://cdn.example/cover.jpg" }] },
+        carousel_media: [
+          { image_versions2: { candidates: [{ url: "https://cdn.example/one.jpg" }] } },
+          { image_versions2: { candidates: [{ url: "https://cdn.example/two.jpg" }] } },
+        ],
+      },
+    }],
+  };
+  const html = `<script>{"xig_user_by_igid_v2":${JSON.stringify(profile)},"polaris_timeline_connection":${JSON.stringify(timeline)}}</script>`;
+  const posts = parseInstagramProfileBotHtml(html, "menzazilina");
+
+  assert.equal(instagramShortcodeFromMediaId("3992432929376479487"), "Ddn-JixDqj_");
+  assert.equal(posts[0]?.permalink, "https://www.instagram.com/p/Ddn-JixDqj_/");
+  assert.deepEqual(posts[0]?.images, ["https://cdn.example/one.jpg", "https://cdn.example/two.jpg"]);
+});
+
+test("Instagram background checks follow Bratislava lunch hours across DST", () => {
+  assert.equal(isBratislavaInstagramWatchWindow(new Date("2026-09-23T06:59:00Z")), false);
+  assert.equal(isBratislavaInstagramWatchWindow(new Date("2026-09-23T07:00:00Z")), true);
+  assert.equal(isBratislavaInstagramWatchWindow(new Date("2026-09-23T11:30:00Z")), true);
+  assert.equal(isBratislavaInstagramWatchWindow(new Date("2026-09-23T11:31:00Z")), false);
+  assert.equal(isBratislavaInstagramWatchWindow(new Date("2026-01-15T08:00:00Z")), true);
+  assert.equal(isBratislavaInstagramWatchWindow(new Date("2026-01-15T12:30:00Z")), true);
 });
 
 test("schedule progress is shown only for the currently selected day", () => {

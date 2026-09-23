@@ -2,7 +2,7 @@
 
 import { getCache } from "@vercel/functions";
 import { parseInstagramMenuCaption, type InstagramDailyMenu } from "@/lib/instagram-menu";
-import { parseInstagramBotHtml } from "@/lib/instagram-scrape";
+import { parseInstagramBotHtml, parseInstagramProfileBotHtml } from "@/lib/instagram-scrape";
 
 type InstagramMedia = {
   id: string;
@@ -46,9 +46,9 @@ type MenuSnapshot = {
 
 const PROFILE_URL = "https://www.instagram.com/menzazilina/";
 const DEFAULT_POST_URLS = ["https://www.instagram.com/p/Ddn-JixDqj_/"];
-const SNAPSHOT_KEY = "instagram-menzazilina-v4";
-const ATTEMPT_KEY = "instagram-menzazilina-attempt-v3";
-const SNAPSHOT_FRESH_MS = 30 * 60 * 1000;
+const SNAPSHOT_KEY = "instagram-menzazilina-v5";
+const ATTEMPT_KEY = "instagram-menzazilina-attempt-v4";
+const SNAPSHOT_FRESH_MS = 25 * 60 * 1000;
 const RETENTION_SECONDS = 7 * 24 * 60 * 60;
 const MIN_ATTEMPT_SECONDS = 5 * 60;
 let menuRequest: Promise<InstagramDailyMenu[]> | null = null;
@@ -137,7 +137,7 @@ async function fetchOfficialFeed(accessToken: string): Promise<InstagramMedia[]>
   return (payload.data ?? []).map(fromGraphMedia).filter((item): item is InstagramMedia => item !== null);
 }
 
-async function fetchPublicFeed(): Promise<InstagramMedia[]> {
+async function fetchPublicProfileApi(): Promise<InstagramMedia[]> {
   // Instagram has no supported anonymous feed API. This deliberately isolated,
   // low-frequency fallback may be rate-limited or changed by Instagram.
   const response = await fetch(
@@ -161,6 +161,22 @@ async function fetchPublicFeed(): Promise<InstagramMedia[]> {
   return edges
     .map(({ node }) => node ? fromWebNode(node) : null)
     .filter((item): item is InstagramMedia => item !== null);
+}
+
+async function fetchPublicFeed(): Promise<InstagramMedia[]> {
+  const crawlerResponse = await fetch(PROFILE_URL, {
+    cache: "no-store",
+    headers: {
+      "Accept-Language": "en-US,en;q=0.9",
+      "User-Agent": "Googlebot/2.1 (+http://www.google.com/bot.html)",
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (crawlerResponse.ok) {
+    const posts = parseInstagramProfileBotHtml(await crawlerResponse.text(), "menzazilina");
+    if (posts.length > 0) return posts;
+  }
+  return fetchPublicProfileApi();
 }
 
 async function fetchOEmbedPost(postUrl: string): Promise<InstagramMedia | null> {

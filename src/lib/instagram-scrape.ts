@@ -16,6 +16,7 @@ type InstagramCarouselItem = {
 };
 
 type InstagramXigMedia = InstagramCarouselItem & {
+  pk?: string;
   media_type?: number;
   taken_at?: number;
   caption?: { text?: string };
@@ -27,6 +28,25 @@ type InstagramXigEnvelope = {
   if_not_gated_logged_out?: InstagramXigMedia;
   media_type?: number;
 };
+
+type InstagramTimelineConnection = {
+  edges?: Array<{ node?: InstagramXigMedia }>;
+};
+
+const SHORTCODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+export function isBratislavaInstagramWatchWindow(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Bratislava",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const hour = Number(parts.find(({ type }) => type === "hour")?.value ?? -1);
+  const minute = Number(parts.find(({ type }) => type === "minute")?.value ?? -1);
+  const minutes = hour * 60 + minute;
+  return minutes >= 9 * 60 && minutes <= 13 * 60 + 30;
+}
 
 export function extractBalancedJson(source: string, start: number) {
   if (start < 0 || source[start] !== "{") return "";
@@ -59,6 +79,31 @@ function preferredImage(item: InstagramCarouselItem) {
     ?? "";
 }
 
+export function instagramShortcodeFromMediaId(mediaId: string) {
+  if (!/^\d+$/.test(mediaId)) return "";
+  let value = BigInt(mediaId);
+  let shortcode = "";
+  const base = BigInt(64);
+  while (value > BigInt(0)) {
+    shortcode = SHORTCODE_ALPHABET[Number(value % base)] + shortcode;
+    value /= base;
+  }
+  return shortcode;
+}
+
+function toScrapedPost(media: InstagramXigMedia, permalink: string): InstagramScrapedPost | null {
+  const items = media.carousel_media?.length ? media.carousel_media : [media];
+  const images = [...new Set(items.map(preferredImage).filter((url) => url.startsWith("https://")))];
+  if (!media.caption?.text || images.length === 0) return null;
+  return {
+    id: media.id ?? media.pk ?? permalink,
+    caption: media.caption.text,
+    permalink,
+    timestamp: media.taken_at ? new Date(media.taken_at * 1000).toISOString() : "",
+    images,
+  };
+}
+
 export function parseInstagramBotHtml(
   html: string,
   permalink: string,
@@ -78,18 +123,40 @@ export function parseInstagramBotHtml(
       return null;
     }
 
-    const items = media.carousel_media?.length ? media.carousel_media : [media];
-    const images = [...new Set(items.map(preferredImage).filter((url) => url.startsWith("https://")))];
-    if (!media.caption?.text || images.length === 0) return null;
-
-    return {
-      id: media.id ?? permalink,
-      caption: media.caption.text,
-      permalink,
-      timestamp: media.taken_at ? new Date(media.taken_at * 1000).toISOString() : "",
-      images,
-    };
+    return toScrapedPost(media, permalink);
   } catch {
     return null;
+  }
+}
+
+export function parseInstagramProfileBotHtml(
+  html: string,
+  expectedUsername: string,
+): InstagramScrapedPost[] {
+  const profileMarker = html.indexOf('"xig_user_by_igid_v2":');
+  if (profileMarker < 0) return [];
+  const profileRaw = extractBalancedJson(html, html.indexOf("{", profileMarker));
+  if (!profileRaw) return [];
+
+  try {
+    const profile = JSON.parse(profileRaw) as { username?: string };
+    if (profile.username?.toLocaleLowerCase("en") !== expectedUsername.toLocaleLowerCase("en")) return [];
+
+    const timelineMarker = html.indexOf('"polaris_timeline_connection":');
+    if (timelineMarker < 0) return [];
+    const timelineRaw = extractBalancedJson(html, html.indexOf("{", timelineMarker));
+    if (!timelineRaw) return [];
+    const timeline = JSON.parse(timelineRaw) as InstagramTimelineConnection;
+
+    return (timeline.edges ?? []).flatMap(({ node }) => {
+      const mediaId = node?.pk ?? node?.id?.replace(/^POLARIS_/, "") ?? "";
+      const shortcode = instagramShortcodeFromMediaId(mediaId);
+      if (!node || !shortcode) return [];
+      const permalink = `https://www.instagram.com/p/${shortcode}/`;
+      const post = toScrapedPost(node, permalink);
+      return post ? [post] : [];
+    });
+  } catch {
+    return [];
   }
 }
