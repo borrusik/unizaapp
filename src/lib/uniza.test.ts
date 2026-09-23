@@ -161,6 +161,7 @@ Prajeme Vám dobrú chuť.`, "https://www.instagram.com/p/example/");
     items: ["Domáce zemiakové placky, zakysanka"],
   });
   assert.equal(menu?.permalink, "https://www.instagram.com/p/example/");
+  assert.deepEqual(menu?.images, []);
 });
 
 test("schedule progress is shown only for the currently selected day", () => {

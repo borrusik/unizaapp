@@ -16,6 +16,7 @@
     "@types/mailparser": "^3.4.6",
     "@types/nodemailer": "^8.0.1",
     "@types/sanitize-html": "^2.16.1",
+    "@vercel/functions": "^3.9.9",
     "cheerio": "^1.2.0",
     "imapflow": "^2.0.0",
     "mailparser": "^3.9.23",

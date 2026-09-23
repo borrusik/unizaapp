@@ -8,6 +8,7 @@ export type InstagramDailyMenu = {
   dayLabel: string;
   sections: InstagramMenuSection[];
   permalink: string;
+  images: string[];
 };
 
 const DATE_LINE = /^(Pondelok|Utorok|Streda|Štvrtok|Piatok|Sobota|Nedeľa)\s+(\d{1,2})\.(\d{1,2})\.(\d{4})$/i;
@@ -51,5 +52,6 @@ export function parseInstagramMenuCaption(caption: string, permalink = ""): Inst
     dayLabel: dateMatch[1],
     sections: populated,
     permalink,
+    images: [],
   };
 }

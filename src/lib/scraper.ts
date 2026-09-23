@@ -19,11 +19,13 @@ import { parseAivsExamTerms, type ExamTerm, type InternalExamTerm } from "@/lib/
 import { parseAivsFaculty } from "@/lib/aivs-profile";
 import { getAivsScheduleSourceState } from "@/lib/aivs-schedule";
 import { getAivsResultsTableYear, selectAivsGradeResult } from "@/lib/aivs-grades";
+import { readSharedSchedule, writeSharedSchedule } from "@/lib/schedule-cache";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
 const examOperationLocks = new Map<string, number>();
+const SCHEDULE_GROUP_COOKIE = "uniza_schedule_group";
 
 // ─────────────────────────────────────────────
 // Fetch with Windows-1250 decoding
@@ -137,6 +139,22 @@ function clearSessionCaches(sessionId: string | undefined) {
   studyYearsCache.delete(sessionId);
   studyYearsRequests.delete(sessionId);
   sessionRefreshRequests.delete(sessionId);
+}
+
+function parseGroupFromProfileHtml(html: string) {
+  const match = html.match(/id="desk-menu-lng38"[^>]*>Študijná skupina:\s*<\/span>\s*([^<]+)<\/span>/i);
+  const group = match?.[1]?.trim() || "";
+  return group.length <= 80 ? group : "";
+}
+
+function getWarmedGroup(sessionId: string) {
+  for (const [key, entry] of PAGE_CACHE) {
+    if (key.startsWith(`${sessionId}_index.php`)) {
+      const group = parseGroupFromProfileHtml(entry.html);
+      if (group) return group;
+    }
+  }
+  return "";
 }
 
 async function restoreExpiredSession(sessionId: string): Promise<string | null> {
@@ -372,6 +390,7 @@ export async function login(formData: FormData) {
   clearSessionCaches(cookieStore.get("uniza_phpsessid")?.value);
   cookieStore.delete("uniza_phpsessid");
   cookieStore.delete("uniza_email");
+  cookieStore.delete(SCHEDULE_GROUP_COOKIE);
   await clearCredentials();
   await clearStravaSession();
 
@@ -399,6 +418,16 @@ export async function login(formData: FormData) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
   });
+  const scheduleGroup = getWarmedGroup(sessionId);
+  if (scheduleGroup) {
+    cookieStore.set(SCHEDULE_GROUP_COOKIE, scheduleGroup, {
+      httpOnly: true,
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: remember ? 60 * 60 * 24 * 30 : undefined,
+    });
+  }
   const cateringConnected = await storeStravaSession(stravaSession);
   // Mail uses IMAP/SMTP and therefore needs the UNIZA password for each server-side
   // request. Keep it only in the authenticated encrypted cookie. Without "remember"
@@ -407,6 +436,10 @@ export async function login(formData: FormData) {
     { email, password },
     { persistent: remember },
   );
+
+  // Login already warmed the timetable page, so this populates the shared
+  // group snapshot without another upstream request.
+  if (scheduleGroup) await getScheduleData(false).catch(() => undefined);
 
   return {
     success: true,
@@ -420,6 +453,7 @@ export async function logout() {
   clearSessionCaches(cookieStore.get("uniza_phpsessid")?.value);
   cookieStore.delete("uniza_phpsessid");
   cookieStore.delete("uniza_email");
+  cookieStore.delete(SCHEDULE_GROUP_COOKIE);
   await clearCredentials();
   await clearStravaSession();
   return { success: true };
@@ -930,8 +964,16 @@ export async function getScheduleData(force = false): Promise<ScheduleData> {
   const sessionId = await getSession();
   if (!sessionId) return { items: [], status: "unauthenticated" };
 
+  const cookieStore = await cookies();
+  const groupCookie = cookieStore.get(SCHEDULE_GROUP_COOKIE)?.value?.trim() || "";
+  const scheduleGroup = groupCookie.length <= 80 ? groupCookie : "";
+  const year = await resolveAcademicYear();
+  const cached = scheduleGroup
+    ? await readSharedSchedule(scheduleGroup, year.selectedStartYear)
+    : null;
+  if (!force && cached?.fresh) return cached.data;
+
   try {
-    const year = await resolveAcademicYear();
     const html = await fetchPage(
       sessionId,
       `rozvrh2.php?ra=${year.selectedStartYear}`,
@@ -939,7 +981,7 @@ export async function getScheduleData(force = false): Promise<ScheduleData> {
     );
     const sourceState = getAivsScheduleSourceState(html);
     if (sourceState !== "available") {
-      return { items: [], status: sourceState };
+      return cached?.data ?? { items: [], status: sourceState };
     }
     const $ = cheerio.load(html);
 
@@ -1046,13 +1088,17 @@ export async function getScheduleData(force = false): Promise<ScheduleData> {
       if (!uniqueItems.has(key)) uniqueItems.set(key, item);
     }
     const parsedItems = [...uniqueItems.values()];
-    return {
+    const scheduleData: ScheduleData = {
       items: parsedItems,
       status: parsedItems.length > 0 ? "ready" : "empty",
     };
+    if (scheduleGroup) {
+      await writeSharedSchedule(scheduleGroup, year.selectedStartYear, scheduleData);
+    }
+    return scheduleData;
   } catch (e) {
     console.error("Error parsing schedule:", e);
-    return { items: [], status: "error" };
+    return cached?.data ?? { items: [], status: "error" };
   }
 }
 

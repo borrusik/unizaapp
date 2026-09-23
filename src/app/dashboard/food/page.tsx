@@ -169,6 +169,17 @@ export default function StravaPage() {
                   <span><AppIcon name="instagram" size={19} />{t("food_instagram_menu")}</span>
                   {instagramMenu.permalink ? <a href={instagramMenu.permalink} target="_blank" rel="noopener noreferrer">{t("food_instagram_source")}<AppIcon name="external-link" size={14} /></a> : null}
                 </div>
+                {instagramMenu.images.length > 0 ? (
+                  <div className="instagram-menu-images">
+                    {instagramMenu.images.map((image, index) => (
+                      <a key={image} href={instagramMenu.permalink || image} target="_blank" rel="noopener noreferrer">
+                        {/* The signed Instagram CDN host changes, so a plain image is safer than a fixed Next Image allowlist. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={image} alt={`${t("food_instagram_menu")} ${index + 1}`} loading="lazy" referrerPolicy="no-referrer" />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="instagram-menu-sections">
                   {instagramMenu.sections.map((section) => (
                     <div key={section.name} className="instagram-menu-section">

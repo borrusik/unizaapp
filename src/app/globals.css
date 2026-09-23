@@ -622,6 +622,9 @@ select {
 .instagram-menu-section { display: grid; gap: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
 .instagram-menu-section strong { color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
 .instagram-menu-section span { color: var(--text-primary); font-size: 14px; line-height: 1.45; }
+.instagram-menu-images { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 72%); gap: 10px; margin-bottom: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+.instagram-menu-images a { display: block; overflow: hidden; border-radius: 12px; background: var(--surface-secondary); scroll-snap-align: start; }
+.instagram-menu-images img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
 .dialog-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; align-items: end; padding: 16px; background: rgb(0 0 0 / .48); }
 .action-dialog { width: min(100%, 480px); max-height: min(86vh, 720px); margin: 0 auto; padding: 24px; overflow: auto; border-radius: 20px; background: var(--surface); box-shadow: 0 24px 70px rgb(0 0 0 / .24); }
 .dialog-icon { display: grid; width: 44px; height: 44px; margin-bottom: 16px; place-items: center; border-radius: 13px; background: var(--primary-light); color: var(--primary); }
