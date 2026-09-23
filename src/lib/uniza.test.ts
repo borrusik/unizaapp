@@ -27,6 +27,7 @@ import { getAivsScheduleSourceState } from "./aivs-schedule.ts";
 import { getAivsResultsTableYear, selectAivsGradeResult } from "./aivs-grades.ts";
 import { createIcsCalendar } from "./calendar.ts";
 import { parseInstagramMenuCaption } from "./instagram-menu.ts";
+import { extractBalancedJson, parseInstagramBotHtml } from "./instagram-scrape.ts";
 import { normalizeMailContentId, sanitizeMailHtml } from "./mail-content.ts";
 
 test("mail HTML keeps safe links and rejects active content", () => {
@@ -162,6 +163,36 @@ Prajeme Vám dobrú chuť.`, "https://www.instagram.com/p/example/");
   });
   assert.equal(menu?.permalink, "https://www.instagram.com/p/example/");
   assert.deepEqual(menu?.images, []);
+});
+
+test("Instagram crawler data keeps every carousel image in order", () => {
+  const payload = {
+    if_not_gated_logged_out: {
+      id: "post-1",
+      media_type: 8,
+      taken_at: 1_790_150_400,
+      user: { username: "menzazilina" },
+      caption: { text: "Streda 23.9.2026\nMenu I\nJedlo" },
+      carousel_media: [
+        { image_versions2: { candidates: [{ url: "https://cdn.example/first-original.jpg" }, { url: "https://cdn.example/first-p1080x1080.jpg" }] } },
+        { image_versions2: { candidates: [{ url: "https://cdn.example/second-original.jpg" }, { url: "https://cdn.example/second-p1080x1080.jpg" }] } },
+      ],
+    },
+  };
+  const html = `<script>{"xig_polaris_media":${JSON.stringify(payload)},"after":{"escaped":"}\\\""}}</script>`;
+  const post = parseInstagramBotHtml(html, "https://www.instagram.com/p/example/", "menzazilina");
+
+  assert.deepEqual(post?.images, [
+    "https://cdn.example/first-p1080x1080.jpg",
+    "https://cdn.example/second-p1080x1080.jpg",
+  ]);
+  assert.equal(post?.caption, "Streda 23.9.2026\nMenu I\nJedlo");
+});
+
+test("Instagram JSON extraction handles braces and escaped quotes inside strings", () => {
+  const source = 'before {"caption":"menu } \\\"today\\\"","nested":{"ok":true}} after';
+  const json = extractBalancedJson(source, source.indexOf("{"));
+  assert.deepEqual(JSON.parse(json), { caption: 'menu } "today"', nested: { ok: true } });
 });
 
 test("schedule progress is shown only for the currently selected day", () => {

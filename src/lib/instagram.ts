@@ -2,6 +2,7 @@
 
 import { getCache } from "@vercel/functions";
 import { parseInstagramMenuCaption, type InstagramDailyMenu } from "@/lib/instagram-menu";
+import { parseInstagramBotHtml } from "@/lib/instagram-scrape";
 
 type InstagramMedia = {
   id: string;
@@ -45,8 +46,8 @@ type MenuSnapshot = {
 
 const PROFILE_URL = "https://www.instagram.com/menzazilina/";
 const DEFAULT_POST_URLS = ["https://www.instagram.com/p/Ddn-JixDqj_/"];
-const SNAPSHOT_KEY = "instagram-menzazilina-v3";
-const ATTEMPT_KEY = "instagram-menzazilina-attempt-v2";
+const SNAPSHOT_KEY = "instagram-menzazilina-v4";
+const ATTEMPT_KEY = "instagram-menzazilina-attempt-v3";
 const SNAPSHOT_FRESH_MS = 30 * 60 * 1000;
 const RETENTION_SECONDS = 7 * 24 * 60 * 60;
 const MIN_ATTEMPT_SECONDS = 5 * 60;
@@ -188,13 +189,38 @@ async function fetchOEmbedPost(postUrl: string): Promise<InstagramMedia | null> 
   };
 }
 
+async function fetchBotPost(postUrl: string): Promise<InstagramMedia | null> {
+  const normalizedUrl = normalizePostUrl(postUrl);
+  if (!normalizedUrl) return null;
+  const response = await fetch(normalizedUrl, {
+    cache: "no-store",
+    headers: {
+      "Accept-Language": "en-US,en;q=0.9",
+      "User-Agent": "Googlebot/2.1 (+http://www.google.com/bot.html)",
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`crawler post returned ${response.status}`);
+  return parseInstagramBotHtml(await response.text(), normalizedUrl, "menzazilina");
+}
+
+async function fetchKnownPost(postUrl: string) {
+  try {
+    const post = await fetchBotPost(postUrl);
+    if (post) return post;
+  } catch (error) {
+    console.warn("Instagram carousel scrape unavailable, using oEmbed:", error);
+  }
+  return fetchOEmbedPost(postUrl);
+}
+
 async function fetchKnownPosts(): Promise<InstagramMedia[]> {
   const configuredUrls = process.env.MENZA_INSTAGRAM_POST_URLS
     ?.split(/[\s,]+/)
     .map(normalizePostUrl)
     .filter(Boolean) ?? [];
   const postUrls = [...new Set([...configuredUrls, ...DEFAULT_POST_URLS])];
-  const results = await Promise.allSettled(postUrls.map(fetchOEmbedPost));
+  const results = await Promise.allSettled(postUrls.map(fetchKnownPost));
   return results.flatMap((result) => (
     result.status === "fulfilled" && result.value ? [result.value] : []
   ));
