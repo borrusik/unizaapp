@@ -75,7 +75,10 @@ export default function StravaPage() {
   const availableDates = menu?.requestedDates || [];
   const activeDate = selectedDate && availableDates.includes(selectedDate) ? selectedDate : availableDates[0] || "";
   const activeDay = menu?.days.find((day) => day.date === activeDate);
-  const instagramMenu = instagramMenus.find((item) => item.date === activeDate) || null;
+  const selectedCanteenId = menu?.selectedCanteenId || canteenId;
+  const instagramMenu = selectedCanteenId === 1
+    ? instagramMenus.find((item) => item.date === activeDate) || null
+    : null;
   const activeItems = activeDay?.groups.flatMap((group) => group.items) || [];
   const totalComponentWeight = useMemo(() => Object.values(componentAmounts).reduce((sum, amount) => sum + amount, 0), [componentAmounts]);
   const componentsValid = !selectedMeal?.composites.length || (totalComponentWeight > 0 && (selectedMeal.compositeMaxWeight === null || totalComponentWeight <= selectedMeal.compositeMaxWeight));

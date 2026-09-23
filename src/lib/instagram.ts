@@ -31,14 +31,22 @@ type InstagramWebNode = {
   edge_sidecar_to_children?: { edges?: Array<{ node?: InstagramWebNode }> };
 };
 
+type InstagramOEmbed = {
+  title?: string;
+  author_name?: string;
+  media_id?: string;
+  thumbnail_url?: string;
+};
+
 type MenuSnapshot = {
   menus: InstagramDailyMenu[];
   refreshedAt: number;
 };
 
 const PROFILE_URL = "https://www.instagram.com/menzazilina/";
-const SNAPSHOT_KEY = "instagram-menzazilina-v2";
-const ATTEMPT_KEY = "instagram-menzazilina-attempt-v1";
+const DEFAULT_POST_URLS = ["https://www.instagram.com/p/Ddn-JixDqj_/"];
+const SNAPSHOT_KEY = "instagram-menzazilina-v3";
+const ATTEMPT_KEY = "instagram-menzazilina-attempt-v2";
 const SNAPSHOT_FRESH_MS = 30 * 60 * 1000;
 const RETENTION_SECONDS = 7 * 24 * 60 * 60;
 const MIN_ATTEMPT_SECONDS = 5 * 60;
@@ -52,6 +60,17 @@ function isSnapshot(value: unknown): value is MenuSnapshot {
 
 function uniqueImages(values: Array<string | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value?.startsWith("https://"))))];
+}
+
+function normalizePostUrl(value: string) {
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "https:" || !["instagram.com", "www.instagram.com"].includes(url.hostname)) return "";
+    const match = url.pathname.match(/^\/(p|reel)\/([A-Za-z0-9_-]+)\/?$/);
+    return match ? `https://www.instagram.com/${match[1]}/${match[2]}/` : "";
+  } catch {
+    return "";
+  }
 }
 
 function fromGraphMedia(media: InstagramGraphMedia): InstagramMedia | null {
@@ -143,6 +162,44 @@ async function fetchPublicFeed(): Promise<InstagramMedia[]> {
     .filter((item): item is InstagramMedia => item !== null);
 }
 
+async function fetchOEmbedPost(postUrl: string): Promise<InstagramMedia | null> {
+  const normalizedUrl = normalizePostUrl(postUrl);
+  if (!normalizedUrl) return null;
+  const endpoint = new URL("https://www.instagram.com/api/v1/oembed/");
+  endpoint.searchParams.set("url", normalizedUrl);
+  const response = await fetch(endpoint, {
+    cache: "no-store",
+    headers: { Accept: "application/json", "User-Agent": "UNIZAStudent/1.0" },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`oEmbed returned ${response.status}`);
+  const payload = await response.json() as InstagramOEmbed;
+  if (payload.author_name?.toLocaleLowerCase("en") !== "menzazilina") {
+    throw new Error("oEmbed author did not match menzazilina");
+  }
+  const images = uniqueImages([payload.thumbnail_url]);
+  if (!payload.title || images.length === 0) return null;
+  return {
+    id: payload.media_id ?? normalizedUrl,
+    caption: payload.title,
+    permalink: normalizedUrl,
+    timestamp: "",
+    images,
+  };
+}
+
+async function fetchKnownPosts(): Promise<InstagramMedia[]> {
+  const configuredUrls = process.env.MENZA_INSTAGRAM_POST_URLS
+    ?.split(/[\s,]+/)
+    .map(normalizePostUrl)
+    .filter(Boolean) ?? [];
+  const postUrls = [...new Set([...configuredUrls, ...DEFAULT_POST_URLS])];
+  const results = await Promise.allSettled(postUrls.map(fetchOEmbedPost));
+  return results.flatMap((result) => (
+    result.status === "fulfilled" && result.value ? [result.value] : []
+  ));
+}
+
 async function readSnapshot() {
   try {
     const value = await getCache({ namespace: "unizaapp" }).get(SNAPSHOT_KEY);
@@ -169,9 +226,18 @@ export async function getInstagramDailyMenus(force = false): Promise<InstagramDa
       .catch(() => undefined);
     try {
       const accessToken = process.env.MENZA_INSTAGRAM_ACCESS_TOKEN?.trim();
-      const media = accessToken
-        ? await fetchOfficialFeed(accessToken)
-        : await fetchPublicFeed();
+      let media: InstagramMedia[];
+      if (accessToken) {
+        media = await fetchOfficialFeed(accessToken);
+      } else {
+        try {
+          media = await fetchPublicFeed();
+        } catch (profileError) {
+          console.warn("Instagram profile feed unavailable, using known post links:", profileError);
+          media = await fetchKnownPosts();
+        }
+        if (media.length === 0) media = await fetchKnownPosts();
+      }
       const menus = media
         .map(toDailyMenu)
         .filter((menu): menu is InstagramDailyMenu => menu !== null)
