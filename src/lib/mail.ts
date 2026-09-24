@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { simpleParser } from "mailparser";
 import nodemailer from "nodemailer";
 import { readCredentials } from "@/lib/credentials";
+import { listMailAttachmentParts } from "@/lib/mail-attachments";
 import { sanitizeMailHtml } from "@/lib/mail-content";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -439,20 +440,47 @@ export async function getMailAttachment(
         try {
           const message = await client.fetchOne(
             safeUid,
-            { source: { maxLength: MAX_SOURCE_BYTES }, size: true },
+            { bodyStructure: true },
             { uid: true },
           );
-          if (!message || !message.source || (message.size && message.size > MAX_SOURCE_BYTES)) {
+          if (!message || !message.bodyStructure) {
             throw new Error("Attachment is unavailable");
           }
-          const parsed = await simpleParser(message.source, { skipImageLinks: true });
-          return parsed.attachments.map((attachment, attachmentIndex) => attachment.size > MAX_ATTACHMENT_BYTES
-            ? null
-            : {
-                filename: (attachment.filename || `attachment-${attachmentIndex + 1}`).replace(/[\0\r\n]/g, "").slice(0, 180),
-                contentType: attachment.contentType || "application/octet-stream",
-                content: attachment.content.toString("base64"),
-              });
+          const parts = listMailAttachmentParts(message.bodyStructure);
+          const attachments: CachedMailAttachment[] = [];
+          for (const [attachmentIndex, part] of parts.entries()) {
+            if (part.size > MAX_ATTACHMENT_BYTES) {
+              attachments.push(null);
+              continue;
+            }
+            const downloaded = await client.download(safeUid, part.part, {
+              uid: true,
+              maxBytes: MAX_ATTACHMENT_BYTES + 1,
+            });
+            if (!downloaded.content) {
+              attachments.push(null);
+              continue;
+            }
+            const chunks: Buffer[] = [];
+            let totalBytes = 0;
+            for await (const chunk of downloaded.content) {
+              const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+              totalBytes += buffer.length;
+              if (totalBytes > MAX_ATTACHMENT_BYTES) break;
+              chunks.push(buffer);
+            }
+            if (totalBytes > MAX_ATTACHMENT_BYTES) {
+              downloaded.content.destroy();
+              attachments.push(null);
+              continue;
+            }
+            attachments.push({
+              filename: (downloaded.meta?.filename || part.filename || `attachment-${attachmentIndex + 1}`).replace(/[\0\r\n]/g, "").slice(0, 180),
+              contentType: downloaded.meta?.contentType || part.contentType || "application/octet-stream",
+              content: Buffer.concat(chunks, totalBytes).toString("base64"),
+            });
+          }
+          return attachments;
         } finally {
           lock.release();
         }

@@ -35,6 +35,7 @@ import {
   parseInstagramProfileBotHtml,
 } from "./instagram-scrape.ts";
 import { normalizeMailContentId, sanitizeMailHtml } from "./mail-content.ts";
+import { listMailAttachmentParts } from "./mail-attachments.ts";
 import { isAuthenticatedAivsHtml, safeDashboardReturnPath } from "./auth-state.ts";
 
 test("expired AIVS sessions are distinguished from temporary page data", () => {
@@ -76,6 +77,42 @@ test("mail HTML resolves CID images and protects remote image requests", () => {
   assert.match(html, /src="https:\/\/images\.example\/menu\.jpg"/);
   assert.match(html, /referrerpolicy="no-referrer"/);
   assert.doesNotMatch(html, /unsafe\.example/);
+});
+
+test("mail attachment parts exclude message body and preserve MIME order", () => {
+  const parts = listMailAttachmentParts({
+    type: "multipart/mixed",
+    childNodes: [
+      { part: "1", type: "text/plain", size: 24 },
+      {
+        part: "1.2",
+        type: "multipart/related",
+        childNodes: [
+          { part: "1.2.1", type: "text/html", size: 48 },
+        ],
+      },
+      {
+        part: "2",
+        type: "image/png",
+        size: 128,
+        id: "menu-photo",
+        disposition: "inline",
+        dispositionParameters: { filename: "menu.png" },
+      },
+      {
+        part: "3",
+        type: "application/pdf",
+        size: 256,
+        disposition: "attachment",
+        parameters: { name: "document.pdf" },
+      },
+    ],
+  });
+
+  assert.deepEqual(parts, [
+    { part: "2", filename: "menu.png", contentType: "image/png", size: 128 },
+    { part: "3", filename: "document.pdf", contentType: "application/pdf", size: 256 },
+  ]);
 });
 
 test("AIVS faculty parsing supports names that end with Fakulta", () => {
