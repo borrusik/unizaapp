@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import useSWR from "swr";
-import { getHomePrimary } from "@/lib/home";
+import { useEffect, useState } from "react";
+import { getHomeGrades, getHomePrimary, getHomeStravaInfo } from "@/lib/home";
 import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing";
 import { useTranslation, type Lang } from "@/hooks/useTranslation";
 import { AppIcon, type AppIconName } from "@/components/AppIcon";
@@ -37,10 +38,20 @@ export default function HomePage() {
     dedupingInterval: 5 * 60 * 1000,
     revalidateOnFocus: false,
   });
-  const stravaInfo = primary?.stravaInfo;
-  const gradesData = primary?.gradesData;
+  const { data: stravaInfo } = useSWR("uniza_home_strava_info", getHomeStravaInfo, {
+    dedupingInterval: 5 * 60 * 1000,
+    revalidateOnFocus: false,
+  });
+  const { data: gradesData } = useSWR("uniza_home_grades", getHomeGrades, {
+    dedupingInterval: 5 * 60 * 1000,
+    revalidateOnFocus: false,
+  });
 
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const dayName = SCHEDULE_DAYS[getBratislavaDayIndex(now)] || "";
   const nowMinutes = currentBratislavaMinutes(now);
   const scheduleItems = primary?.schedule.items ?? [];

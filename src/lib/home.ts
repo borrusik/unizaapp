@@ -4,11 +4,17 @@ import { getGrades, getScheduleData, getUserInfo } from "@/lib/scraper";
 import { getStravaInfo } from "@/lib/strava";
 
 export async function getHomePrimary() {
-  const [user, schedule, stravaInfo, gradesData] = await Promise.all([
+  const [user, schedule] = await Promise.all([
     getUserInfo().catch(() => null),
     getScheduleData().catch(() => ({ items: [], status: "error" as const })),
-    getStravaInfo(false).catch(() => null),
-    getGrades().catch(() => null),
   ]);
-  return { user, schedule, stravaInfo, gradesData };
+  return { user, schedule };
+}
+
+export async function getHomeStravaInfo() {
+  return getStravaInfo(false).catch(() => null);
+}
+
+export async function getHomeGrades() {
+  return getGrades().catch(() => null);
 }

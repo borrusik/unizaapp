@@ -231,21 +231,25 @@ export async function getStravaMenu(
   }
 }
 
-export async function getStravaOrders(
+type StravaOrdersResult =
+  | { status: "ready"; orders: WebKreditOrder[] }
+  | { status: "unavailable" | "unauthenticated"; orders: [] };
+
+async function loadStravaOrders(
   startDate?: string,
   endDate?: string,
   force = false,
-): Promise<WebKreditOrder[]> {
+): Promise<StravaOrdersResult> {
   const sessionCookies = await getStravaSession();
-  if (!sessionCookies) return [];
+  if (!sessionCookies) return { status: "unauthenticated", orders: [] };
   const today = getBratislavaDateKey(new Date());
   const range = listDateKeys(startDate || today, 14);
   const from = localDateToUtcIso(range[0] || today);
   const to = localDateToUtcIso(endDate || range.at(-1) || today);
-  if (!from || !to) return [];
+  if (!from || !to) return { status: "unavailable", orders: [] };
   const cacheKey = sessionCacheKey(sessionCookies, `orders_${from}_${to}`);
   const cached = getCached<WebKreditOrder[]>(cacheKey);
-  if (!force && cached) return cached;
+  if (!force && cached) return { status: "ready", orders: cached };
 
   try {
     const params = new URLSearchParams({ ShowGrouped: "false", DateFrom: from, DateTo: to });
@@ -255,11 +259,19 @@ export async function getStravaOrders(
     if (!response.ok) throw new Error(`Orders returned ${response.status}`);
     const orders = parseWebKreditOrders(await response.json());
     setCached(cacheKey, orders);
-    return orders;
+    return { status: "ready", orders };
   } catch (error) {
     console.error("Failed to fetch WebKredit orders:", error instanceof Error ? error.message : "unknown");
-    return [];
+    return { status: "unavailable", orders: [] };
   }
+}
+
+export async function getStravaOrders(
+  startDate?: string,
+  endDate?: string,
+  force = false,
+): Promise<WebKreditOrder[]> {
+  return (await loadStravaOrders(startDate, endDate, force)).orders;
 }
 
 /**
@@ -371,7 +383,11 @@ export async function placeStravaOrder(
       const parsed = parseWebKreditOperation(await response.json());
       if (!parsed.successful) return operationResult("rejected", parsed.code, "WebKredit objednávku odmietol.");
       clearSessionCache(sessionCookies);
-      const confirmed = (await getStravaOrders(input.date, input.date, true)).find((order) =>
+      const confirmation = await loadStravaOrders(input.date, input.date, true);
+      if (confirmation.status !== "ready") {
+        return operationResult("uncertain", "verification_unavailable", "WebKredit odpovedal, ale objednávku sa nepodarilo overiť.");
+      }
+      const confirmed = confirmation.orders.find((order) =>
         order.date === input.date && order.mealKindId === input.mealKindId && order.alternative === input.alternative && order.canteenId === input.canteenId,
       );
       return confirmed
@@ -393,7 +409,11 @@ export async function changeStravaOrder(
   const sessionCookies = await getStravaSession();
   if (!sessionCookies) return operationResult("rejected", "not_authenticated", "WebKredit nie je pripojený.");
   return withOperationLock(sessionCacheKey(sessionCookies, `change_${input.id}`), async () => {
-    const current = (await getStravaOrders(undefined, undefined, true)).find((order) => order.id === input.id);
+    const currentResult = await loadStravaOrders(undefined, undefined, true);
+    if (currentResult.status !== "ready") {
+      return operationResult("uncertain", "verification_unavailable", "Objednávky sa nepodarilo overiť. Skúste to znova neskôr.");
+    }
+    const current = currentResult.orders.find((order) => order.id === input.id);
     if (!current) return operationResult("rejected", "order_not_found", "Objednávka už neexistuje.");
     const changesAlternative = input.alternative !== current.alternative;
     const changesCanteen = input.canteenId !== current.canteenId;
@@ -410,7 +430,11 @@ export async function changeStravaOrder(
       const parsed = parseWebKreditOperation(await response.json());
       if (!parsed.successful) return operationResult("rejected", parsed.code, "WebKredit zmenu odmietol.");
       clearSessionCache(sessionCookies);
-      const confirmed = (await getStravaOrders(undefined, undefined, true)).find((order) => order.id === current.id);
+      const confirmation = await loadStravaOrders(undefined, undefined, true);
+      if (confirmation.status !== "ready") {
+        return operationResult("uncertain", "verification_unavailable", "WebKredit odpovedal, ale zmenu sa nepodarilo overiť.");
+      }
+      const confirmed = confirmation.orders.find((order) => order.id === current.id);
       return confirmed?.alternative === input.alternative && confirmed.canteenId === input.canteenId
         ? operationResult("success", "success", "Objednávka bola zmenená.", confirmed)
         : operationResult("uncertain", "not_confirmed", "Zmenu sa zatiaľ nepodarilo potvrdiť.");
@@ -428,7 +452,11 @@ export async function cancelStravaOrder(
   const sessionCookies = await getStravaSession();
   if (!sessionCookies) return operationResult("rejected", "not_authenticated", "WebKredit nie je pripojený.");
   return withOperationLock(sessionCacheKey(sessionCookies, `cancel_${orderId}`), async () => {
-    const current = (await getStravaOrders(undefined, undefined, true)).find((order) => order.id === orderId);
+    const currentResult = await loadStravaOrders(undefined, undefined, true);
+    if (currentResult.status !== "ready") {
+      return operationResult("uncertain", "verification_unavailable", "Objednávky sa nepodarilo overiť. Skúste to znova neskôr.");
+    }
+    const current = currentResult.orders.find((order) => order.id === orderId);
     if (!current) return operationResult("success", "already_cancelled", "Objednávka už nie je aktívna.", null);
     if (!current.canCancel) return operationResult("rejected", "cancel_not_allowed", "Túto objednávku už nemožno zrušiť.");
     try {
@@ -441,7 +469,11 @@ export async function cancelStravaOrder(
       const parsed = parseWebKreditOperation(await response.json());
       if (!parsed.successful) return operationResult("rejected", parsed.code, "WebKredit zrušenie odmietol.");
       clearSessionCache(sessionCookies);
-      const stillExists = (await getStravaOrders(undefined, undefined, true)).some((order) => order.id === orderId);
+      const confirmation = await loadStravaOrders(undefined, undefined, true);
+      if (confirmation.status !== "ready") {
+        return operationResult("uncertain", "verification_unavailable", "WebKredit odpovedal, ale zrušenie sa nepodarilo overiť.");
+      }
+      const stillExists = confirmation.orders.some((order) => order.id === orderId);
       return stillExists
         ? operationResult("uncertain", "not_confirmed", "Zrušenie sa zatiaľ nepodarilo potvrdiť.")
         : operationResult("success", "success", "Objednávka bola zrušená.", null);

@@ -274,6 +274,8 @@ test("Moodle links stay on approved UNIZA paths", () => {
     "https://vzdelavanie.uniza.sk/moodle/course/view.php?id=1",
   );
   assert.equal(resolveMoodleUrl("javascript:alert(1)"), null);
+  assert.equal(resolveMoodleUrl(""), null);
+  assert.equal(resolveMoodleUrl("   "), null);
   assert.equal(resolveMoodleUrl("https://example.com/moodle/course/view.php?id=1"), null);
 });
 

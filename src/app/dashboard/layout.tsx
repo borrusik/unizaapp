@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslation, type TranslationKey } from "@/hooks/useTranslation";
 import { AppIcon, type AppIconName } from "@/components/AppIcon";
+import { BrowserNotificationScheduler } from "./profile/BrowserNotifications";
 
 interface NavTab {
   href: string;
@@ -59,6 +60,7 @@ export default function DashboardLayout({
 
   return (
     <div className="page-with-nav">
+      <BrowserNotificationScheduler />
       {/* Desktop Sidebar */}
       <aside className="desktop-sidebar">
         <div className="desktop-sidebar-brand">

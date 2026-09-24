@@ -15,14 +15,19 @@ function SubjectInfoContent() {
   const { t } = useTranslation();
 
   const [info, setInfo] = useState<SubjectInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedUrl, setLoadedUrl] = useState("");
+  const loading = Boolean(url) && loadedUrl !== url;
 
   useEffect(() => {
-    if (url) {
-      getSubjectInfo(url)
-        .then(setInfo)
-        .finally(() => setLoading(false));
+    let cancelled = false;
+    if (!url) {
+      return () => { cancelled = true; };
     }
+    getSubjectInfo(url)
+      .then((nextInfo) => { if (!cancelled) setInfo(nextInfo); })
+      .catch(() => { if (!cancelled) setInfo(null); })
+      .finally(() => { if (!cancelled) setLoadedUrl(url); });
+    return () => { cancelled = true; };
   }, [url]);
 
   const sections = info

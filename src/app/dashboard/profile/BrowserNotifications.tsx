@@ -6,6 +6,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { getBratislavaDateKey, listDateKeys, localDateToUtcIso } from "@/lib/uniza-parsers";
 
 const STORAGE_KEY = "uniza:notifications:v1";
+const SETTINGS_EVENT = "uniza:notifications-change";
 const DAYS = ["", "Pondelok", "Utorok", "Streda", "Štvrtok", "Piatok", "Sobota"];
 
 function eventTime(date: string, time: string) {
@@ -22,13 +23,63 @@ export function BrowserNotifications() {
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
 
   useEffect(() => {
-    if (!("Notification" in window)) { setPermission("unsupported"); return; }
-    setPermission(Notification.permission);
-    setEnabled(window.localStorage.getItem(STORAGE_KEY) === "on" && Notification.permission === "granted");
+    const frame = window.requestAnimationFrame(() => {
+      if (!("Notification" in window)) { setPermission("unsupported"); return; }
+      setPermission(Notification.permission);
+      setEnabled(window.localStorage.getItem(STORAGE_KEY) === "on" && Notification.permission === "granted");
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  const toggle = async () => {
+    if (!("Notification" in window)) return;
+    if (enabled) {
+      setEnabled(false);
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.dispatchEvent(new Event(SETTINGS_EVENT));
+      return;
+    }
+    const nextPermission = await Notification.requestPermission();
+    setPermission(nextPermission);
+    if (nextPermission === "granted") {
+      setEnabled(true);
+      window.localStorage.setItem(STORAGE_KEY, "on");
+      window.dispatchEvent(new Event(SETTINGS_EVENT));
+    }
+  };
+
+  const copy = lang === "sk"
+    ? { title: "Pripomienky", detail: "10 minút pred hodinou alebo skúškou, kým je aplikácia otvorená", denied: "Povoľte upozornenia v nastaveniach prehliadača", on: "Zapnuté", off: "Zapnúť" }
+    : lang === "en"
+      ? { title: "Reminders", detail: "10 minutes before a class or exam while the app is open", denied: "Allow notifications in your browser settings", on: "On", off: "Turn on" }
+      : lang === "uk"
+        ? { title: "Нагадування", detail: "За 10 хвилин до заняття або іспиту, поки застосунок відкритий", denied: "Дозвольте сповіщення в налаштуваннях браузера", on: "Увімкнено", off: "Увімкнути" }
+        : { title: "Напоминания", detail: "За 10 минут до занятия или экзамена, пока приложение открыто", denied: "Разрешите уведомления в настройках браузера", on: "Включены", off: "Включить" };
+
+  if (permission === "unsupported") return null;
+  return <button type="button" className="notification-setting" onClick={toggle} disabled={permission === "denied"}><span className="service-icon"><AppIcon name="bell" size={20} /></span><span><strong>{copy.title}</strong><small>{permission === "denied" ? copy.denied : copy.detail}</small></span><span className={`notification-state ${enabled ? "active" : ""}`}>{enabled ? copy.on : copy.off}</span></button>;
+}
+
+export function BrowserNotificationScheduler() {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setEnabled(
+      "Notification" in window &&
+      Notification.permission === "granted" &&
+      window.localStorage.getItem(STORAGE_KEY) === "on",
+    );
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener(SETTINGS_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(SETTINGS_EVENT, sync);
+    };
   }, []);
 
   useEffect(() => {
-    if (!enabled || permission !== "granted") return;
+    if (!enabled || !("Notification" in window) || Notification.permission !== "granted") return;
     const timers: number[] = [];
     const schedule = async () => {
       const { getSchedule, getExamTerms } = await import("@/lib/scraper");
@@ -47,31 +98,7 @@ export function BrowserNotifications() {
     };
     schedule().catch(() => undefined);
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [enabled, permission]);
+  }, [enabled]);
 
-  const toggle = async () => {
-    if (!("Notification" in window)) return;
-    if (enabled) {
-      setEnabled(false);
-      window.localStorage.removeItem(STORAGE_KEY);
-      return;
-    }
-    const nextPermission = await Notification.requestPermission();
-    setPermission(nextPermission);
-    if (nextPermission === "granted") {
-      setEnabled(true);
-      window.localStorage.setItem(STORAGE_KEY, "on");
-    }
-  };
-
-  const copy = lang === "sk"
-    ? { title: "Pripomienky", detail: "10 minút pred hodinou alebo skúškou, kým je aplikácia otvorená", denied: "Povoľte upozornenia v nastaveniach prehliadača", on: "Zapnuté", off: "Zapnúť" }
-    : lang === "en"
-      ? { title: "Reminders", detail: "10 minutes before a class or exam while the app is open", denied: "Allow notifications in your browser settings", on: "On", off: "Turn on" }
-      : lang === "uk"
-        ? { title: "Нагадування", detail: "За 10 хвилин до заняття або іспиту, поки застосунок відкритий", denied: "Дозвольте сповіщення в налаштуваннях браузера", on: "Увімкнено", off: "Увімкнути" }
-        : { title: "Напоминания", detail: "За 10 минут до занятия или экзамена, пока приложение открыто", denied: "Разрешите уведомления в настройках браузера", on: "Включены", off: "Включить" };
-
-  if (permission === "unsupported") return null;
-  return <button type="button" className="notification-setting" onClick={toggle} disabled={permission === "denied"}><span className="service-icon"><AppIcon name="bell" size={20} /></span><span><strong>{copy.title}</strong><small>{permission === "denied" ? copy.denied : copy.detail}</small></span><span className={`notification-state ${enabled ? "active" : ""}`}>{enabled ? copy.on : copy.off}</span></button>;
+  return null;
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { ImapFlow, type MessageAddressObject, type MessageStructureObject } from "imapflow";
+import { createHash } from "node:crypto";
 import { simpleParser } from "mailparser";
 import nodemailer from "nodemailer";
 import { readCredentials } from "@/lib/credentials";
@@ -16,6 +17,12 @@ const MAX_SEARCH_LENGTH = 120;
 const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
 const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
 const MAX_TOTAL_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+const ATTACHMENT_CACHE_TTL_MS = 60_000;
+const ATTACHMENT_CACHE_LIMIT = 8;
+
+type CachedMailAttachment = { filename: string; contentType: string; content: string } | null;
+const attachmentCache = new Map<string, { attachments: CachedMailAttachment[]; timestamp: number }>();
+const attachmentRequests = new Map<string, Promise<CachedMailAttachment[]>>();
 
 export type MailFolder = {
   path: string;
@@ -408,29 +415,66 @@ export async function getMailAttachment(
   index: number,
 ): Promise<{ filename: string; contentType: string; content: string }> {
   if (!Number.isInteger(index) || index < 0 || index > 100) throw new Error("Invalid attachment");
-  return withMailClient(async (client) => {
-    const selected = await requireExistingFolder(client, folder);
-    const safeUid = validateUid(uid);
-    const lock = await client.getMailboxLock(selected, { readOnly: true });
-    try {
-      const message = await client.fetchOne(
-        safeUid,
-        { source: { maxLength: MAX_SOURCE_BYTES }, size: true },
-        { uid: true },
-      );
-      if (!message || !message.source || (message.size && message.size > MAX_SOURCE_BYTES)) {
-        throw new Error("Attachment is unavailable");
+  const credentials = await readCredentials();
+  if (!credentials) throw new Error("MAIL_RECONNECT_REQUIRED");
+  const email = validateStudentEmail(credentials.email);
+  const safeFolder = validateMailboxPath(folder);
+  const safeUid = validateUid(uid);
+  const cacheKey = createHash("sha256").update(`${email}\0${safeFolder}\0${safeUid}`).digest("hex");
+  const cached = attachmentCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < ATTACHMENT_CACHE_TTL_MS) {
+    const attachment = cached.attachments[index];
+    if (!attachment) throw new Error("Attachment is unavailable");
+    return attachment;
+  }
+
+  let request = attachmentRequests.get(cacheKey);
+  if (!request) {
+    request = (async () => {
+      const client = createImapClient(email, credentials.password);
+      await client.connect();
+      try {
+        const selected = await requireExistingFolder(client, safeFolder);
+        const lock = await client.getMailboxLock(selected, { readOnly: true });
+        try {
+          const message = await client.fetchOne(
+            safeUid,
+            { source: { maxLength: MAX_SOURCE_BYTES }, size: true },
+            { uid: true },
+          );
+          if (!message || !message.source || (message.size && message.size > MAX_SOURCE_BYTES)) {
+            throw new Error("Attachment is unavailable");
+          }
+          const parsed = await simpleParser(message.source, { skipImageLinks: true });
+          return parsed.attachments.map((attachment, attachmentIndex) => attachment.size > MAX_ATTACHMENT_BYTES
+            ? null
+            : {
+                filename: (attachment.filename || `attachment-${attachmentIndex + 1}`).replace(/[\0\r\n]/g, "").slice(0, 180),
+                contentType: attachment.contentType || "application/octet-stream",
+                content: attachment.content.toString("base64"),
+              });
+        } finally {
+          lock.release();
+        }
+      } finally {
+        await client.logout().catch(() => undefined);
       }
-      const parsed = await simpleParser(message.source, { skipImageLinks: true });
-      const attachment = parsed.attachments[index];
-      if (!attachment || attachment.size > MAX_ATTACHMENT_BYTES) throw new Error("Attachment is unavailable");
-      return {
-        filename: (attachment.filename || `attachment-${index + 1}`).replace(/[\0\r\n]/g, "").slice(0, 180),
-        contentType: attachment.contentType || "application/octet-stream",
-        content: attachment.content.toString("base64"),
-      };
-    } finally {
-      lock.release();
+    })();
+    attachmentRequests.set(cacheKey, request);
+  }
+
+  try {
+    const attachments = await request;
+    if (attachmentCache.size >= ATTACHMENT_CACHE_LIMIT) {
+      const oldestKey = attachmentCache.keys().next().value as string | undefined;
+      if (oldestKey) attachmentCache.delete(oldestKey);
     }
-  });
+    attachmentCache.delete(cacheKey);
+    attachmentCache.set(cacheKey, { attachments, timestamp: Date.now() });
+    const attachment = attachments[index];
+    if (!attachment) throw new Error("Attachment is unavailable");
+    return attachment;
+  } finally {
+    if (attachmentRequests.get(cacheKey) === request) attachmentRequests.delete(cacheKey);
+  }
 }

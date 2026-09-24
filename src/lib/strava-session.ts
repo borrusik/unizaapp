@@ -5,6 +5,7 @@ import { readCredentials } from "@/lib/credentials";
 
 const BASE_URL = "https://strava.uniza.sk/WebKredit";
 const REQUEST_TIMEOUT_MS = 15_000;
+const restoreRequests = new Map<string, Promise<string[] | null>>();
 
 const sessionCookieOptions = {
   httpOnly: true,
@@ -105,11 +106,22 @@ export async function clearStravaSession(): Promise<void> {
 export async function restoreStravaSession(): Promise<string[] | null> {
   const credentials = await readCredentials();
   if (!credentials) return null;
+  const key = credentials.email.trim().toLowerCase();
+  const pending = restoreRequests.get(key);
+  if (pending) return pending;
 
-  const session = await authenticateStrava(
-    credentials.email.split("@")[0],
-    credentials.password,
-  ).catch(() => null);
-
-  return (await storeStravaSession(session)) ? session : null;
+  const request = (async () => {
+    const session = await authenticateStrava(
+      credentials.email.split("@")[0],
+      credentials.password,
+    ).catch(() => null);
+    return (await storeStravaSession(session)) ? session : null;
+  })();
+  if (restoreRequests.size > 500) restoreRequests.clear();
+  restoreRequests.set(key, request);
+  try {
+    return await request;
+  } finally {
+    if (restoreRequests.get(key) === request) restoreRequests.delete(key);
+  }
 }

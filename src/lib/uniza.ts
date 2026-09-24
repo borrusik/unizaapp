@@ -39,6 +39,7 @@ export function resolveSubjectInfoUrl(value: string): string | null {
 }
 
 export function resolveMoodleUrl(value: string): string | null {
+  if (!value.trim()) return null;
   const url = resolveOfficialAivsUrl(value);
   if (!url) return null;
 

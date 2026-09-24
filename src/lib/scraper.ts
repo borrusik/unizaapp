@@ -168,7 +168,13 @@ async function restoreExpiredSession(sessionId: string): Promise<string | null> 
   })();
   if (sessionRefreshRequests.size > 500) sessionRefreshRequests.clear();
   sessionRefreshRequests.set(sessionId, request);
-  return request;
+  try {
+    return await request;
+  } finally {
+    if (sessionRefreshRequests.get(sessionId) === request) {
+      sessionRefreshRequests.delete(sessionId);
+    }
+  }
 }
 
 async function fetchPage(sessionId: string, page: string, force = false): Promise<string> {
@@ -808,18 +814,18 @@ export async function getGrades(
 async function getExamTermsInternal(
   requestedStartYear?: number,
   force = false,
-): Promise<{ terms: InternalExamTerm[] } & AcademicPeriodData> {
+): Promise<{ terms: InternalExamTerm[]; loadStatus: "ready" | "unauthenticated" | "unavailable" } & AcademicPeriodData> {
   const sessionId = await getSession();
   if (!sessionId) {
     const year = await resolveAcademicYear(requestedStartYear);
-    return { terms: [], ...year };
+    return { terms: [], loadStatus: "unauthenticated", ...year };
   }
   const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
   try {
-    return { terms: await loadExamTermsForYear(sessionId, year.selectedStartYear, force), ...year };
+    return { terms: await loadExamTermsForYear(sessionId, year.selectedStartYear, force), loadStatus: "ready", ...year };
   } catch (error) {
     console.error("Failed to load AIVS exam terms:", error instanceof Error ? error.message : "unknown");
-    return { terms: [], ...year };
+    return { terms: [], loadStatus: "unavailable", ...year };
   }
 }
 
@@ -916,7 +922,11 @@ async function changeExamRegistration(
   examOperationLocks.set(lockKey, now + 30_000);
 
   try {
-  const current = (await getExamTermsInternal(academicYearStart, true)).terms.find((term) => term.id === termId);
+  const currentResult = await getExamTermsInternal(academicYearStart, true);
+  if (currentResult.loadStatus !== "ready") {
+    return examOperationResult("uncertain", "verification_unavailable", "Termíny sa nepodarilo overiť. Skúste to znova neskôr.");
+  }
+  const current = currentResult.terms.find((term) => term.id === termId);
   if (!current) return examOperationResult("rejected", "term_not_found", "Termín už nie je dostupný.");
   if ((action === "register" && !current.canRegister) || (action === "cancel" && !current.canCancel)) {
     return examOperationResult("rejected", "action_not_allowed", "AIVS túto zmenu momentálne nepovoľuje.");
@@ -931,7 +941,11 @@ async function changeExamRegistration(
       if (html.includes('name="heslo"')) return examOperationResult("uncertain", "session_expired", "Výsledok sa nepodarilo potvrdiť. Skontrolujte AIVS.");
     }
     clearSessionCaches(sessionId);
-    const confirmed = (await getExamTermsInternal(academicYearStart, true)).terms.find((term) => term.id === termId);
+    const confirmationResult = await getExamTermsInternal(academicYearStart, true);
+    if (confirmationResult.loadStatus !== "ready") {
+      return examOperationResult("uncertain", "verification_unavailable", "AIVS odpovedal, ale výsledok sa nepodarilo overiť.");
+    }
+    const confirmed = confirmationResult.terms.find((term) => term.id === termId);
     const changed = action === "register" ? confirmed?.canCancel : confirmed?.canRegister || !confirmed;
     if (!changed) return examOperationResult("uncertain", "not_confirmed", "AIVS zmenu zatiaľ nepotvrdil.");
     return examOperationResult(
