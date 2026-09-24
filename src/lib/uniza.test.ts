@@ -35,6 +35,21 @@ import {
   parseInstagramProfileBotHtml,
 } from "./instagram-scrape.ts";
 import { normalizeMailContentId, sanitizeMailHtml } from "./mail-content.ts";
+import { isAuthenticatedAivsHtml, safeDashboardReturnPath } from "./auth-state.ts";
+
+test("expired AIVS sessions are distinguished from temporary page data", () => {
+  assert.equal(isAuthenticatedAivsHtml(""), false);
+  assert.equal(isAuthenticatedAivsHtml('<form><input name="heslo"></form>'), false);
+  assert.equal(isAuthenticatedAivsHtml("<title>Prihlásenie</title>"), false);
+  assert.equal(isAuthenticatedAivsHtml("<main>Študijná skupina: 5ZYI</main>"), true);
+});
+
+test("post-login return path stays inside the dashboard", () => {
+  assert.equal(safeDashboardReturnPath("/dashboard/mail"), "/dashboard/mail");
+  assert.equal(safeDashboardReturnPath("https://attacker.example"), "/dashboard");
+  assert.equal(safeDashboardReturnPath("//attacker.example"), "/dashboard");
+  assert.equal(safeDashboardReturnPath("/dashboard\\evil"), "/dashboard");
+});
 
 test("mail HTML keeps safe links and rejects active content", () => {
   const html = sanitizeMailHtml(

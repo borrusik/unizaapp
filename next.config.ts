@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
   turbopack: {},
   agentRules: false,
   poweredByHeader: false, // Hide "X-Powered-By: Next.js"
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "upload.wikimedia.org", pathname: "/wikipedia/commons/**" },
+    ],
+  },
   async headers() {
     return [
       {

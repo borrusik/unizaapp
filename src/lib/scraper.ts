@@ -20,12 +20,14 @@ import { parseAivsFaculty } from "@/lib/aivs-profile";
 import { getAivsScheduleSourceState } from "@/lib/aivs-schedule";
 import { getAivsResultsTableYear, selectAivsGradeResult } from "@/lib/aivs-grades";
 import { readSharedSchedule, writeSharedSchedule } from "@/lib/schedule-cache";
+import { isAuthenticatedAivsHtml } from "@/lib/auth-state";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
 const examOperationLocks = new Map<string, number>();
 const SCHEDULE_GROUP_COOKIE = "uniza_schedule_group";
+const REAUTH_COOKIE = "uniza_reauth";
 
 // ─────────────────────────────────────────────
 // Fetch with Windows-1250 decoding
@@ -107,21 +109,6 @@ async function getPhpSession(email: string, password: string): Promise<string | 
   const now = Date.now();
   if (PAGE_CACHE.size > 500) PAGE_CACHE.clear();
   PAGE_CACHE.set(`${phpSessionId}_predmety_s.php${yearQuery}`, { html: testHtml, timestamp: now });
-
-  // Optional pages improve the first load, but a temporary failure in grades,
-  // schedule, profile, or plans must not invalidate an otherwise valid login.
-  const warmPages = ["svysledky.php", "rozvrh2.php", "index.php", "plany.php"];
-  const warmed = await Promise.allSettled(
-    warmPages.map((page) => fetchDecoded(`${BASE_URL}/${page}${yearQuery}`, requestOptions)),
-  );
-  warmed.forEach((result, index) => {
-    if (result.status === "fulfilled") {
-      PAGE_CACHE.set(`${phpSessionId}_${warmPages[index]}${yearQuery}`, {
-        html: result.value,
-        timestamp: now,
-      });
-    }
-  });
 
   return phpSessionId;
 }
@@ -215,6 +202,17 @@ async function fetchPage(sessionId: string, page: string, force = false): Promis
       }
 
       cookieStore.delete("uniza_phpsessid");
+      cookieStore.delete("uniza_email");
+      cookieStore.delete(SCHEDULE_GROUP_COOKIE);
+      cookieStore.set(REAUTH_COOKIE, "1", {
+        httpOnly: false,
+        path: "/",
+        maxAge: 10 * 60,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      clearSessionCaches(sessionId);
+      await clearCredentials();
       await clearStravaSession();
       return "";
     } else {
@@ -397,6 +395,7 @@ export async function login(formData: FormData) {
   cookieStore.delete("uniza_phpsessid");
   cookieStore.delete("uniza_email");
   cookieStore.delete(SCHEDULE_GROUP_COOKIE);
+  cookieStore.delete(REAUTH_COOKIE);
   await clearCredentials();
   await clearStravaSession();
 
@@ -460,6 +459,7 @@ export async function logout() {
   cookieStore.delete("uniza_phpsessid");
   cookieStore.delete("uniza_email");
   cookieStore.delete(SCHEDULE_GROUP_COOKIE);
+  cookieStore.delete(REAUTH_COOKIE);
   await clearCredentials();
   await clearStravaSession();
   return { success: true };
@@ -486,6 +486,25 @@ export async function getSession(): Promise<string | null> {
     sameSite: "strict",
   });
   return restoredSessionId;
+}
+
+export type DashboardSessionState = "authenticated" | "unauthenticated" | "unavailable";
+
+export async function checkDashboardSession(): Promise<DashboardSessionState> {
+  let sessionId: string | null;
+  try {
+    sessionId = await getSession();
+  } catch {
+    return "unavailable";
+  }
+  if (!sessionId) return "unauthenticated";
+
+  try {
+    const html = await fetchPage(sessionId, "index.php", true);
+    return isAuthenticatedAivsHtml(html) ? "authenticated" : "unauthenticated";
+  } catch {
+    return "unavailable";
+  }
 }
 
 export async function getIntegrationStatus() {

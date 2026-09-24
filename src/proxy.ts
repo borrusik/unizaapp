@@ -107,6 +107,15 @@ export function proxy(request: NextRequest) {
     "unknown";
   const { pathname } = request.nextUrl;
 
+  if (pathname.startsWith("/dashboard") && request.cookies.get("uniza_reauth")?.value === "1") {
+    const loginUrl = new URL("/", request.url);
+    loginUrl.searchParams.set("reason", "session_expired");
+    loginUrl.searchParams.set("next", pathname);
+    const redirect = NextResponse.redirect(loginUrl);
+    redirect.cookies.delete("uniza_reauth");
+    return redirect;
+  }
+
   // ── Check if IP is blocked ──
   const blockExpiry = blockedIPs.get(ip);
   if (blockExpiry && Date.now() < blockExpiry && process.env.NODE_ENV !== "development") {

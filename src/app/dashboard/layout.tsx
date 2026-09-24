@@ -6,6 +6,8 @@ import { useEffect } from "react";
 import { useTranslation, type TranslationKey } from "@/hooks/useTranslation";
 import { AppIcon, type AppIconName } from "@/components/AppIcon";
 import { BrowserNotificationScheduler } from "./profile/BrowserNotifications";
+import { DashboardSessionGuard } from "@/components/DashboardSessionGuard";
+import { KharkivEasterEgg } from "@/components/KharkivEasterEgg";
 
 interface NavTab {
   href: string;
@@ -59,12 +61,13 @@ export default function DashboardLayout({
   };
 
   return (
+    <DashboardSessionGuard>
     <div className="page-with-nav">
       <BrowserNotificationScheduler />
       {/* Desktop Sidebar */}
       <aside className="desktop-sidebar">
         <div className="desktop-sidebar-brand">
-          <div className="desktop-sidebar-logo">UŽ</div>
+          <KharkivEasterEgg className="desktop-sidebar-logo" iconSize={21} />
           <div>
             <div className="desktop-sidebar-title">UNIZA Student</div>
             <div style={{ fontSize: "11px", color: "var(--text-tertiary)", fontWeight: 600 }}>Portál študenta</div>
@@ -115,5 +118,6 @@ export default function DashboardLayout({
         })}
       </nav>
     </div>
+    </DashboardSessionGuard>
   );
 }
