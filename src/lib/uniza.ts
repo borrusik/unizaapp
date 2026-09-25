@@ -14,6 +14,7 @@ export const UNIZA_URLS = {
 
 const AIVS_ORIGIN = new URL(UNIZA_URLS.education).origin;
 const AIVS_BASE_URL = UNIZA_URLS.education;
+const MOODLE_ORIGIN = "https://moodle.uniza.sk";
 
 function resolveOfficialAivsUrl(value: string): URL | null {
   try {
@@ -40,14 +41,22 @@ export function resolveSubjectInfoUrl(value: string): string | null {
 
 export function resolveMoodleUrl(value: string): string | null {
   if (!value.trim()) return null;
-  const url = resolveOfficialAivsUrl(value);
-  if (!url) return null;
+  try {
+    const url = new URL(value, AIVS_BASE_URL);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
 
-  const isAllowedPath =
-    url.pathname.startsWith("/moodle/") ||
-    url.pathname.startsWith("/vzdelavanie/");
+    const isLegacyAivsLink = url.origin === AIVS_ORIGIN && (
+      url.pathname.startsWith("/moodle/") ||
+      url.pathname.startsWith("/vzdelavanie/")
+    );
+    const isCurrentMoodleCourse = url.origin === MOODLE_ORIGIN &&
+      url.pathname === "/course/view.php" &&
+      url.searchParams.has("id");
 
-  return isAllowedPath ? url.toString() : null;
+    return isLegacyAivsLink || isCurrentMoodleCourse ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 export function resolveExamTermsUrl(value: string): string | null {

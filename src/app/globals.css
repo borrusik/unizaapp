@@ -2187,6 +2187,10 @@ select {
   margin-bottom: 24px;
 }
 
+.grades-year-label {
+  margin-bottom: 10px;
+}
+
 .grade-subject-title {
   margin-bottom: 2px;
   overflow: hidden;

@@ -8,11 +8,13 @@ import {
   localDateToUtcIso,
   parseWebKreditCanteens,
   parseWebKreditMenu,
+  parseWebKreditInfoHtml,
   parseWebKreditOperation,
   parseWebKreditOrders,
   type Canteen,
   type IntegrationOperationResult,
   type MenuDay,
+  type WebKreditInfo,
   type WebKreditOrder,
 } from "@/lib/uniza-parsers";
 
@@ -57,10 +59,15 @@ async function getStravaSession(): Promise<string[] | null> {
   return (await getStoredStravaSession()) || restoreStravaSession();
 }
 
-export type StravaInfo = {
-  balance: number;
-  name: string;
-};
+export type StravaInfo = WebKreditInfo;
+
+async function loadStravaInfo(sessionCookies: string[]): Promise<StravaInfo | null> {
+  const res = await fetchStrava(`${BASE_URL}/`, {
+    headers: { Cookie: sessionCookies.join("; ") },
+  });
+  if (!res.ok) return null;
+  return parseWebKreditInfoHtml(await res.text());
+}
 
 export async function getStravaInfo(force = false): Promise<StravaInfo | null> {
   const sessionCookies = await getStravaSession();
@@ -71,31 +78,22 @@ export async function getStravaInfo(force = false): Promise<StravaInfo | null> {
   if (!force && cached) return cached;
 
   try {
-    const res = await fetchStrava(`${BASE_URL}/`, {
-      headers: { Cookie: sessionCookies.join("; ") },
-    });
-
-    if (!res.ok) {
+    let activeSession = sessionCookies;
+    let result = await loadStravaInfo(activeSession);
+    if (!result) {
       await clearStravaSession();
-      return null;
+      const restoredSession = await restoreStravaSession();
+      if (!restoredSession) return null;
+      activeSession = restoredSession;
+      result = await loadStravaInfo(activeSession);
     }
-    const html = await res.text();
-    const modelMatch = html.match(/window\.wkIndexModel\s*=\s*({[\s\S]*?});/);
+    if (!result) return null;
 
-    if (!modelMatch) {
-      await clearStravaSession();
-      return null;
-    }
-
-    const modelData = JSON.parse(modelMatch[1]);
-    const balance = modelData?.model?.balance?.balance || 0;
-    const name = modelData?.model?.user?.name || modelData?.model?.user?.fullName || "Študent";
-
-    const result = { balance, name };
-    setCached(cacheKey, result);
+    const activeCacheKey = sessionCacheKey(activeSession, "info");
+    setCached(activeCacheKey, result);
     return result;
-  } catch {
-    console.error("Failed to parse Strava info:");
+  } catch (error) {
+    console.error("Failed to load Strava info:", error instanceof Error ? error.message : "unknown");
     return null;
   }
 }
@@ -281,12 +279,23 @@ export async function getStravaOrders(
  */
 export async function getStravaDashboard(canteenId = 1, force = false) {
   const { getInstagramDailyMenus } = await import("@/lib/instagram");
-  const [info, menu, orders, instagramMenus] = await Promise.all([
+  const [info, initialMenu, initialOrders, instagramMenus] = await Promise.all([
     getStravaInfo(force),
     getStravaMenu(canteenId, undefined, force),
     getStravaOrders(undefined, undefined, force),
     getInstagramDailyMenus(force),
   ]);
+
+  // The public menu endpoint still returns HTTP 200 for an expired WebKredit
+  // session, but marks ordering unavailable. If the parallel info request has
+  // just restored that session, repeat only the authenticated menu/order reads.
+  const [menu, orders] = info && !initialMenu.canOrder
+    ? await Promise.all([
+        getStravaMenu(canteenId, undefined, true),
+        getStravaOrders(undefined, undefined, true),
+      ])
+    : [initialMenu, initialOrders];
+
   return { info, menu, orders, instagramMenus };
 }
 

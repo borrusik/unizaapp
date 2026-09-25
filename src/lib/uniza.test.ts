@@ -16,6 +16,7 @@ import {
   localDateToUtcIso,
   parseAcademicYears,
   parseWebKreditCanteens,
+  parseWebKreditInfoHtml,
   parseWebKreditMenu,
   parseWebKreditOperation,
   parseWebKreditOrders,
@@ -148,7 +149,7 @@ test("AIVS subjects are deduplicated per semester and useful links are merged", 
       <tr><td><a href="planinfo.php?id=1">6BI0001 Informatika</a></td><td></td></tr>
       <tr><td class="sep">Letný semester</td></tr>
       <tr><td><a href="planinfo.php?id=2">6BL0001 ekonomické a právne aspekty podnikania</a></td><td></td></tr>
-      <tr><td>6BL0001 ekonomické a právne aspekty podnikania</td><td><a target="tmoodle" href="https://vzdelavanie.uniza.sk/moodle/course/view.php?id=2">Moodle</a></td></tr>
+      <tr><td>6BL0001 ekonomické a právne aspekty podnikania</td><td><a target="tmoodle" href="https://moodle.uniza.sk/course/view.php?id=2">Moodle</a></td></tr>
     </table></td></tr></table>
   `);
 
@@ -157,7 +158,7 @@ test("AIVS subjects are deduplicated per semester and useful links are merged", 
   assert.equal(parsed.summer[0].code, "6BL0001");
   assert.equal(parsed.summer[0].name, "Ekonomické a právne aspekty podnikania");
   assert.equal(parsed.summer[0].infoHref, "planinfo.php?id=2");
-  assert.equal(parsed.summer[0].moodleHref, "https://vzdelavanie.uniza.sk/moodle/course/view.php?id=2");
+  assert.equal(parsed.summer[0].moodleHref, "https://moodle.uniza.sk/course/view.php?id=2");
 });
 
 test("AIVS grade dates map to the correct academic year", () => {
@@ -325,10 +326,17 @@ test("Moodle links stay on approved UNIZA paths", () => {
     resolveMoodleUrl("https://vzdelavanie.uniza.sk/moodle/course/view.php?id=1"),
     "https://vzdelavanie.uniza.sk/moodle/course/view.php?id=1",
   );
+  assert.equal(
+    resolveMoodleUrl("https://moodle.uniza.sk/course/view.php?id=361"),
+    "https://moodle.uniza.sk/course/view.php?id=361",
+  );
+  assert.equal(resolveMoodleUrl("https://moodle.uniza.sk/course/view.php"), null);
+  assert.equal(resolveMoodleUrl("https://moodle.uniza.sk/login/index.php"), null);
   assert.equal(resolveMoodleUrl("javascript:alert(1)"), null);
   assert.equal(resolveMoodleUrl(""), null);
   assert.equal(resolveMoodleUrl("   "), null);
   assert.equal(resolveMoodleUrl("https://example.com/moodle/course/view.php?id=1"), null);
+  assert.equal(resolveMoodleUrl("https://moodle.uniza.sk.attacker.example/course/view.php?id=1"), null);
 });
 
 test("student mail fallback points to the official direct webmail", () => {
@@ -348,6 +356,19 @@ test("exam action URLs are restricted to the official AIVS terms endpoint", () =
 test("academic year changes on 1 September in Bratislava", () => {
   assert.equal(getAcademicYear(new Date("2026-08-31T12:00:00Z")), "2025/2026");
   assert.equal(getAcademicYear(new Date("2026-09-01T12:00:00Z")), "2026/2027");
+});
+
+test("WebKredit account model exposes a numeric ISIC balance", () => {
+  const parsed = parseWebKreditInfoHtml(`
+    <div id="app"></div>
+    <script>window.wkIndexModel={"model":{"user":{"name":"Test Student"},"balance":{"balance":7.60}}};</script>
+  `);
+  assert.deepEqual(parsed, { balance: 7.6, name: "Test Student" });
+  assert.deepEqual(
+    parseWebKreditInfoHtml('<script>window.wkIndexModel={"model":{"user":{"fullName":"Student"},"balance":{"balance":"0,00"}}};</script>'),
+    { balance: 0, name: "Student" },
+  );
+  assert.equal(parseWebKreditInfoHtml('<script>window.wkIndexModel={"model":{"user":null}};</script>'), null);
 });
 
 test("AIVS academic year selector is parsed from the upstream options", () => {

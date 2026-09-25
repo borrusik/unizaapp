@@ -50,6 +50,9 @@ export default function GradesPage() {
   const current = allForSemester.filter(
     (grade) => grade.academicYearStart === grades.selectedStartYear,
   );
+  const currentYear = [...grades.winter, ...grades.summer].filter(
+    (grade) => grade.academicYearStart === grades.selectedStartYear,
+  );
   const completed = current.filter((grade) => grade.grade && grade.grade !== "—");
   const pending = current.filter((grade) => !grade.grade || grade.grade === "—");
 
@@ -61,20 +64,21 @@ export default function GradesPage() {
     A: "var(--success)", B: "#5ac8fa", C: "var(--warning)", D: "var(--purple)", E: "var(--orange)", FX: "var(--danger)",
   };
 
-  const earnedCredits = current
+  const earnedCredits = currentYear
     .filter((g) => g.grade && g.grade !== "—" && g.grade !== "FX" && g.grade !== "")
     .reduce((sum, g) => sum + g.credits, 0);
 
   const avgGrade = (() => {
     const gradeValues: Record<string, number> = { A: 1, B: 1.5, C: 2, D: 2.5, E: 3, FX: 4 };
-    const scored = current.filter((g) => gradeValues[g.grade] !== undefined);
+    const scored = currentYear.filter((g) => gradeValues[g.grade] !== undefined);
     if (scored.length === 0) return "—";
     const total = scored.reduce((sum, g) => sum + gradeValues[g.grade] * g.credits, 0);
     const totalCredits = scored.reduce((sum, g) => sum + g.credits, 0);
+    if (totalCredits === 0) return "—";
     return (total / totalCredits).toFixed(2);
   })();
 
-  const passedCount = current.filter((g) => g.grade && g.grade !== "—" && g.grade !== "FX" && g.grade !== "").length;
+  const passedCount = currentYear.filter((g) => g.grade && g.grade !== "—" && g.grade !== "FX" && g.grade !== "").length;
 
   const renderGradeRows = (items: Grade[]) => (
     <div className="card-group">
@@ -165,6 +169,26 @@ export default function GradesPage() {
           </div>
         ) : (
           <div className="animate-slide-up">
+            {currentYear.length > 0 ? (
+              <>
+                <div className="section-label grades-year-label">{t("grades_year_summary")}</div>
+                <div className="grades-stats">
+                  <div className="stat-card">
+                    <div className="stat-value" style={{ color: "var(--primary)", fontSize: "24px" }}>{earnedCredits}</div>
+                    <div className="stat-label">{t("grades_year_credits")}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-value" style={{ color: "var(--success)", fontSize: "24px" }}>{avgGrade}</div>
+                    <div className="stat-label">{t("grades_year_average")}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-value" style={{ color: "var(--warning)", fontSize: "24px" }}>{passedCount}/{currentYear.length}</div>
+                    <div className="stat-label">{t("grades_year_completed")}</div>
+                  </div>
+                </div>
+              </>
+            ) : null}
+
             {current.length === 0 ? (
               <div className="empty-state">
                 <AppIcon name="award" size={42} />
@@ -173,20 +197,6 @@ export default function GradesPage() {
               </div>
             ) : (
               <>
-                <div className="grades-stats" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "24px" }}>
-                  <div className="stat-card">
-                    <div className="stat-value" style={{ color: "var(--primary)", fontSize: "24px" }}>{earnedCredits}</div>
-                    <div className="stat-label">ECTS</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value" style={{ color: "var(--success)", fontSize: "24px" }}>{avgGrade}</div>
-                    <div className="stat-label">{t("profile_avg")}</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value" style={{ color: "var(--warning)", fontSize: "24px" }}>{passedCount}/{current.length}</div>
-                    <div className="stat-label">{t("profile_completed")}</div>
-                  </div>
-                </div>
                 {completed.length > 0 ? renderGradeRows(completed) : null}
                 {pending.length > 0 ? (
                   <section className="pending-grades">

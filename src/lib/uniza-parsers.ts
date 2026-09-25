@@ -79,6 +79,11 @@ export type MenuDay = {
   }>;
 };
 
+export type WebKreditInfo = {
+  balance: number;
+  name: string;
+};
+
 type UnknownRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): UnknownRecord | null {
@@ -98,6 +103,27 @@ function asNumber(value: unknown): number | null {
     if (Number.isFinite(parsed)) return parsed;
   }
   return null;
+}
+
+export function parseWebKreditInfoHtml(html: string): WebKreditInfo | null {
+  const modelMatch = html.match(/window\.wkIndexModel\s*=\s*({[\s\S]*?})\s*;/);
+  if (!modelMatch) return null;
+
+  try {
+    const payload = asRecord(JSON.parse(modelMatch[1]));
+    const model = asRecord(payload?.model);
+    const user = asRecord(model?.user);
+    const balanceModel = asRecord(model?.balance);
+    const balance = asNumber(balanceModel?.balance);
+    if (!user || balance === null) return null;
+
+    return {
+      balance,
+      name: asString(user.name) || asString(user.fullName) || "Študent",
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function formatAcademicYear(startYear: number): string {
