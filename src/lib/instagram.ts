@@ -58,6 +58,7 @@ export type InstagramRefreshReport = {
   cacheUpdated: boolean;
   latestDate: string;
   latestPermalink: string;
+  latestImageCount: number;
   error: string;
 };
 
@@ -291,6 +292,7 @@ function refreshReport(
     cacheUpdated: values.cacheUpdated ?? false,
     latestDate: menus[0]?.date ?? "",
     latestPermalink: menus[0]?.permalink ?? "",
+    latestImageCount: menus[0]?.images.length ?? 0,
     error: values.error ?? "",
   };
 }

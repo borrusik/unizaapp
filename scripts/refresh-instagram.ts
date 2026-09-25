@@ -47,6 +47,7 @@ if (statusResponse.ok) {
     statusResult.status === "checked"
     && statusResult.latestPermalink === latest.permalink
     && statusResult.latestDate === expectedMenu?.date
+    && Number(statusResult.latestImageCount) === latest.images.length
     && Number(statusResult.menuCount) > 0
   ) {
     console.log(JSON.stringify({
@@ -83,6 +84,7 @@ const validResult = refreshResponse.ok
   && result.status === "checked"
   && result.latestPermalink === latest.permalink
   && result.latestDate === expectedMenu?.date
+  && Number(result.latestImageCount) === latest.images.length
   && Number(result.menuCount) > 0;
 console.log(JSON.stringify({
   httpStatus: refreshResponse.status,

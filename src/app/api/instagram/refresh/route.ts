@@ -25,6 +25,7 @@ function reportResponse(report: Awaited<ReturnType<typeof refreshInstagramDailyM
         menuCount: report.menus.length,
         latestDate: report.latestDate,
         latestPermalink: report.latestPermalink,
+        latestImageCount: report.latestImageCount,
         error: report.error,
       },
       { status: 502, headers: { "Cache-Control": "no-store" } },
@@ -37,6 +38,7 @@ function reportResponse(report: Awaited<ReturnType<typeof refreshInstagramDailyM
       cacheUpdated: report.cacheUpdated,
       latestDate: report.latestDate,
       latestPermalink: report.latestPermalink,
+      latestImageCount: report.latestImageCount,
     },
     { headers: { "Cache-Control": "no-store" } },
   );
