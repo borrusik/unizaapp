@@ -12,6 +12,14 @@ type InstagramMedia = {
   images: string[];
 };
 
+export type InstagramIngestPost = {
+  id?: string;
+  caption?: string;
+  permalink?: string;
+  timestamp?: string;
+  images?: string[];
+};
+
 type InstagramGraphMedia = {
   id?: string;
   caption?: string;
@@ -44,6 +52,15 @@ type MenuSnapshot = {
   refreshedAt: number;
 };
 
+export type InstagramRefreshReport = {
+  menus: InstagramDailyMenu[];
+  attempted: boolean;
+  cacheUpdated: boolean;
+  latestDate: string;
+  latestPermalink: string;
+  error: string;
+};
+
 const PROFILE_URL = "https://www.instagram.com/menzazilina/";
 const DEFAULT_POST_URLS = ["https://www.instagram.com/p/Ddn-JixDqj_/"];
 const SNAPSHOT_KEY = "instagram-menzazilina-v5";
@@ -51,7 +68,7 @@ const ATTEMPT_KEY = "instagram-menzazilina-attempt-v4";
 const SNAPSHOT_FRESH_MS = 25 * 60 * 1000;
 const RETENTION_SECONDS = 7 * 24 * 60 * 60;
 const MIN_ATTEMPT_SECONDS = 5 * 60;
-let menuRequest: Promise<InstagramDailyMenu[]> | null = null;
+let menuRequest: Promise<InstagramRefreshReport> | null = null;
 
 function isSnapshot(value: unknown): value is MenuSnapshot {
   if (!value || typeof value !== "object") return false;
@@ -61,6 +78,19 @@ function isSnapshot(value: unknown): value is MenuSnapshot {
 
 function uniqueImages(values: Array<string | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value?.startsWith("https://"))))];
+}
+
+function normalizeIngestImage(value: string) {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    if (url.protocol !== "https:" || (!hostname.endsWith(".fbcdn.net") && !hostname.endsWith(".cdninstagram.com"))) {
+      return "";
+    }
+    return url.toString().slice(0, 4_096);
+  } catch {
+    return "";
+  }
 }
 
 function normalizePostUrl(value: string) {
@@ -230,16 +260,39 @@ async function fetchKnownPost(postUrl: string) {
   return fetchOEmbedPost(postUrl);
 }
 
-async function fetchKnownPosts(): Promise<InstagramMedia[]> {
+async function fetchKnownPosts(additionalUrls: string[] = [], onlyAdditional = false): Promise<InstagramMedia[]> {
   const configuredUrls = process.env.MENZA_INSTAGRAM_POST_URLS
     ?.split(/[\s,]+/)
     .map(normalizePostUrl)
     .filter(Boolean) ?? [];
-  const postUrls = [...new Set([...configuredUrls, ...DEFAULT_POST_URLS])];
+  const normalizedAdditional = additionalUrls.map(normalizePostUrl).filter(Boolean);
+  const postUrls = [...new Set(onlyAdditional
+    ? normalizedAdditional
+    : [...normalizedAdditional, ...configuredUrls, ...DEFAULT_POST_URLS])];
   const results = await Promise.allSettled(postUrls.map(fetchKnownPost));
   return results.flatMap((result) => (
     result.status === "fulfilled" && result.value ? [result.value] : []
   ));
+}
+
+function mergeMenus(previous: InstagramDailyMenu[], fresh: InstagramDailyMenu[]) {
+  const byDate = new Map(previous.map((menu) => [menu.date, menu]));
+  for (const menu of fresh) byDate.set(menu.date, menu);
+  return [...byDate.values()].toSorted((left, right) => right.date.localeCompare(left.date));
+}
+
+function refreshReport(
+  menus: InstagramDailyMenu[],
+  values: Partial<Omit<InstagramRefreshReport, "menus" | "latestDate" | "latestPermalink">> = {},
+): InstagramRefreshReport {
+  return {
+    menus,
+    attempted: values.attempted ?? false,
+    cacheUpdated: values.cacheUpdated ?? false,
+    latestDate: menus[0]?.date ?? "",
+    latestPermalink: menus[0]?.permalink ?? "",
+    error: values.error ?? "",
+  };
 }
 
 async function readSnapshot() {
@@ -252,16 +305,37 @@ async function readSnapshot() {
   }
 }
 
-export async function getInstagramDailyMenus(force = false): Promise<InstagramDailyMenu[]> {
+async function loadInstagramDailyMenus(
+  force = false,
+  discoveredPostUrls: string[] = [],
+): Promise<InstagramRefreshReport> {
   const cache = getCache({ namespace: "unizaapp" });
   const snapshot = await readSnapshot();
-  if (!force && snapshot && Date.now() - snapshot.refreshedAt < SNAPSHOT_FRESH_MS) {
-    return snapshot.menus;
+  const normalizedDiscoveredUrls = [...new Set(discoveredPostUrls.map(normalizePostUrl).filter(Boolean))].slice(0, 3);
+  const pendingDiscoveredUrls = normalizedDiscoveredUrls.filter((postUrl) => !snapshot?.menus.some(
+    (menu) => normalizePostUrl(menu.permalink) === postUrl && menu.images.length > 0,
+  ));
+  if (normalizedDiscoveredUrls.length > 0 && pendingDiscoveredUrls.length === 0) {
+    return refreshReport(snapshot?.menus ?? []);
   }
-  if (menuRequest) return menuRequest;
+  if (!force && normalizedDiscoveredUrls.length === 0 && snapshot && Date.now() - snapshot.refreshedAt < SNAPSHOT_FRESH_MS) {
+    return refreshReport(snapshot.menus);
+  }
+  if (menuRequest) {
+    const activeRequest = menuRequest;
+    const activeReport = await activeRequest;
+    if (pendingDiscoveredUrls.length === 0 || pendingDiscoveredUrls.every(
+      (postUrl) => activeReport.menus.some(
+        (menu) => normalizePostUrl(menu.permalink) === postUrl && menu.images.length > 0,
+      ),
+    )) return activeReport;
+    if (menuRequest === activeRequest) menuRequest = null;
+  }
 
   const recentlyAttempted = await cache.get(ATTEMPT_KEY).catch(() => null);
-  if (recentlyAttempted) return snapshot?.menus ?? [];
+  if (recentlyAttempted && normalizedDiscoveredUrls.length === 0) {
+    return refreshReport(snapshot?.menus ?? []);
+  }
 
   const request = (async () => {
     await cache.set(ATTEMPT_KEY, Date.now(), { ttl: MIN_ATTEMPT_SECONDS, name: "Instagram refresh throttle" })
@@ -269,7 +343,10 @@ export async function getInstagramDailyMenus(force = false): Promise<InstagramDa
     try {
       const accessToken = process.env.MENZA_INSTAGRAM_ACCESS_TOKEN?.trim();
       let media: InstagramMedia[];
-      if (accessToken) {
+      if (pendingDiscoveredUrls.length > 0) {
+        media = await fetchKnownPosts(pendingDiscoveredUrls, true);
+        if (media.length === 0) throw new Error("supplied posts did not contain usable media");
+      } else if (accessToken) {
         media = await fetchOfficialFeed(accessToken);
       } else {
         try {
@@ -280,11 +357,12 @@ export async function getInstagramDailyMenus(force = false): Promise<InstagramDa
         }
         if (media.length === 0) media = await fetchKnownPosts();
       }
-      const menus = media
+      const freshMenus = media
         .map(toDailyMenu)
         .filter((menu): menu is InstagramDailyMenu => menu !== null)
         .toSorted((left, right) => right.date.localeCompare(left.date));
-      if (menus.length === 0) throw new Error("feed did not contain usable posts");
+      if (freshMenus.length === 0) throw new Error("feed did not contain usable posts");
+      const menus = mergeMenus(snapshot?.menus ?? [], freshMenus);
 
       const nextSnapshot: MenuSnapshot = { menus, refreshedAt: Date.now() };
       await cache.set(SNAPSHOT_KEY, nextSnapshot, {
@@ -292,10 +370,13 @@ export async function getInstagramDailyMenus(force = false): Promise<InstagramDa
         tags: ["instagram-menus"],
         ttl: RETENTION_SECONDS,
       });
-      return menus;
+      return refreshReport(menus, { attempted: true, cacheUpdated: true });
     } catch (error) {
       console.error("Instagram refresh failed:", error);
-      return snapshot?.menus ?? [];
+      return refreshReport(snapshot?.menus ?? [], {
+        attempted: true,
+        error: error instanceof Error ? error.message : "unknown refresh error",
+      });
     }
   })();
 
@@ -304,5 +385,59 @@ export async function getInstagramDailyMenus(force = false): Promise<InstagramDa
     return await request;
   } finally {
     if (menuRequest === request) menuRequest = null;
+  }
+}
+
+export async function getInstagramDailyMenus(force = false): Promise<InstagramDailyMenu[]> {
+  return (await loadInstagramDailyMenus(force)).menus;
+}
+
+export async function refreshInstagramDailyMenus(discoveredPostUrls: string[] = []) {
+  return loadInstagramDailyMenus(true, discoveredPostUrls);
+}
+
+export async function readInstagramDailyMenuSnapshot() {
+  const snapshot = await readSnapshot();
+  return refreshReport(snapshot?.menus ?? []);
+}
+
+export async function ingestInstagramDailyMenus(posts: InstagramIngestPost[]) {
+  const snapshot = await readSnapshot();
+  try {
+    const media = posts.slice(0, 3).flatMap((post, index) => {
+      const permalink = normalizePostUrl(post.permalink ?? "");
+      const caption = (post.caption ?? "").replace(/\0/g, "").slice(0, 20_000);
+      const images = [...new Set((post.images ?? []).map(normalizeIngestImage).filter(Boolean))].slice(0, 10);
+      if (!permalink || !caption || images.length === 0) return [];
+      return [{
+        id: (post.id ?? `signed-${index}`).replace(/[\0\r\n]/g, "").slice(0, 160),
+        caption,
+        permalink,
+        timestamp: post.timestamp ?? "",
+        images,
+      } satisfies InstagramMedia];
+    });
+    const freshMenus = media
+      .map(toDailyMenu)
+      .filter((menu): menu is InstagramDailyMenu => menu !== null);
+    if (freshMenus.length === 0) throw new Error("signed payload did not contain usable menu posts");
+
+    const menus = mergeMenus(snapshot?.menus ?? [], freshMenus);
+    await getCache({ namespace: "unizaapp" }).set(
+      SNAPSHOT_KEY,
+      { menus, refreshedAt: Date.now() } satisfies MenuSnapshot,
+      {
+        name: "Menza Zilina Instagram menus",
+        tags: ["instagram-menus"],
+        ttl: RETENTION_SECONDS,
+      },
+    );
+    return refreshReport(menus, { attempted: true, cacheUpdated: true });
+  } catch (error) {
+    console.error("Signed Instagram ingest failed:", error);
+    return refreshReport(snapshot?.menus ?? [], {
+      attempted: true,
+      error: error instanceof Error ? error.message : "unknown ingest error",
+    });
   }
 }
