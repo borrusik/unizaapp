@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "icons": "node scripts/generate-icons.mjs",
     "build": "next build --webpack && node scripts/verify-pwa.mjs",
     "start": "next start",
     "lint": "eslint",

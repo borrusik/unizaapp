@@ -33,7 +33,7 @@ export function KharkivEasterEgg({ className = "brand-mark", iconSize = 25 }: { 
   return (
     <>
       <button type="button" className={`${className} brand-trigger`} onClick={reveal} aria-label="UNIZA Student">
-        <AppIcon name="book" size={iconSize} />
+        <Image className="brand-symbol" src="/uniza-symbol.svg" alt="" width={iconSize} height={iconSize} priority />
       </button>
       {open && (
         <div className="kharkiv-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>

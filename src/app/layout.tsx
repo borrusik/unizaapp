@@ -17,6 +17,13 @@ const GA_ID = "G-PBTXW0SJSY";
 export const metadata: Metadata = {
   title: "UNIZA Student",
   description: "Mobile & Desktop student portal for Žilinská univerzita",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/uniza-symbol.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

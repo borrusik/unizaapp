@@ -932,8 +932,15 @@ select {
 .desktop-sidebar-logo {
   display: grid;
   place-items: center;
-  background: var(--primary);
-  color: #151515;
+  border: 1px solid color-mix(in srgb, #0e306d 18%, var(--border));
+  background: #fff;
+  color: #0e306d;
+}
+
+.brand-symbol {
+  display: block;
+  width: 72%;
+  height: auto;
 }
 
 .brand-trigger {
