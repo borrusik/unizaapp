@@ -65,7 +65,8 @@ async function loadStravaInfo(sessionCookies: string[]): Promise<StravaInfo | nu
   const res = await fetchStrava(`${BASE_URL}/`, {
     headers: { Cookie: sessionCookies.join("; ") },
   });
-  if (!res.ok) return null;
+  if (res.status === 401 || res.status === 403) return null;
+  if (!res.ok) throw new Error(`WebKredit info returned ${res.status}`);
   return parseWebKreditInfoHtml(await res.text());
 }
 
@@ -110,7 +111,7 @@ export type StravaHistoryItem = {
 
 export async function getStravaHistory(force = false): Promise<StravaHistoryItem[]> {
   const sessionCookies = await getStravaSession();
-  if (!sessionCookies) return [];
+  if (!sessionCookies) throw new Error("STRAVA_RECONNECT_REQUIRED");
 
   const cacheKey = sessionCacheKey(sessionCookies, "history");
   const cached = getCached<StravaHistoryItem[]>(cacheKey);
@@ -130,8 +131,8 @@ export async function getStravaHistory(force = false): Promise<StravaHistoryItem
     });
 
     if (!res.ok) {
-      await clearStravaSession();
-      return [];
+      if (res.status === 401 || res.status === 403) await clearStravaSession();
+      throw new Error(`WebKredit history returned ${res.status}`);
     }
 
     const data = await res.json();
@@ -140,7 +141,7 @@ export async function getStravaHistory(force = false): Promise<StravaHistoryItem
     return items;
   } catch (e) {
     console.error("Failed to fetch Strava history:", e);
-    return [];
+    throw new Error("WEBKREDIT_HISTORY_UNAVAILABLE");
   }
 }
 
@@ -279,24 +280,27 @@ export async function getStravaOrders(
  */
 export async function getStravaDashboard(canteenId = 1, force = false) {
   const { getInstagramDailyMenus } = await import("@/lib/instagram");
+  const initialSession = await getStravaSession();
   const [info, initialMenu, initialOrders, instagramMenus] = await Promise.all([
     getStravaInfo(force),
     getStravaMenu(canteenId, undefined, force),
-    getStravaOrders(undefined, undefined, force),
+    loadStravaOrders(undefined, undefined, force),
     getInstagramDailyMenus(force),
   ]);
 
   // The public menu endpoint still returns HTTP 200 for an expired WebKredit
   // session, but marks ordering unavailable. If the parallel info request has
   // just restored that session, repeat only the authenticated menu/order reads.
-  const [menu, orders] = info && !initialMenu.canOrder
+  const activeSession = await getStoredStravaSession();
+  const sessionRestored = activeSession?.join(";") !== initialSession?.join(";");
+  const [menu, ordersResult] = info && !initialMenu.canOrder && sessionRestored
     ? await Promise.all([
         getStravaMenu(canteenId, undefined, true),
-        getStravaOrders(undefined, undefined, true),
+        loadStravaOrders(undefined, undefined, true),
       ])
     : [initialMenu, initialOrders];
 
-  return { info, menu, orders, instagramMenus };
+  return { info, menu, orders: ordersResult.orders, ordersStatus: ordersResult.status, instagramMenus };
 }
 
 type CompositeSelection = { id: number; amount: number };

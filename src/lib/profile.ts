@@ -6,7 +6,7 @@ import { getGrades, getIntegrationStatus, getUserInfo } from "@/lib/scraper";
 export async function getProfileDashboard(force = false) {
   const [user, grades, integration] = await Promise.all([
     getUserInfo(undefined, undefined, force),
-    getGrades(undefined, force).catch(() => ({ winter: [], summer: [] })),
+    getGrades(undefined, force),
     getIntegrationStatus(),
   ]);
 

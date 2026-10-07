@@ -226,23 +226,30 @@ export function getBratislavaDateKey(value: string | Date): string {
 }
 
 export function localDateToUtcIso(dateKey: string): string | null {
+  return localDateTimeToUtcIso(dateKey, "00:00");
+}
+
+export function localDateTimeToUtcIso(dateKey: string, time: string): string | null {
   const match = dateKey.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
+  const clock = time.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match || !clock) return null;
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0);
-  const guessParts = getZonedParts(new Date(utcGuess));
-  const representedAsUtc = Date.UTC(
-    guessParts.year,
-    guessParts.month - 1,
-    guessParts.day,
-    guessParts.hour,
-    guessParts.minute,
-    guessParts.second,
-  );
-  const offset = representedAsUtc - utcGuess;
-  return new Date(utcGuess - offset).toISOString();
+  const hour = Number(clock[1]);
+  const minute = Number(clock[2]);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) return null;
+  const target = Date.UTC(year, month - 1, day, hour, minute);
+  const calendarDate = new Date(target);
+  if (calendarDate.getUTCFullYear() !== year || calendarDate.getUTCMonth() !== month - 1 || calendarDate.getUTCDate() !== day) return null;
+  let instant = target;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const parts = getZonedParts(new Date(instant));
+    const represented = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    if (represented === target) return new Date(instant).toISOString();
+    instant += target - represented;
+  }
+  return null;
 }
 
 export function listDateKeys(startDate: string, count: number): string[] {

@@ -11,21 +11,29 @@ import useSWR from "swr";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AppIcon } from "@/components/AppIcon";
 import { BrowserNotifications } from "./BrowserNotifications";
+import { IntegrationErrorNotice } from "@/components/IntegrationErrorNotice";
+import { useGradeOverrides } from "@/hooks/useGradeOverrides";
+import { applyGradeOverrides, gradeSummary } from "@/lib/grade-overrides";
 
 export default function ProfilePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<unknown>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
 
   const fetcher = (force = false) => getProfileDashboard(force);
 
-  const { data, mutate } = useSWR("uniza_user_profile", () => fetcher(false));
+  const { data, error, mutate } = useSWR("uniza_user_profile", () => fetcher(false), { dedupingInterval: 5 * 60_000, revalidateOnFocus: false });
+  const { overrides } = useGradeOverrides(data?.grades.accountKey);
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
+    setRefreshError(null);
     try {
       await mutate(() => fetcher(true), { revalidate: false });
+    } catch (failure) {
+      setRefreshError(failure);
     } finally {
       setIsRefreshing(false);
     }
@@ -49,19 +57,9 @@ export default function ProfilePage() {
     passwordStored: false,
   };
 
-  const allGrades = [...grades.winter, ...grades.summer];
-  const totalCredits = allGrades
-    .filter((g) => g.grade && g.grade !== "—" && g.grade !== "FX" && g.grade !== "")
-    .reduce((sum, g) => sum + g.credits, 0);
+  const allGrades = applyGradeOverrides([...grades.winter, ...grades.summer], overrides);
+  const { credits: totalCredits, average: avgGrade, passed: passedSubjects } = gradeSummary(allGrades);
   const totalSubjects = allGrades.length;
-  const passedSubjects = allGrades.filter((g) => g.grade && g.grade !== "—" && g.grade !== "FX" && g.grade !== "").length;
-
-  const gradeValues: Record<string, number> = { A: 1, B: 1.5, C: 2, D: 2.5, E: 3, FX: 4 };
-  const scored = allGrades.filter((g) => gradeValues[g.grade] !== undefined);
-  const scoredCredits = scored.reduce((sum, g) => sum + g.credits, 0);
-  const avgGrade = scored.length > 0 && scoredCredits > 0
-    ? (scored.reduce((sum, g) => sum + gradeValues[g.grade] * g.credits, 0) / scoredCredits).toFixed(2)
-    : "—";
 
   const copyProfileValue = async (field: string, value: string) => {
     try {
@@ -98,6 +96,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="container profile-page animate-slide-up">
+        <IntegrationErrorNotice error={error || refreshError} hasData={Boolean(data)} retry={() => void handleRefresh()} />
         <div className="profile-identity">
           <div className="avatar">
             {user.name && user.name !== "Načítavam..." ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "?"}
@@ -108,6 +107,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        <p className="text-sm">{lang === "ru" ? "За всё обучение" : lang === "uk" ? "За все навчання" : lang === "sk" ? "Za celé štúdium" : "All study years"}</p>
         <div className="profile-stats">
           <div className="profile-stat">
             <strong>{totalCredits}</strong>

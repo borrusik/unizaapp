@@ -7,6 +7,7 @@ import { getSubjects } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
 import { AppIcon } from "@/components/AppIcon";
+import { IntegrationErrorNotice } from "@/components/IntegrationErrorNotice";
 
 export default function SubjectsPage() {
   const [semester, setSemester] = useState<"winter" | "summer">("winter");
@@ -16,9 +17,10 @@ export default function SubjectsPage() {
     return Number.isInteger(stored) && stored > 2000 ? stored : undefined;
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<unknown>(null);
   const { t } = useTranslation();
 
-  const { data, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     ["uniza_subjects", academicYearStart ?? "current"],
     () => getSubjects(academicYearStart),
     { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false },
@@ -27,8 +29,11 @@ export default function SubjectsPage() {
   const handleRefresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
+    setRefreshError(null);
     try {
       await mutate(() => getSubjects(academicYearStart, true), { revalidate: false });
+    } catch (failure) {
+      setRefreshError(failure);
     } finally {
       setIsRefreshing(false);
     }
@@ -60,11 +65,13 @@ export default function SubjectsPage() {
       </div>
 
       <div className="container">
+        <IntegrationErrorNotice error={error || refreshError} hasData={Boolean(data)} retry={() => void handleRefresh()} />
         <AcademicPeriodControls
           academicYearLabel={t("common_academic_year")}
           years={subjects.academicYears}
           selectedStartYear={subjects.selectedStartYear}
           onYearChange={(startYear) => {
+            setRefreshError(null);
             setAcademicYearStart(startYear);
             window.localStorage.setItem("uniza:academic-year:v1", String(startYear));
           }}
@@ -81,7 +88,7 @@ export default function SubjectsPage() {
           <div className="subject-list skeleton-list">
             {[1, 2, 3, 4, 5].map((i) => <div key={i} className="subject-row skeleton" />)}
           </div>
-        ) : current.length === 0 ? (
+        ) : error && !data ? null : current.length === 0 ? (
           <div className="empty-state">
             <AppIcon name="book" size={42} />
             <div className="card-title">{t("subjects_no_data")}</div>

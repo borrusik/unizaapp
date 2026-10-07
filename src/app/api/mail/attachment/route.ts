@@ -40,7 +40,13 @@ export async function GET(request: NextRequest) {
         "X-Content-Type-Options": "nosniff",
       },
     });
-  } catch {
-    return NextResponse.json({ error: "Attachment is unavailable" }, { status: 404 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const status = message === "MAIL_RECONNECT_REQUIRED" ? 401
+      : message === "MAIL_ATTACHMENT_TOO_LARGE" ? 413
+      : message === "Invalid attachment" || message === "Invalid message" || message === "Invalid mailbox" ? 400
+      : message === "Attachment is unavailable" ? 404 : 502;
+    return NextResponse.json({ error: status === 413 ? "Attachment exceeds the 12 MB download limit"
+      : status === 401 ? "Sign in again to open mail" : "Attachment is unavailable" }, { status });
   }
 }

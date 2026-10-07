@@ -5,6 +5,8 @@ export type MailAttachmentPart = {
   filename: string;
   contentType: string;
   size: number;
+  contentId?: string;
+  related?: boolean;
 };
 
 function filenameFor(node: MessageStructureObject): string {
@@ -37,6 +39,7 @@ export function listMailAttachmentParts(structure?: MessageStructureObject): Mai
         filename: filenameFor(node),
         contentType: node.type || "application/octet-stream",
         size: node.size ?? 0,
+        ...(node.id ? { contentId: node.id, related: node.disposition?.toLowerCase() !== "attachment" } : {}),
       });
       return;
     }
@@ -50,11 +53,25 @@ export function listMailAttachmentParts(structure?: MessageStructureObject): Mai
         filename: filenameFor(node),
         contentType: node.type || "application/octet-stream",
         size: node.size ?? 0,
+        ...(node.id ? { contentId: node.id, related: node.disposition?.toLowerCase() !== "attachment" } : {}),
       });
       return;
     }
   };
 
+  visit(structure);
+  return parts;
+}
+
+export function listMailBodyParts(structure?: MessageStructureObject): { part: string; type: string }[] {
+  if (!structure) return [];
+  const parts: { part: string; type: string }[] = [];
+  const visit = (node: MessageStructureObject) => {
+    if (node.disposition?.toLowerCase() === "attachment" || filenameFor(node)) return;
+    if (node.childNodes?.length) { node.childNodes.forEach(visit); return; }
+    const type = node.type.toLowerCase();
+    if (type === "text/plain" || type === "text/html") parts.push({ part: node.part || "1", type });
+  };
   visit(structure);
   return parts;
 }

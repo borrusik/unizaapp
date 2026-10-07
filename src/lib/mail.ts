@@ -2,10 +2,9 @@
 
 import { ImapFlow, type MessageAddressObject, type MessageStructureObject } from "imapflow";
 import { createHash } from "node:crypto";
-import { simpleParser } from "mailparser";
 import nodemailer from "nodemailer";
 import { readCredentials } from "@/lib/credentials";
-import { listMailAttachmentParts } from "@/lib/mail-attachments";
+import { listMailAttachmentParts, listMailBodyParts } from "@/lib/mail-attachments";
 import { sanitizeMailHtml } from "@/lib/mail-content";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -15,8 +14,9 @@ const SMTP_PORT = 465;
 const MAIL_TIMEOUT_MS = 20_000;
 const PAGE_SIZE = 30;
 const MAX_SEARCH_LENGTH = 120;
-const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
+const MAX_DOWNLOAD_ATTACHMENT_BYTES = 12 * 1024 * 1024;
 const MAX_TOTAL_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 const ATTACHMENT_CACHE_TTL_MS = 60_000;
 const ATTACHMENT_CACHE_LIMIT = 8;
@@ -212,43 +212,52 @@ async function readMailDetail(client: ImapFlow, folder: string, uid: number, mar
       internalDate: true,
       size: true,
       bodyStructure: true,
-      source: { maxLength: MAX_SOURCE_BYTES },
     },
     { uid: true },
   );
-  if (!message || !message.source) throw new Error("Message not found or too large");
-  if (message.size && message.size > MAX_SOURCE_BYTES) throw new Error("Message is too large to display");
-
-  const parsed = await simpleParser(message.source, {
-    skipImageLinks: true,
-    maxHtmlLengthToParse: 2 * 1024 * 1024,
-  });
-  const safeHtml = typeof parsed.html === "string"
-    ? sanitizeMailHtml(
-        parsed.html,
-        folder,
-        message.uid,
-        parsed.attachments.map((attachment, index) => ({ contentId: attachment.contentId, index })),
-      )
-    : "";
+  if (!message || !message.bodyStructure) throw new Error("Message not found");
+  const attachments = listMailAttachmentParts(message.bodyStructure);
+  let text = "", html = "";
+  // Fetch only display bodies, never attached documents or images. ImapFlow
+  // decodes transfer encoding and supported character sets into UTF-8.
+  const bodyParts = listMailBodyParts(message.bodyStructure);
+  for (const type of ["text/plain", "text/html"]) {
+    const part = bodyParts.find((body) => body.type === type);
+    if (!part) continue;
+    const downloaded = await client.download(safeUid, part.part, { uid: true, maxBytes: MAX_BODY_BYTES + 1 });
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of downloaded.content) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += buffer.length;
+      if (size > MAX_BODY_BYTES) { downloaded.content.destroy(); throw new Error("Message body is too large to display"); }
+      chunks.push(buffer);
+    }
+    const content = Buffer.concat(chunks).toString("utf8");
+    if (type === "text/plain") text = content;
+    else html = content;
+  }
+  const safeHtml = html ? sanitizeMailHtml(html, folder, message.uid,
+    attachments.map((attachment, index) => ({ contentId: attachment.contentId, index })),
+  ) : "";
 
   const unread = !message.flags?.has("\\Seen");
   if (markSeen && unread) await client.messageFlagsAdd(safeUid, ["\\Seen"], { uid: true });
   const from = normalizeAddresses(message.envelope?.from);
   return {
     uid: message.uid,
-    subject: parsed.subject?.trim().slice(0, 500) || message.envelope?.subject?.trim().slice(0, 500) || "(no subject)",
+    subject: message.envelope?.subject?.trim().slice(0, 500) || "(no subject)",
     from,
     to: normalizeAddresses(message.envelope?.to),
     cc: normalizeAddresses(message.envelope?.cc),
-    date: toIso(parsed.date ?? message.envelope?.date ?? message.internalDate),
-    preview: cleanPreview(parsed.text),
+    date: toIso(message.envelope?.date ?? message.internalDate),
+    preview: cleanPreview(text),
     unread: markSeen ? false : unread,
     flagged: Boolean(message.flags?.has("\\Flagged")),
-    hasAttachments: parsed.attachments.some((attachment) => !attachment.related),
-    text: (parsed.text ?? "").slice(0, 2 * 1024 * 1024),
+    hasAttachments: attachments.some((attachment) => !attachment.related),
+    text,
     html: safeHtml,
-    attachments: parsed.attachments
+    attachments: attachments
       .map((attachment, index) => ({ attachment, index }))
       .filter(({ attachment }) => !attachment.related)
       .map(({ attachment, index }) => ({
@@ -421,7 +430,7 @@ export async function getMailAttachment(
   const email = validateStudentEmail(credentials.email);
   const safeFolder = validateMailboxPath(folder);
   const safeUid = validateUid(uid);
-  const cacheKey = createHash("sha256").update(`${email}\0${safeFolder}\0${safeUid}`).digest("hex");
+  const cacheKey = createHash("sha256").update(`${email}\0${safeFolder}\0${safeUid}\0${index}`).digest("hex");
   const cached = attachmentCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < ATTACHMENT_CACHE_TTL_MS) {
     const attachment = cached.attachments[index];
@@ -449,16 +458,14 @@ export async function getMailAttachment(
           const parts = listMailAttachmentParts(message.bodyStructure);
           const attachments: CachedMailAttachment[] = [];
           for (const [attachmentIndex, part] of parts.entries()) {
-            if (part.size > MAX_ATTACHMENT_BYTES) {
-              attachments.push(null);
-              continue;
-            }
+            if (attachmentIndex !== index) continue;
+            if (part.size > MAX_DOWNLOAD_ATTACHMENT_BYTES) throw new Error("MAIL_ATTACHMENT_TOO_LARGE");
             const downloaded = await client.download(safeUid, part.part, {
               uid: true,
-              maxBytes: MAX_ATTACHMENT_BYTES + 1,
+              maxBytes: MAX_DOWNLOAD_ATTACHMENT_BYTES + 1,
             });
             if (!downloaded.content) {
-              attachments.push(null);
+              attachments[attachmentIndex] = null;
               continue;
             }
             const chunks: Buffer[] = [];
@@ -466,19 +473,18 @@ export async function getMailAttachment(
             for await (const chunk of downloaded.content) {
               const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
               totalBytes += buffer.length;
-              if (totalBytes > MAX_ATTACHMENT_BYTES) break;
+              if (totalBytes > MAX_DOWNLOAD_ATTACHMENT_BYTES) break;
               chunks.push(buffer);
             }
-            if (totalBytes > MAX_ATTACHMENT_BYTES) {
+            if (totalBytes > MAX_DOWNLOAD_ATTACHMENT_BYTES) {
               downloaded.content.destroy();
-              attachments.push(null);
-              continue;
+              throw new Error("MAIL_ATTACHMENT_TOO_LARGE");
             }
-            attachments.push({
+            attachments[attachmentIndex] = {
               filename: (downloaded.meta?.filename || part.filename || `attachment-${attachmentIndex + 1}`).replace(/[\0\r\n]/g, "").slice(0, 180),
               contentType: downloaded.meta?.contentType || part.contentType || "application/octet-stream",
               content: Buffer.concat(chunks, totalBytes).toString("base64"),
-            });
+            };
           }
           return attachments;
         } finally {

@@ -15,10 +15,10 @@ export type CachedSchedule = ScheduleSnapshot & {
   fresh: boolean;
 };
 
-function scheduleKey(group: string, academicYearStart: number) {
-  const identity = `${group.trim().toLocaleUpperCase("sk")}|${academicYearStart}`;
+function scheduleKey(group: string, academicYearStart: number, studentIdentity: string) {
+  const identity = `${studentIdentity.trim().toLowerCase()}|${group.trim().toLocaleUpperCase("sk")}|${academicYearStart}`;
   const digest = createHash("sha256").update(identity).digest("hex").slice(0, 32);
-  return `schedule-v1-${digest}`;
+  return `schedule-v2-${digest}`;
 }
 
 function isScheduleSnapshot(value: unknown): value is ScheduleSnapshot {
@@ -35,10 +35,11 @@ function isScheduleSnapshot(value: unknown): value is ScheduleSnapshot {
 export async function readSharedSchedule(
   group: string,
   academicYearStart: number,
+  studentIdentity: string,
 ): Promise<CachedSchedule | null> {
   try {
     const value = await getCache({ namespace: "unizaapp" }).get(
-      scheduleKey(group, academicYearStart),
+      scheduleKey(group, academicYearStart, studentIdentity),
     );
     if (!isScheduleSnapshot(value)) return null;
     return {
@@ -55,11 +56,12 @@ export async function writeSharedSchedule(
   group: string,
   academicYearStart: number,
   data: ScheduleData,
+  studentIdentity: string,
 ) {
   if (data.status !== "ready" && data.status !== "empty") return;
   try {
     await getCache({ namespace: "unizaapp" }).set(
-      scheduleKey(group, academicYearStart),
+      scheduleKey(group, academicYearStart, studentIdentity),
       { data, refreshedAt: Date.now() } satisfies ScheduleSnapshot,
       {
         name: `Schedule ${academicYearStart}`,

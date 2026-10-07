@@ -3526,3 +3526,33 @@ select {
     white-space: nowrap;
   }
 }
+.personal-grade-help, .personal-grade-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.personal-grade-help { margin: 0 0 16px; }
+.personal-grade-label { display: block; color: var(--primary); margin-top: 5px; }
+.grade-circle { flex-shrink: 0; cursor: pointer; border: 1px solid var(--border); }
+.grade-circle:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.personal-grade-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  margin: auto;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: 0 20px 80px #0005;
+}
+.personal-grade-dialog::backdrop { background: #0008; }
+.personal-grade-dialog p { margin: 12px 0; }
+.personal-grade-dialog select { display: block; width: 100%; padding: 12px; margin-top: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-secondary); color: var(--text-primary); }
+.personal-grade-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.personal-grade-actions button, .integration-error-notice button { padding: 10px 14px; border-radius: 10px; background: var(--surface-secondary); color: var(--text-primary); border: 1px solid var(--border); cursor: pointer; }
+.personal-grade-actions button:first-child { background: var(--primary); color: #fff; }
+.integration-error-notice { padding: 16px; margin-bottom: 16px; border: 1px solid var(--warning); border-radius: 12px; font-size: 13px; }
+.integration-error-notice p { margin-bottom: 10px; }
+.integration-error-notice a { color: var(--primary); }

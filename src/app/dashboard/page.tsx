@@ -7,6 +7,9 @@ import { getHomeGrades, getHomePrimary, getHomeStravaInfo } from "@/lib/home";
 import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing";
 import { useTranslation, type Lang } from "@/hooks/useTranslation";
 import { AppIcon, type AppIconName } from "@/components/AppIcon";
+import { useGradeOverrides } from "@/hooks/useGradeOverrides";
+import { applyGradeOverrides, gradeSummary } from "@/lib/grade-overrides";
+import { IntegrationErrorNotice } from "@/components/IntegrationErrorNotice";
 
 const SCHEDULE_DAYS = ["", "Pondelok", "Utorok", "Streda", "Štvrtok", "Piatok", "Sobota"];
 const BRATISLAVA_TIME = new Intl.DateTimeFormat("en-GB", {
@@ -42,10 +45,11 @@ export default function HomePage() {
     dedupingInterval: 5 * 60 * 1000,
     revalidateOnFocus: false,
   });
-  const { data: gradesData } = useSWR("uniza_home_grades", getHomeGrades, {
+  const { data: gradesData, error: gradesError, mutate: refreshGrades } = useSWR("uniza_home_grades", getHomeGrades, {
     dedupingInterval: 5 * 60 * 1000,
     revalidateOnFocus: false,
   });
+  const { overrides } = useGradeOverrides(gradesData?.accountKey);
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -73,17 +77,10 @@ export default function HomePage() {
   const firstName = primary?.user?.name?.split(" ")[0] || "";
 
   // Academic calculations
-  const allGrades = gradesData ? [...gradesData.winter, ...gradesData.summer] : [];
-  const totalCredits = allGrades
-    .filter((g) => g.grade && g.grade !== "—" && g.grade !== "FX" && g.grade !== "")
-    .reduce((sum, g) => sum + g.credits, 0);
-
-  const gradeValues: Record<string, number> = { A: 1, B: 1.5, C: 2, D: 2.5, E: 3, FX: 4 };
-  const scored = allGrades.filter((g) => gradeValues[g.grade] !== undefined);
-  const scoredCredits = scored.reduce((sum, g) => sum + g.credits, 0);
-  const avgGrade = scored.length > 0 && scoredCredits > 0
-    ? (scored.reduce((sum, g) => sum + gradeValues[g.grade] * g.credits, 0) / scoredCredits).toFixed(2)
-    : "—";
+  const allGrades = applyGradeOverrides(gradesData ? [...gradesData.winter, ...gradesData.summer] : [], overrides);
+  const currentYearGrades = allGrades.filter((grade) => grade.academicYearStart === gradesData?.selectedStartYear);
+  const { credits: totalCredits, average: avgGrade } = gradeSummary(currentYearGrades);
+  const lifetime = gradeSummary(allGrades);
 
   const dateFormatted = new Intl.DateTimeFormat(LOCALES[lang] || "sk-SK", {
     weekday: "long",
@@ -257,11 +254,12 @@ export default function HomePage() {
                 </span>
               </div>
               <div className="bento-stat-val">
-                {totalCredits} <span style={{ fontSize: "16px", fontWeight: 600, color: "var(--text-secondary)" }}>ECTS</span>
+                {gradesData ? totalCredits : "—"} <span style={{ fontSize: "16px", fontWeight: 600, color: "var(--text-secondary)" }}>ECTS</span>
               </div>
               <div className="bento-stat-sub">
-                {t("subjects_completed")} ({totalCredits} / 60 ECTS)
+                {gradesData?.academicYear} · {t("grades_year_credits")} ({totalCredits} / 60 ECTS)
               </div>
+              {gradesData ? <div className="bento-stat-sub">{lang === "ru" ? "За всё обучение" : lang === "uk" ? "За все навчання" : lang === "sk" ? "Za celé štúdium" : "All study years"}: {lifetime.credits} ECTS · GPA {lifetime.average}</div> : null}
               <div className="bento-progress-track">
                 <div
                   className="bento-progress-fill"
@@ -276,6 +274,7 @@ export default function HomePage() {
             </div>
           </Link>
         </div>
+        <IntegrationErrorNotice error={gradesError} hasData={Boolean(gradesData)} retry={() => { void refreshGrades().catch(() => undefined); }} />
 
         {/* Today's Classes List (if there are classes) */}
         {todayClasses.length > 0 && (

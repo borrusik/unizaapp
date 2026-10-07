@@ -16,5 +16,5 @@ export async function getHomeStravaInfo() {
 }
 
 export async function getHomeGrades() {
-  return getGrades().catch(() => null);
+  return getGrades();
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import useSWR from "swr";
 import { AppIcon } from "@/components/AppIcon";
+import { IntegrationErrorNotice } from "@/components/IntegrationErrorNotice";
 import { AcademicPeriodControls } from "@/components/AcademicPeriodControls";
 import { useTranslation, type Lang } from "@/hooks/useTranslation";
 import type { ExamTerm } from "@/lib/aivs-exams";
@@ -33,6 +34,7 @@ export default function ExamsPage() {
   const [selected, setSelected] = useState<{ term: ExamTerm; action: "register" | "cancel" } | null>(null);
   const [result, setResult] = useState<IntegrationOperationResult | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<unknown>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export default function ExamsPage() {
     setPreferencesReady(true);
   }, []);
 
-  const { data, isLoading, mutate } = useSWR(preferencesReady ? ["uniza_exams", academicYearStart ?? "current"] : null, async () => (await import("@/lib/scraper")).getExamTerms(academicYearStart), { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false });
+  const { data, error, isLoading, mutate } = useSWR(preferencesReady ? ["uniza_exams", academicYearStart ?? "current"] : null, async () => (await import("@/lib/scraper")).getExamTerms(academicYearStart), { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false });
   const today = getBratislavaDateKey(new Date());
   const terms = useMemo(() => data?.terms || [], [data?.terms]);
   const upcoming = useMemo(() => terms.filter((term) => term.date >= today), [terms, today]);
@@ -50,7 +52,7 @@ export default function ExamsPage() {
   const refresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    try { await mutate(async () => (await import("@/lib/scraper")).getExamTerms(academicYearStart, true), { revalidate: false }); } finally { setIsRefreshing(false); }
+    try { await mutate(async () => (await import("@/lib/scraper")).getExamTerms(academicYearStart, true), { revalidate: false }); setRefreshError(null); } catch (failure) { setRefreshError(failure); } finally { setIsRefreshing(false); }
   };
 
   const confirm = () => {
@@ -61,7 +63,8 @@ export default function ExamsPage() {
       const response = await operation(selected.term.id, selected.term.academicYearStart);
       setResult(response);
       setSelected(null);
-      await mutate(() => api.getExamTerms(academicYearStart, true), { revalidate: false });
+      try { await mutate(() => api.getExamTerms(academicYearStart, true), { revalidate: false }); }
+      catch (failure) { setRefreshError(failure); }
     });
   };
 
@@ -73,9 +76,10 @@ export default function ExamsPage() {
     <div className="dashboard-page dashboard-page-standard">
       <div className="top-bar page-title-row"><div className="top-bar-title">{t("exams_title")}</div><button type="button" className="icon-button" onClick={refresh} disabled={isRefreshing} aria-label={t("common_refresh") as string}><AppIcon name="refresh" size={20} className={isRefreshing ? "spin" : ""} /></button></div>
       <div className="container">
+        <IntegrationErrorNotice error={error || refreshError} hasData={Boolean(data)} retry={() => void refresh()} />
         <AcademicPeriodControls academicYearLabel={t("common_academic_year") as string} years={years} selectedStartYear={selectedYear} onYearChange={(year) => { setAcademicYearStart(year); window.localStorage.setItem("uniza:academic-year:v1", String(year)); }} semester="winter" onSemesterChange={() => undefined} winterLabel="" summerLabel="" winterCount={0} summerCount={0} disabled={isLoading || years.length === 0} hideSemester />
         {result ? <div className={`operation-message ${result.status}`} role="status"><AppIcon name={result.status === "success" ? "check" : "warning"} size={19} /><span>{result.message}</span><button type="button" onClick={() => setResult(null)} aria-label="Close"><AppIcon name="x" size={17} /></button></div> : null}
-        {!preferencesReady || isLoading && !data ? <div className="exam-list">{[1,2,3].map((item) => <div key={item} className="exam-row skeleton" />)}</div> : (
+        {!preferencesReady || isLoading && !data ? <div className="exam-list">{[1,2,3].map((item) => <div key={item} className="exam-row skeleton" />)}</div> : error && !data ? null : (
           <>
             <div className="section-heading-row"><h2>{t("exams_upcoming")}</h2>{upcoming.length > 0 ? <button type="button" className="text-action" onClick={() => downloadIcs(upcoming.map((term) => ({ uid: `exam-${term.academicYearStart}-${term.id}`, title: term.subject, date: term.date, timeStart: term.time, location: term.room, description: [term.type, term.teacher, term.note].filter(Boolean).join(" · ") })), "uniza-exams.ics")}><AppIcon name="download" size={16} />{t("exams_export")}</button> : null}</div>
             {upcoming.length ? <div className="exam-list">{upcoming.map((term) => <ExamRow key={term.id} term={term} {...rowProps} />)}</div> : <div className="empty-state compact"><AppIcon name="calendar" size={36} /><p>{t("exams_empty")}</p></div>}

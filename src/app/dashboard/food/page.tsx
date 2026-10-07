@@ -6,6 +6,7 @@ import { useTranslation, type Lang } from "@/hooks/useTranslation";
 import { UNIZA_URLS } from "@/lib/uniza";
 import type { IntegrationOperationResult, MenuItem, WebKreditOrder } from "@/lib/uniza-parsers";
 import { AppIcon } from "@/components/AppIcon";
+import { IntegrationErrorNotice } from "@/components/IntegrationErrorNotice";
 
 const LOCALES: Record<Lang, string> = { sk: "sk-SK", en: "en-GB", uk: "uk-UA", ru: "ru-RU" };
 const CANTEEN_STORAGE_KEY = "uniza:canteen:v1";
@@ -26,6 +27,7 @@ export default function StravaPage() {
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<unknown>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<MenuItem | null>(null);
   const [cancelOrder, setCancelOrder] = useState<WebKreditOrder | null>(null);
@@ -47,8 +49,8 @@ export default function StravaPage() {
     return getStravaDashboard(canteenId, force);
   };
 
-  const { data, isLoading, mutate } = useSWR(preferencesReady ? ["uniza_strava_all", canteenId] : null, () => fetcher(false), { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false });
-  const { data: historyData, isLoading: historyLoading, mutate: mutateHistory } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(preferencesReady ? ["uniza_strava_all", canteenId] : null, () => fetcher(false), { dedupingInterval: 5 * 60 * 1000, revalidateOnFocus: false });
+  const { data: historyData, error: historyError, isLoading: historyLoading, mutate: mutateHistory } = useSWR(
     historyOpen ? "uniza_strava_history" : null,
     async () => (await import("@/lib/strava")).getStravaHistory(false),
   );
@@ -64,7 +66,7 @@ export default function StravaPage() {
   const handleRefresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    try { await refreshAll(); } finally { setIsRefreshing(false); }
+    try { await refreshAll(); setRefreshError(null); } catch (failure) { setRefreshError(failure); } finally { setIsRefreshing(false); }
   };
 
   const info = data?.info || null;
@@ -143,6 +145,7 @@ export default function StravaPage() {
       </div>
 
       <div className="container">
+        <IntegrationErrorNotice error={error || refreshError || historyError || (data && data.ordersStatus !== "ready" ? "orders_unavailable" : null)} hasData={Boolean((error || refreshError) && data || historyError && historyData)} retry={() => void handleRefresh()} />
         {!preferencesReady || isLoading && !data ? (
           <div className="food-loading"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div>
         ) : (

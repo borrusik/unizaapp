@@ -24,7 +24,9 @@ import {
 import { parseAivsSubjects } from "./aivs-subjects.ts";
 import { parseAivsExamTerms } from "./aivs-exams.ts";
 import { parseAivsFaculty } from "./aivs-profile.ts";
-import { getAivsScheduleSourceState } from "./aivs-schedule.ts";
+import { getAivsScheduleSourceState, isAivsScheduleContinuation } from "./aivs-schedule.ts";
+import { localDateTimeToUtcIso } from "./uniza-parsers.ts";
+import { applyGradeOverrides, gradeOverrideKey, gradeSummary, parseGradeOverrides } from "./grade-overrides.ts";
 import { getAivsResultsTableYear, selectAivsGradeResult } from "./aivs-grades.ts";
 import { createIcsCalendar } from "./calendar.ts";
 import { parseInstagramMenuCaption } from "./instagram-menu.ts";
@@ -36,7 +38,7 @@ import {
   parseInstagramProfileBotHtml,
 } from "./instagram-scrape.ts";
 import { normalizeMailContentId, sanitizeMailHtml } from "./mail-content.ts";
-import { listMailAttachmentParts } from "./mail-attachments.ts";
+import { listMailAttachmentParts, listMailBodyParts } from "./mail-attachments.ts";
 import { isAuthenticatedAivsHtml, safeDashboardReturnPath } from "./auth-state.ts";
 
 test("expired AIVS sessions are distinguished from temporary page data", () => {
@@ -44,6 +46,57 @@ test("expired AIVS sessions are distinguished from temporary page data", () => {
   assert.equal(isAuthenticatedAivsHtml('<form><input name="heslo"></form>'), false);
   assert.equal(isAuthenticatedAivsHtml("<title>Prihlásenie</title>"), false);
   assert.equal(isAuthenticatedAivsHtml("<main>Študijná skupina: 5ZYI</main>"), true);
+});
+
+test("elective and compulsory timetable continuation hours are preserved", () => {
+  for (const type of ["p", "pv", "v", "l", "c", "pvol", "vyb"]) {
+    assert.equal(isAivsScheduleContinuation(`rozvrh_bloky-${type}-c`), true);
+    assert.equal(isAivsScheduleContinuation(`rozvrh_bloky-${type}`), false);
+  }
+  assert.equal(isAivsScheduleContinuation("rozvrh_bloky"), false);
+  assert.equal(isAivsScheduleContinuation("rozvrh_bloky-all"), false);
+});
+
+test("reminder time uses the offset at the event, including DST transition dates", () => {
+  assert.equal(localDateTimeToUtcIso("2026-10-25", "09:00"), "2026-10-25T08:00:00.000Z");
+  assert.equal(localDateTimeToUtcIso("2026-03-29", "09:00"), "2026-03-29T07:00:00.000Z");
+  assert.equal(localDateTimeToUtcIso("2026-03-29", "02:30"), null);
+  assert.equal(localDateTimeToUtcIso("2026-02-31", "09:00"), null);
+  assert.equal(localDateTimeToUtcIso("2026-10-07", "25:00"), null);
+});
+
+test("personal grades are reversible and do not mutate imported AIVS grades", () => {
+  const item = { code: "ABC", academicYearStart: 2025, type: "Pov.", grade: "—", credits: 5 };
+  const key = gradeOverrideKey(item);
+  const changed = applyGradeOverrides([item], parseGradeOverrides(JSON.stringify({ [key]: "P", bad: "INVALID" })));
+  assert.equal(item.grade, "—");
+  assert.equal(changed[0].originalGrade, "—");
+  assert.equal(changed[0].grade, "P");
+  assert.deepEqual(gradeSummary(changed), { credits: 5, passed: 1, average: "—" });
+  assert.equal(applyGradeOverrides([item], {})[0].grade, "—");
+  assert.notEqual(key, gradeOverrideKey({ ...item, academicYearStart: 2026 }));
+});
+
+test("personal A-E grades affect weighted average, FX never earns credits", () => {
+  const base = { code: "ABC", academicYearStart: 2025, type: "Pov.", grade: "FX", credits: 5 };
+  assert.deepEqual(gradeSummary([base]), { credits: 0, passed: 0, average: "4.00" });
+  const changed = applyGradeOverrides([base], { [gradeOverrideKey(base)]: "B" });
+  assert.deepEqual(gradeSummary(changed), { credits: 5, passed: 1, average: "1.50" });
+  assert.deepEqual(parseGradeOverrides("not JSON"), {});
+});
+
+test("mail body loading excludes attached documents and preserves display alternatives", () => {
+  const parts = listMailBodyParts({ type: "multipart/mixed", childNodes: [
+    { type: "multipart/alternative", childNodes: [
+      { part: "1.1", type: "text/plain", parameters: { charset: "windows-1250" } },
+      { part: "1.2", type: "text/html" },
+    ] },
+    { part: "2", type: "text/plain", disposition: "attachment", dispositionParameters: { filename: "notes.txt" } },
+    { part: "3", type: "message/rfc822", disposition: "attachment", childNodes: [{ part: "3.1", type: "text/html" }] },
+    { part: "4", type: "image/png", id: "poster" },
+  ] });
+  assert.deepEqual(parts, [{ part: "1.1", type: "text/plain" }, { part: "1.2", type: "text/html" }]);
+  assert.deepEqual(listMailBodyParts({ type: "text/plain" }), [{ part: "1", type: "text/plain" }]);
 });
 
 test("post-login return path stays inside the dashboard", () => {
@@ -111,7 +164,7 @@ test("mail attachment parts exclude message body and preserve MIME order", () =>
   });
 
   assert.deepEqual(parts, [
-    { part: "2", filename: "menu.png", contentType: "image/png", size: 128 },
+    { part: "2", filename: "menu.png", contentType: "image/png", size: 128, contentId: "menu-photo", related: true },
     { part: "3", filename: "document.pdf", contentType: "application/pdf", size: 256 },
   ]);
 });

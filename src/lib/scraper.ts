@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { createHash } from "node:crypto";
 import * as cheerio from "cheerio";
 import { rateLimit } from "@/lib/rate-limit";
 import { authenticateStrava, clearStravaSession, getStoredStravaSession, storeStravaSession } from "@/lib/strava-session";
@@ -17,7 +18,7 @@ import { canPersistCredentials, clearCredentials, readCredentials, saveCredentia
 import { parseAivsSubjects } from "@/lib/aivs-subjects";
 import { parseAivsExamTerms, type ExamTerm, type InternalExamTerm } from "@/lib/aivs-exams";
 import { parseAivsFaculty } from "@/lib/aivs-profile";
-import { getAivsScheduleSourceState } from "@/lib/aivs-schedule";
+import { getAivsScheduleSourceState, isAivsScheduleContinuation } from "@/lib/aivs-schedule";
 import { getAivsResultsTableYear, selectAivsGradeResult } from "@/lib/aivs-grades";
 import { readSharedSchedule, writeSharedSchedule } from "@/lib/schedule-cache";
 import { isAuthenticatedAivsHtml } from "@/lib/auth-state";
@@ -101,7 +102,7 @@ async function getPhpSession(email: string, password: string): Promise<string | 
     requestOptions,
   );
 
-  if (testHtml.includes('name="heslo"')) {
+  if (!isAuthenticatedAivsHtml(testHtml)) {
     return null; // Still on login page — auth failed
   }
 
@@ -197,8 +198,10 @@ async function fetchPage(sessionId: string, page: string, force = false): Promis
         html = await fetchDecoded(`${BASE_URL}/${page}`, {
           headers: { Cookie: `PHPSESSID=${newSessionId}` },
         });
-        PAGE_CACHE.set(`${newSessionId}_${page}`, { html, timestamp: Date.now() });
-        return html;
+        if (isAuthenticatedAivsHtml(html)) {
+          PAGE_CACHE.set(`${newSessionId}_${page}`, { html, timestamp: Date.now() });
+          return html;
+        }
       }
 
       cookieStore.delete("uniza_phpsessid");
@@ -214,7 +217,7 @@ async function fetchPage(sessionId: string, page: string, force = false): Promis
       clearSessionCaches(sessionId);
       await clearCredentials();
       await clearStravaSession();
-      return "";
+      throw new Error("AIVS_RECONNECT_REQUIRED");
     } else {
       // Prevent memory leaks
       if (PAGE_CACHE.size > 500) PAGE_CACHE.clear();
@@ -668,8 +671,7 @@ export async function getSubjects(
 ): Promise<{ winter: Subject[]; summer: Subject[] } & AcademicPeriodData> {
   const sessionId = await getSession();
   if (!sessionId) {
-    const year = await resolveAcademicYear(requestedStartYear);
-    return { winter: [], summer: [], ...year };
+    throw new Error("AIVS_RECONNECT_REQUIRED");
   }
   const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
 
@@ -697,7 +699,7 @@ export async function getSubjects(
     return { winter, summer, ...year };
   } catch (e) {
     console.error("Error parsing subjects:", e);
-    return { winter: [], summer: [], ...year };
+    throw new Error("AIVS_SUBJECTS_UNAVAILABLE");
   }
 }
 
@@ -708,11 +710,10 @@ export async function getSubjects(
 export async function getGrades(
   requestedStartYear?: number,
   force = false,
-): Promise<{ winter: Grade[]; summer: Grade[] } & AcademicPeriodData> {
+): Promise<{ winter: Grade[]; summer: Grade[]; accountKey: string } & AcademicPeriodData> {
   const sessionId = await getSession();
   if (!sessionId) {
-    const year = await resolveAcademicYear(requestedStartYear);
-    return { winter: [], summer: [], ...year };
+    throw new Error("AIVS_RECONNECT_REQUIRED");
   }
   const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
 
@@ -823,10 +824,13 @@ export async function getGrades(
       else summer.push(grade);
     });
 
-    return { winter, summer, ...year };
+    const accountEmail = (await cookies()).get("uniza_email")?.value;
+    if (!accountEmail) throw new Error("AIVS_RECONNECT_REQUIRED");
+    const accountKey = createHash("sha256").update(accountEmail.trim().toLowerCase()).digest("hex");
+    return { winter, summer, accountKey, ...year };
   } catch (e) {
     console.error("Error parsing grades:", e);
-    return { winter: [], summer: [], ...year };
+    throw new Error("AIVS_GRADES_UNAVAILABLE");
   }
 }
 
@@ -868,8 +872,9 @@ async function loadExamTermsForYear(sessionId: string, academicYearStart: number
 export async function getExamTerms(
   requestedStartYear?: number,
   force = false,
-): Promise<{ terms: ExamTerm[] } & AcademicPeriodData> {
+): Promise<{ terms: ExamTerm[]; loadStatus: "ready" | "unauthenticated" | "unavailable" } & AcademicPeriodData> {
   const result = await getExamTermsInternal(requestedStartYear, force);
+  if (result.loadStatus !== "ready") throw new Error("AIVS_EXAMS_UNAVAILABLE");
   return {
     ...result,
     terms: result.terms.map(toPublicExamTerm),
@@ -999,6 +1004,7 @@ export async function getScheduleData(force = false): Promise<ScheduleData> {
 
   const cookieStore = await cookies();
   const groupCookie = cookieStore.get(SCHEDULE_GROUP_COOKIE)?.value?.trim() || "";
+  const studentIdentity = cookieStore.get("uniza_email")?.value;
   let scheduleGroup = groupCookie.length <= 80 ? groupCookie : "";
   const year = await resolveAcademicYear();
   if (!scheduleGroup) {
@@ -1021,8 +1027,8 @@ export async function getScheduleData(force = false): Promise<ScheduleData> {
       // Falling back to the authenticated per-session fetch keeps the page usable.
     }
   }
-  const cached = scheduleGroup
-    ? await readSharedSchedule(scheduleGroup, year.selectedStartYear)
+  const cached = scheduleGroup && studentIdentity
+    ? await readSharedSchedule(scheduleGroup, year.selectedStartYear, studentIdentity)
     : null;
   if (!force && cached?.fresh) return cached.data;
 
@@ -1073,7 +1079,7 @@ export async function getScheduleData(force = false): Promise<ScheduleData> {
         const width = widthMatch ? parseFloat(widthMatch[1]) : 61;
 
         const durationMins = Math.round(width * (60 / 61));
-        const isContinuation = className.match(/-(p|c|l)-c\b/);
+        const isContinuation = isAivsScheduleContinuation(className);
 
         if (isContinuation) {
           if (items.length > 0 && items[items.length - 1].day === dayInfo.full) {
@@ -1145,8 +1151,8 @@ export async function getScheduleData(force = false): Promise<ScheduleData> {
       items: parsedItems,
       status: parsedItems.length > 0 ? "ready" : "empty",
     };
-    if (scheduleGroup) {
-      await writeSharedSchedule(scheduleGroup, year.selectedStartYear, scheduleData);
+    if (scheduleGroup && studentIdentity) {
+      await writeSharedSchedule(scheduleGroup, year.selectedStartYear, scheduleData, studentIdentity);
     }
     return scheduleData;
   } catch (e) {
@@ -1206,8 +1212,13 @@ export async function getSubjectInfo(infoUrl: string): Promise<SubjectInfo | nul
     };
 
     table.find("tr").each((_i, row) => {
-      const tds = $(row).find("td");
-      const fullText = $(row).text().trim();
+      if ($(row).closest("table")[0] !== table[0]) return;
+      const tds = $(row).children("td");
+      const readable = $(row).clone();
+      readable.find("br").replaceWith("\n");
+      readable.find("p, div, tr").append("\n");
+      readable.find("td, th").append(" ");
+      const fullText = readable.text().replace(/[\t ]+/g, " ").replace(/\n\s*\n/g, "\n").trim();
 
       if (fullText.startsWith("Vysoká škola:")) {
         info.university = fullText.replace("Vysoká škola:", "").trim();
@@ -1229,17 +1240,16 @@ export async function getSubjectInfo(infoUrl: string): Promise<SubjectInfo | nul
         const compMatch = attrText.match(/Ukončenie:\s*(.*?)(?:Predmet|$)/);
         if (oblMatch) info.obligation = oblMatch[1].trim();
         if (compMatch) info.completion = compMatch[1].trim();
-      } else if (fullText.includes("Prednášky:") && fullText.includes("Cvičenia:") && !fullText.includes("Metódy")) {
-        info.hours = $(tds[1])?.text()?.trim() || fullText;
       } else if (fullText.includes("Podmienky na absolvovanie")) {
-        // This might span multiple rows, grab the content
-        info.conditions = $(tds[1])?.text()?.trim() || $(tds[0])?.text()?.replace("Podmienky na absolvovanie predmetu:", "").trim() || "";
+        info.conditions = fullText.replace(/^Podmienky na absolvovanie predmetu\s*:?\s*/, "").trim();
       } else if (fullText.includes("Výsledky vzdelávania")) {
-        info.outcomes = $(tds[1])?.text()?.trim() || $(tds[0])?.text()?.replace("Výsledky vzdelávania:", "").trim() || "";
+        info.outcomes = fullText.replace(/^Výsledky vzdelávania\s*:?\s*/, "").trim();
       } else if (fullText.includes("Stručná osnova predmetu")) {
-        info.syllabus = $(tds[1])?.text()?.trim() || $(tds[0])?.text()?.replace("Stručná osnova predmetu:", "").trim() || "";
+        info.syllabus = fullText.replace(/^Stručná osnova predmetu\s*:?\s*/, "").trim();
       } else if (fullText.includes("Odporúčaná literatúra")) {
-        info.literature = $(tds[1])?.text()?.trim() || $(tds[0])?.text()?.replace("Odporúčaná literatúra:", "").trim() || "";
+        info.literature = fullText.replace(/^Odporúčaná literatúra\s*:?\s*/, "").trim();
+      } else if (fullText.startsWith("Týždenný počet") || (fullText.includes("Prednášky:") && fullText.includes("Cvičenia:") && !fullText.startsWith("Metódy"))) {
+        info.hours = $(tds[1]).text().trim() || fullText;
       } else if (fullText.includes("Vyučujúci:")) {
         info.teacher = fullText.replace("Vyučujúci:", "").trim();
       } else if (fullText.includes("Garant predmetu:")) {

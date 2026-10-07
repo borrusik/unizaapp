@@ -3,6 +3,7 @@
 import { FormEvent, type ReactNode, useMemo, useState, useTransition } from "react";
 import useSWR from "swr";
 import { AppIcon } from "@/components/AppIcon";
+import { IntegrationErrorNotice } from "@/components/IntegrationErrorNotice";
 import { useTranslation, type Lang } from "@/hooks/useTranslation";
 import {
   getMailbox,
@@ -177,7 +178,7 @@ export default function MailPage() {
   );
   const initialDetail = data?.selectedMessage ?? null;
   const shouldFetchSelected = selectedUid !== null && selectedUid !== initialDetail?.uid;
-  const { data: fetchedDetail, isLoading: selectedDetailLoading, mutate: mutateDetail } = useSWR(
+  const { data: fetchedDetail, error: selectedDetailError, isLoading: selectedDetailLoading, mutate: mutateDetail } = useSWR(
     shouldFetchSelected ? ["uniza_mail_message", folder, selectedUid] as const : null,
     ([, selectedFolder, uid]) => getMailMessage(selectedFolder, uid),
     {
@@ -284,7 +285,7 @@ export default function MailPage() {
 
       <div className="mail-layout">
         {isLoading && !data ? <MailboxSkeleton /> : null}
-        {error && !data ? <div className="mail-state mail-error mail-layout-error"><AppIcon name="warning" size={28} /><p>{copy.reconnect}</p></div> : null}
+        {error && !data ? <div className="mail-state mail-error mail-layout-error"><IntegrationErrorNotice error={error} hasData={false} retry={() => { void mutate().catch(() => undefined); }} /></div> : null}
         {data ? <aside className="mail-folders" aria-label={copy.folders}>
           <div className="mail-folder-title">{copy.folders}</div>
           {(data?.folders ?? []).map((item) => (
@@ -308,7 +309,7 @@ export default function MailPage() {
             {query ? <button type="button" aria-label={copy.cancel} onClick={() => { setQuery(""); setSearch(""); setPage(1); }}><AppIcon name="x" size={16} /></button> : null}
           </form>
 
-          {error ? <div className="mail-state mail-error"><AppIcon name="warning" size={28} /><p>{copy.reconnect}</p></div> : null}
+          {error ? <IntegrationErrorNotice error={error} hasData={Boolean(data)} retry={() => { void mutate().catch(() => undefined); }} /> : null}
           {!error && data.messages.length === 0 ? <div className="mail-state"><AppIcon name="mail" size={32} /><p>{copy.empty}</p></div> : null}
 
           <div className="mail-message-list">
@@ -344,7 +345,8 @@ export default function MailPage() {
         {data ? <article className={`mail-reader ${selectedUid ? "open" : ""}`}>
           {selectedUid ? <button type="button" className="mail-reader-back" onClick={() => setSelectedUid(null)}><AppIcon name="arrow-left" size={18} />{copy.inbox}</button> : null}
           {detailLoading ? <div className="mail-state"><div className="spinner" /></div> : null}
-          {!detail && !detailLoading ? <div className="mail-state mail-reader-empty"><AppIcon name="mail" size={36} /><p>{copy.choose}</p></div> : null}
+          {selectedDetailError ? <IntegrationErrorNotice error={selectedDetailError} hasData={Boolean(detail)} retry={() => { void mutateDetail().catch(() => undefined); }} /> : null}
+          {!detail && !detailLoading && !selectedDetailError ? <div className="mail-state mail-reader-empty"><AppIcon name="mail" size={36} /><p>{copy.choose}</p></div> : null}
           {detail ? (
             <div className="mail-reader-content">
               <div className="mail-reader-header">
@@ -365,7 +367,8 @@ export default function MailPage() {
                   <h2>{copy.attachments}</h2>
                   <div className="mail-attachment-grid">{detail.attachments.map((attachment) => {
                     const contentType = normalizedContentType(attachment.contentType);
-                    const previewable = PREVIEWABLE_ATTACHMENT_TYPES.has(contentType);
+                    const tooLarge = attachment.size > 12 * 1024 * 1024;
+                    const previewable = !tooLarge && PREVIEWABLE_ATTACHMENT_TYPES.has(contentType);
                     const image = contentType.startsWith("image/") && previewable;
                     const inlineUrl = mailAttachmentUrl(folder, detail.uid, attachment.index, true);
                     const downloadUrl = mailAttachmentUrl(folder, detail.uid, attachment.index);
@@ -377,10 +380,10 @@ export default function MailPage() {
                             <img src={inlineUrl} alt={attachment.filename} loading="lazy" referrerPolicy="no-referrer" />
                           </button>
                         ) : <span className="mail-attachment-icon"><AppIcon name="paperclip" size={18} /></span>}
-                        <span className="mail-attachment-copy"><strong>{attachment.filename}</strong><small>{Math.max(1, Math.round(attachment.size / 1024))} KB · {contentType}</small></span>
+                        <span className="mail-attachment-copy"><strong>{attachment.filename}</strong><small>≤ {Math.max(1, Math.round(attachment.size / 1024))} KB · {contentType}</small></span>
                         <span className="mail-attachment-actions">
                           {previewable ? <button type="button" onClick={() => setPreviewAttachment(attachment)}>{copy.preview}</button> : null}
-                          <a href={downloadUrl} download>{copy.download}</a>
+                          {tooLarge ? <small>{lang === "ru" ? "Лимит скачивания: 12 МБ" : lang === "uk" ? "Ліміт: 12 МБ" : lang === "sk" ? "Limit: 12 MB" : "Download limit: 12 MB"}</small> : <a href={downloadUrl} download>{copy.download}</a>}
                         </span>
                       </section>
                     );

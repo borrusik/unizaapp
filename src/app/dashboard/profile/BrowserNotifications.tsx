@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { useTranslation } from "@/hooks/useTranslation";
-import { getBratislavaDateKey, listDateKeys, localDateToUtcIso } from "@/lib/uniza-parsers";
+import { getBratislavaDateKey, listDateKeys, localDateTimeToUtcIso } from "@/lib/uniza-parsers";
 
 const STORAGE_KEY = "uniza:notifications:v1";
 const SETTINGS_EVENT = "uniza:notifications-change";
@@ -11,11 +11,8 @@ const DAYS = ["", "Pondelok", "Utorok", "Streda", "Štvrtok", "Piatok", "Sobota"
 const REFRESH_INTERVAL_MS = 6 * 60 * 60_000;
 
 function eventTime(date: string, time: string) {
-  const midnight = localDateToUtcIso(date);
-  if (!midnight) return null;
-  const [hours, minutes] = time.split(":").map(Number);
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-  return new Date(new Date(midnight).getTime() + (hours * 60 + minutes) * 60_000);
+  const instant = localDateTimeToUtcIso(date, time);
+  return instant ? new Date(instant) : null;
 }
 
 export function BrowserNotifications() {
@@ -107,8 +104,12 @@ export function BrowserNotificationScheduler() {
       loading = true;
       lastRefreshStartedAt = Date.now();
       try {
-        const { getSchedule, getExamTerms } = await import("@/lib/scraper");
-        const [classes, exams] = await Promise.all([getSchedule(), getExamTerms()]);
+        const { getScheduleData, getExamTerms } = await import("@/lib/scraper");
+        const [scheduleData, exams] = await Promise.all([getScheduleData(), getExamTerms()]);
+        if (!["ready", "empty"].includes(scheduleData.status) || exams.loadStatus !== "ready") {
+          throw new Error("Reminder data is unavailable");
+        }
+        const classes = scheduleData.items;
         if (cancelled) return;
 
         const now = Date.now();
