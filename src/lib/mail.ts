@@ -4,6 +4,7 @@ import { ImapFlow, type MessageAddressObject, type MessageStructureObject } from
 import { createHash } from "node:crypto";
 import nodemailer from "nodemailer";
 import { readCredentials } from "@/lib/credentials";
+import { assertInternalMailEnabled } from "@/lib/features";
 import { listMailAttachmentParts, listMailBodyParts } from "@/lib/mail-attachments";
 import { sanitizeMailHtml } from "@/lib/mail-content";
 import { rateLimit } from "@/lib/rate-limit";
@@ -155,6 +156,7 @@ function createImapClient(email: string, password: string): ImapFlow {
 async function withMailClient<T>(
   callback: (client: ImapFlow, email: string) => Promise<T>,
 ): Promise<T> {
+  assertInternalMailEnabled();
   const credentials = await readCredentials();
   if (!credentials) throw new Error("MAIL_RECONNECT_REQUIRED");
   const email = validateStudentEmail(credentials.email);
@@ -372,6 +374,7 @@ export async function setMailFlag(
 }
 
 export async function sendMail(formData: FormData): Promise<{ success: true }> {
+  assertInternalMailEnabled();
   const credentials = await readCredentials();
   if (!credentials) throw new Error("MAIL_RECONNECT_REQUIRED");
   const email = validateStudentEmail(credentials.email);
@@ -424,6 +427,7 @@ export async function getMailAttachment(
   uid: number,
   index: number,
 ): Promise<{ filename: string; contentType: string; content: string }> {
+  assertInternalMailEnabled();
   if (!Number.isInteger(index) || index < 0 || index > 100) throw new Error("Invalid attachment");
   const credentials = await readCredentials();
   if (!credentials) throw new Error("MAIL_RECONNECT_REQUIRED");

@@ -207,7 +207,10 @@ export default function StravaPage() {
               ))}</div>
             )}
 
-            <details className="food-history-details" onToggle={(event) => setHistoryOpen(event.currentTarget.open)}><summary><span>{t("food_history")}</span><AppIcon name="chevron-down" size={19} /></summary>{historyLoading ? <div className="food-history-loading skeleton" /> : history.length === 0 ? <p className="text-sm food-history-empty">{t("food_no_history")}</p> : <div className="food-history-list">{history.slice(0, 10).map((item, index) => <div key={`${item.date}-${index}`} className="food-history-row"><div className="food-menu-copy"><div className="food-menu-name">{item.movementTypeName}</div><div className="food-menu-meta"><span>{new Date(item.date).toLocaleDateString(LOCALES[lang], { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</span><span>{item.destination || item.source}</span></div></div><div className="food-menu-price">{item.reserve > 0 ? "+" : ""}{(item.reserve || 0).toFixed(2).replace(".", ",")} €</div></div>)}</div>}</details>
+            <details className="food-history-details" onToggle={(event) => setHistoryOpen(event.currentTarget.open)}>
+              <summary><span>{t("food_history")}</span><AppIcon name="chevron-down" size={19} /></summary>
+              {historyLoading ? <div className="food-history-loading skeleton" /> : historyError && !historyData ? null : history.length === 0 ? <p className="text-sm food-history-empty">{t("food_no_history")}</p> : <div className="food-history-list">{history.slice(0, 10).map((item, index) => <div key={`${item.date}-${index}`} className="food-history-row"><div className="food-menu-copy"><div className="food-menu-name">{item.movementTypeName}</div><div className="food-menu-meta"><span>{new Date(item.date).toLocaleString(LOCALES[lang], { timeZone: "Europe/Bratislava", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</span><span>{item.destination || item.source}</span></div></div><div className="food-menu-price">{item.amount > 0 ? "+" : ""}{item.amount.toFixed(2).replace(".", ",")} €</div></div>)}</div>}
+            </details>
           </div>
         )}
       </div>

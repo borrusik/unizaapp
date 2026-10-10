@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getSubjectInfo, type SubjectInfo } from "@/lib/scraper";
+import { useState } from "react";
+import useSWR from "swr";
+import { getSubjectInfo } from "@/lib/scraper";
+import { IntegrationErrorNotice } from "@/components/IntegrationErrorNotice";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -14,21 +16,18 @@ function SubjectInfoContent() {
   const subjectName = searchParams.get("name") || "Predmet";
   const { t } = useTranslation();
 
-  const [info, setInfo] = useState<SubjectInfo | null>(null);
-  const [loadedUrl, setLoadedUrl] = useState("");
-  const loading = Boolean(url) && loadedUrl !== url;
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!url) {
-      return () => { cancelled = true; };
-    }
-    getSubjectInfo(url)
-      .then((nextInfo) => { if (!cancelled) setInfo(nextInfo); })
-      .catch(() => { if (!cancelled) setInfo(null); })
-      .finally(() => { if (!cancelled) setLoadedUrl(url); });
-    return () => { cancelled = true; };
-  }, [url]);
+  const { data: info, error, isLoading: loading, mutate } = useSWR(url ? ["uniza_subject_info", url] : null, () => getSubjectInfo(url), {
+    dedupingInterval: 5 * 60_000, revalidateOnFocus: false,
+  });
+  const [refreshError, setRefreshError] = useState<unknown>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    if (!url || refreshing) return;
+    setRefreshing(true); setRefreshError(null);
+    try { await mutate(() => getSubjectInfo(url, true), { revalidate: false }); }
+    catch (failure) { setRefreshError(failure); }
+    finally { setRefreshing(false); }
+  };
 
   const sections = info
     ? [
@@ -106,11 +105,13 @@ function SubjectInfoContent() {
       </div>
 
       <div className="container" style={{ marginTop: "24px" }}>
+        <IntegrationErrorNotice error={error || refreshError} hasData={Boolean(info)} retry={() => void refresh()} />
+        {url ? <button type="button" className="icon-button" disabled={refreshing} aria-label={t("common_refresh")} onClick={() => void refresh()}><AppIcon name="refresh" size={20} className={refreshing ? "spin" : ""} /></button> : null}
         {loading ? (
           <div className="fullscreen-loader">
             <div className="spinner"></div>
           </div>
-        ) : !info ? (
+        ) : error && !info ? null : !info ? (
           <div className="empty-state" style={{ paddingTop: "80px" }}>
             <AppIcon name="book" size={48} />
             <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>

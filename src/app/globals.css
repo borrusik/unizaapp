@@ -3556,3 +3556,62 @@ select {
 .integration-error-notice { padding: 16px; margin-bottom: 16px; border: 1px solid var(--warning); border-radius: 12px; font-size: 13px; }
 .integration-error-notice p { margin-bottom: 10px; }
 .integration-error-notice a { color: var(--primary); }
+/* Unified study overview */
+.study-tools { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+.study-tools input { flex: 1 1 220px; min-width: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-secondary); color: var(--text-primary); }
+.study-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.study-filters button, .study-action { padding: 10px 12px; border-radius: 10px; background: var(--surface-secondary); color: var(--text-primary); font-size: 13px; }
+.study-filters button[aria-pressed="true"] { background: var(--primary); color: #171717; }
+.study-list { display: grid; gap: 12px; }
+.study-row { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.study-row .card-group { margin: 0; border: 0; box-shadow: none; background: transparent; }
+.study-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+.study-action { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 650px) { .study-row { grid-template-columns: minmax(0, 1fr); } .study-actions { padding-top: 0; } .study-filters { width: 100%; } }
+.minimal-login { min-height: 100svh; display: grid; align-items: center; padding: 48px 24px; background: var(--background); }
+.minimal-login-content { width: 100%; max-width: 380px; margin: auto; }
+.minimal-login-heading { text-align: center; margin-bottom: 32px; }
+.minimal-login-heading > button { margin: 0 auto 18px; }
+.minimal-login-heading h1 { font-size: 26px; font-weight: 750; letter-spacing: -0.8px; margin: 0 0 8px; }
+.minimal-login-heading p, .minimal-login footer { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.minimal-login-form { display: grid; gap: 20px; }
+.minimal-login-form label { display: block; font-size: 13px; font-weight: 550; margin-bottom: 8px; }
+.minimal-login-form input:not([type="checkbox"]):not([type="hidden"]) { display: block; width: 100%; min-height: 48px; border: 1px solid var(--border-strong); border-radius: 10px; padding: 12px; background: var(--surface); color: var(--text-primary); font: inherit; font-size: 16px; }
+.minimal-login :is(input, button, summary, a):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.minimal-password { position: relative; }
+.minimal-password input { padding-right: 90px !important; }
+.minimal-password button { position: absolute; right: 4px; top: 4px; min-height: 40px; padding: 8px; color: var(--text-secondary); font-size: 12px; }
+.minimal-remember { display: flex; gap: 8px; align-items: start; position: relative; }
+.minimal-remember label { display: flex; align-items: center; gap: 9px; margin: 0; min-height: 32px; font-weight: 400; }
+.minimal-remember input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--primary); }
+.minimal-remember summary { list-style: none; cursor: pointer; padding: 5px 8px; color: var(--text-secondary); }
+.minimal-remember details p { position: absolute; z-index: 2; top: 36px; left: 0; right: 0; padding: 14px; background: var(--surface-secondary); border: 1px solid var(--border-strong); border-radius: 10px; font-size: 12px; line-height: 1.6; }
+.minimal-login .btn-primary { min-height: 48px; border-radius: 10px; box-shadow: none; font-size: 15px; }
+.minimal-help { margin-top: 22px; text-align: center; font-size: 13px; color: var(--text-secondary); }
+.minimal-help summary { cursor: pointer; list-style: none; padding: 8px; }
+.minimal-help p { margin: 8px 0 12px; line-height: 1.6; text-align: left; }
+.minimal-help a { text-decoration: underline; }
+.minimal-login footer { text-align: center; margin-top: 32px; font-size: 12px; }
+@media (max-height: 620px) { .minimal-login { align-items: start; padding-top: 24px; padding-bottom: 24px; } }
+.study-compact .academic-period-controls { margin-bottom: 14px; display: grid; grid-template-columns: minmax(120px, 0.65fr) minmax(0, 1fr); gap: 8px; align-items: center; }
+.study-compact .academic-period-heading { display: none; }
+.study-compact .academic-year-select { margin: 0; }
+.study-compact .academic-year-select select { min-height: 44px; padding-top: 10px; padding-bottom: 10px; font-size: 14px; }
+.study-compact .semester-slider { margin: 0; min-height: 44px; }
+.study-compact .grades-year-label { margin: 0 0 6px; font-size: 10px; letter-spacing: 0.06em; }
+.study-compact .grades-stats { gap: 0; margin-bottom: 6px; padding: 12px 0; border-block: 1px solid var(--border); }
+.study-compact .grades-stats .stat-card { padding: 0 8px; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.study-compact .grades-stats .stat-card + .stat-card { border-left: 1px solid var(--border); }
+.study-compact .grades-stats .stat-value { font-size: 22px !important; }
+.study-compact .grades-stats .stat-label { font-size: 11px; }
+.study-results-details { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.study-results-details summary { cursor: pointer; padding: 8px 0; }
+.study-results-details p { margin: 6px 0; }
+.study-results-details a { text-decoration: underline; }
+.study-compact .study-tools { margin: 12px 0; gap: 8px; }
+.study-compact .study-filters button { min-height: 40px; padding: 8px 10px; }
+@media (max-width: 380px) {
+  .study-compact .academic-period-controls { grid-template-columns: minmax(105px, 0.65fr) minmax(0, 1fr); gap: 6px; }
+  .study-compact .semester-slider-count { display: none; }
+  .study-compact .semester-slider button { padding-inline: 6px; }
+}

@@ -1,5 +1,8 @@
 "use server";
 
+import { parseWebKreditHistory, type StravaHistoryItem } from "@/lib/webkredit-history";
+export type { StravaHistoryItem } from "@/lib/webkredit-history";
+
 import { createHash } from "node:crypto";
 import { clearStravaSession, getStoredStravaSession, restoreStravaSession } from "@/lib/strava-session";
 import {
@@ -99,21 +102,11 @@ export async function getStravaInfo(force = false): Promise<StravaInfo | null> {
   }
 }
 
-export type StravaHistoryItem = {
-  date: string;
-  movementTypeName: string;
-  reserve: number;
-  balance: number;
-  destination: string;
-  source: string;
-  isMealOrder: boolean;
-};
-
 export async function getStravaHistory(force = false): Promise<StravaHistoryItem[]> {
   const sessionCookies = await getStravaSession();
   if (!sessionCookies) throw new Error("STRAVA_RECONNECT_REQUIRED");
 
-  const cacheKey = sessionCacheKey(sessionCookies, "history");
+  const cacheKey = sessionCacheKey(sessionCookies, "history-v2");
   const cached = getCached<StravaHistoryItem[]>(cacheKey);
   if (!force && cached) return cached;
 
@@ -136,7 +129,7 @@ export async function getStravaHistory(force = false): Promise<StravaHistoryItem
     }
 
     const data = await res.json();
-    const items = data.items || [];
+    const items = parseWebKreditHistory(data);
     setCached(cacheKey, items);
     return items;
   } catch (e) {

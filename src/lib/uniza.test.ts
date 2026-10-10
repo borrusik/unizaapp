@@ -1,5 +1,62 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mergeStudyRows } from "./study.ts";
+
+test("study merges links by code without losing result-only or subject-only records", () => {
+  const subjects = [{ code: " abc ", name: "Course", moodleUrl: "https://example.test/course" }, { code: "NEW", name: "New course" }];
+  const grades = [{ code: "ABC", subject: "Course", academicYearStart: 2026 }, { code: "OLD", subject: "Archive only", academicYearStart: 2026 }, { code: "ABC", subject: "Previous attempt", academicYearStart: 2025 }];
+  const rows = mergeStudyRows(subjects, grades, 2026);
+  assert.equal(rows.length, 3);
+  assert.equal(rows[0].subject?.moodleUrl, "https://example.test/course");
+  assert.equal(rows[1].subject, undefined);
+  assert.equal(rows[2].grade, undefined);
+  assert.ok(rows.every((row) => row.name !== "Previous attempt"));
+});
+import { createDirectorySearch } from "./directory-search.ts";
+import { assertInternalMailEnabled, INTERNAL_MAIL_ENABLED } from "./features.ts";
+import { parseWebKreditHistory } from "./webkredit-history.ts";
+
+test("WebKredit history shows deposits and payments, uses operation time and newest first", () => {
+  const items = parseWebKreditHistory({ items: [
+    { date: "2026-10-06T22:00:00Z", time: "2026-10-07T05:00:51Z", movementTypeName: "Vklad prevodom", reserve: 0, balance: 10 },
+    { date: "2026-10-06T22:00:00Z", time: "2026-10-07T06:46:46Z", movementTypeName: "Platba kartou", reserve: 0, balance: -1.4 },
+    { date: "2026-10-06T22:00:00Z", time: "2026-10-07T10:25:00Z", reserve: -3.6, balance: 0 },
+    { date: "2026-10-31T00:00:00Z", reserve: -23.7, balance: 27.9, isStartOrEnd: true },
+  ] });
+  assert.deepEqual(items.map((item) => item.amount), [-3.6, -1.4, 10]);
+  assert.equal(items[0].date, "2026-10-07T10:25:00Z");
+  assert.throws(() => parseWebKreditHistory({}), /INVALID_RESPONSE/);
+});
+
+test("paused mail rejects server operations before connecting", () => {
+  assert.equal(INTERNAL_MAIL_ENABLED, false);
+  assert.throws(() => assertInternalMailEnabled(), /MAIL_DISABLED/);
+});
+
+test("directory search coalesces equivalent requests and caches results", async () => {
+  let calls = 0;
+  const search = createDirectorySearch(async () => { calls++; return { directory: [{ name: "Lukáš Čechovič", mail: "lukas.cechovic@uniza.sk" }] }; });
+  const [first, second] = await Promise.all([search("  Čechovič "), search("čechovič")]);
+  assert.deepEqual(first, second);
+  assert.equal(calls, 1);
+  assert.deepEqual(await search("Čechovič"), first);
+  assert.equal(calls, 1);
+  assert.deepEqual(await search("a"), []);
+});
+
+test("directory outage remains an error and allows a new retry", async () => {
+  let calls = 0;
+  const search = createDirectorySearch(async () => { if (++calls === 1) throw new Error("HTTP_503"); return { directory: [] }; });
+  await assert.rejects(search("Test"), /HTTP_503/);
+  assert.deepEqual(await search("Test"), []);
+  assert.equal(calls, 2);
+  const invalid = createDirectorySearch(async () => ({}));
+  await assert.rejects(invalid("Test"), /INVALID_RESPONSE/);
+});
+
+test("general Moodle entry uses the current UNIZA platform", () => {
+  assert.equal(UNIZA_URLS.moodle, "https://moodle.uniza.sk/");
+});
 
 import {
   getAcademicYear,
@@ -26,8 +83,8 @@ import { parseAivsExamTerms } from "./aivs-exams.ts";
 import { parseAivsFaculty } from "./aivs-profile.ts";
 import { getAivsScheduleSourceState, isAivsScheduleContinuation } from "./aivs-schedule.ts";
 import { localDateTimeToUtcIso } from "./uniza-parsers.ts";
-import { applyGradeOverrides, gradeOverrideKey, gradeSummary, parseGradeOverrides } from "./grade-overrides.ts";
-import { getAivsResultsTableYear, selectAivsGradeResult } from "./aivs-grades.ts";
+import { applyGradeOverrides, displayedGradeSummary, gradeOverrideKey, gradeSummary, parseGradeOverrides } from "./grade-overrides.ts";
+import { getAivsResultsTableYear, parseAivsResultsSummary, selectAivsGradeResult } from "./aivs-grades.ts";
 import { createIcsCalendar } from "./calendar.ts";
 import { parseInstagramMenuCaption } from "./instagram-menu.ts";
 import {
@@ -39,13 +96,40 @@ import {
 } from "./instagram-scrape.ts";
 import { normalizeMailContentId, sanitizeMailHtml } from "./mail-content.ts";
 import { listMailAttachmentParts, listMailBodyParts } from "./mail-attachments.ts";
-import { isAuthenticatedAivsHtml, safeDashboardReturnPath } from "./auth-state.ts";
+import { isAuthenticatedAivsHtml, isAivsLoginHtml, safeDashboardReturnPath } from "./auth-state.ts";
 
 test("expired AIVS sessions are distinguished from temporary page data", () => {
   assert.equal(isAuthenticatedAivsHtml(""), false);
   assert.equal(isAuthenticatedAivsHtml('<form><input name="heslo"></form>'), false);
   assert.equal(isAuthenticatedAivsHtml("<title>Prihlásenie</title>"), false);
-  assert.equal(isAuthenticatedAivsHtml("<main>Študijná skupina: 5ZYI</main>"), true);
+  assert.equal(isAuthenticatedAivsHtml('<b id="mch-name-desk">Test Student</b>'), true);
+  assert.equal(isAuthenticatedAivsHtml('<a href="logout.php">Odhlásiť</a>'), true);
+  assert.equal(isAuthenticatedAivsHtml('<html><body>Service under maintenance</body></html>'), false);
+  assert.equal(isAivsLoginHtml("<input NAME='heslo' type='password'>"), true);
+  assert.equal(isAivsLoginHtml('<input name=heslo type=password>'), true);
+  assert.equal(isAuthenticatedAivsHtml('<a href="logout.php">Logout</a><input name="heslo">'), false);
+});
+
+test("AIVS annual and semester totals preserve the official average and years across study gaps", () => {
+  const header = (year: number) => `<table><tr><td>Akademický rok ${year} / ${year + 1}</td></tr></table>`;
+  const table = (footer: string) => `<table class="data tien"><tr><td class="sep-mch">Zimný semester</td></tr><tr><td class="sep-mch">${footer}</td></tr></table>`;
+  const parsed = parseAivsResultsSummary(header(2026) + table('Priemer: <b>2.98 (3.72 / 2.42)</b> Súčet bodov: <b>32 (3 / 29)</b> Súčet kreditov: <b>32 (3 / 29)</b>') + header(2023) + table('Priemer: 2,06 (1,82 / 2,45) Súčet bodov: 75 (49 / 26) Súčet kreditov: 76 (50 / 26)') + '<p>Celkový priemer: 2.5<br>Celkový počet bodov: 107<br>Celkový počet kreditov: 108</p>');
+  assert.deepEqual(parsed.years.map((year) => year.startYear), [2026, 2023]);
+  assert.deepEqual(parsed.years[0].total, { average: 2.98, credits: 32, points: 32 });
+  assert.deepEqual(parsed.years[0].summer, { average: 2.42, credits: 29, points: 29 });
+  assert.deepEqual(parsed.years[1].winter, { average: 1.82, credits: 50, points: 49 });
+  assert.deepEqual(parsed.total, { average: 2.5, credits: 108, points: 107 });
+  assert.deepEqual(parseAivsResultsSummary('<main>Unavailable</main>').total, { average: null, credits: null, points: null });
+});
+
+test("official AIVS averages take precedence while personal estimates remain separate", () => {
+  const recorded = { code: "TEST", academicYearStart: 2026, type: "Pov.", grade: "A", credits: 3 };
+  const pending = { ...recorded, code: "PENDING", grade: "—", credits: 5 };
+  const official = { average: 2.875, credits: 3 };
+  assert.deepEqual(displayedGradeSummary([recorded, pending], official), { credits: 3, passed: 1, average: "2.88", source: "aivs" });
+  assert.equal(displayedGradeSummary([{ ...pending, grade: "B", localOverride: true }], official).source, "personal");
+  assert.equal(displayedGradeSummary([{ ...pending, grade: "B", localOverride: true }], official).average, "1.50");
+  assert.equal(displayedGradeSummary([recorded], { average: null, credits: null }).source, "graded");
 });
 
 test("elective and compulsory timetable continuation hours are preserved", () => {

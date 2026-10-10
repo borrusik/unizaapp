@@ -36,18 +36,16 @@ export default function DashboardLayout({
     { href: "/dashboard/schedule", labelKey: "nav_schedule", icon: "calendar" },
     { href: "/dashboard/subjects", labelKey: "nav_study", icon: "book" },
     { href: "/dashboard/food", labelKey: "nav_food", icon: "restaurant" },
-    { href: "/dashboard/mail", labelKey: "nav_mail", icon: "mail" },
+    { href: "/dashboard/services", labelKey: "home_services", icon: "building" },
   ];
 
   // Desktop sidebar navigation links
   const desktopNavLinks: Array<{ href: string; labelKey: TranslationKey; icon: AppIconName; matchExact?: boolean }> = [
     { href: "/dashboard", labelKey: "nav_home", icon: "home", matchExact: true },
     { href: "/dashboard/schedule", labelKey: "nav_schedule", icon: "calendar" },
-    { href: "/dashboard/subjects", labelKey: "nav_subjects", icon: "book" },
-    { href: "/dashboard/grades", labelKey: "nav_grades", icon: "award" },
+    { href: "/dashboard/subjects", labelKey: "nav_study", icon: "book" },
     { href: "/dashboard/exams", labelKey: "home_exams", icon: "clipboard" },
     { href: "/dashboard/food", labelKey: "nav_food", icon: "restaurant" },
-    { href: "/dashboard/mail", labelKey: "nav_mail", icon: "mail" },
     { href: "/dashboard/services", labelKey: "home_services", icon: "building" },
     { href: "/dashboard/profile", labelKey: "nav_profile", icon: "user" },
   ];
@@ -76,9 +74,7 @@ export default function DashboardLayout({
 
         <nav className="desktop-sidebar-nav" aria-label="Desktop navigation">
           {desktopNavLinks.map((link) => {
-            const active = link.matchExact
-              ? pathname === link.href
-              : pathname.startsWith(link.href);
+            const active = isTabActive(link);
             return (
               <Link
                 key={link.href}

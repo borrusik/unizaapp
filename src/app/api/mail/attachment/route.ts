@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMailAttachment } from "@/lib/mail";
+import { INTERNAL_MAIL_ENABLED } from "@/lib/features";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ function contentDisposition(filename: string, inline: boolean): string {
 }
 
 export async function GET(request: NextRequest) {
+  if (!INTERNAL_MAIL_ENABLED) return NextResponse.json({ error: "MAIL_DISABLED" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   try {
     const folder = request.nextUrl.searchParams.get("folder") ?? "INBOX";
     const uid = Number(request.nextUrl.searchParams.get("uid"));

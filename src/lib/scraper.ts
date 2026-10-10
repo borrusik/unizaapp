@@ -19,9 +19,9 @@ import { parseAivsSubjects } from "@/lib/aivs-subjects";
 import { parseAivsExamTerms, type ExamTerm, type InternalExamTerm } from "@/lib/aivs-exams";
 import { parseAivsFaculty } from "@/lib/aivs-profile";
 import { getAivsScheduleSourceState, isAivsScheduleContinuation } from "@/lib/aivs-schedule";
-import { getAivsResultsTableYear, selectAivsGradeResult } from "@/lib/aivs-grades";
+import { getAivsResultsTableYear, parseAivsResultsSummary, selectAivsGradeResult } from "@/lib/aivs-grades";
 import { readSharedSchedule, writeSharedSchedule } from "@/lib/schedule-cache";
-import { isAuthenticatedAivsHtml } from "@/lib/auth-state";
+import { isAuthenticatedAivsHtml, isAivsLoginHtml } from "@/lib/auth-state";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -62,11 +62,12 @@ async function getPhpSession(email: string, password: string): Promise<string | 
     cache: "no-store",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
+  if (!loginPageRes.ok) throw new Error("AIVS_UNAVAILABLE");
   const rawCookies = loginPageRes.headers.get("set-cookie") || "";
   const match = rawCookies.match(/PHPSESSID=([^;]+)/);
-  const phpSessionId = match ? match[1] : "";
+  let phpSessionId = match ? match[1] : "";
 
-  if (!phpSessionId) return null;
+  if (!phpSessionId) throw new Error("AIVS_UNAVAILABLE");
 
   // Step 2: POST login
   const formBody = new URLSearchParams({
@@ -75,7 +76,7 @@ async function getPhpSession(email: string, password: string): Promise<string | 
     login: "Prihlásenie",
   });
 
-  await fetch(`${BASE_URL}/login.php`, {
+  const loginResponse = await fetch(`${BASE_URL}/login.php`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -86,6 +87,8 @@ async function getPhpSession(email: string, password: string): Promise<string | 
     cache: "no-store",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
+  if (loginResponse.status >= 400) throw new Error("AIVS_UNAVAILABLE");
+  phpSessionId = loginResponse.headers.get("set-cookie")?.match(/PHPSESSID=([^;]+)/)?.[1] || phpSessionId;
 
   // Step 3: Verify the session and warm the currently selected academic year.
   const academicYears = await getAcademicYearOptions().catch(() => null);
@@ -95,7 +98,6 @@ async function getPhpSession(email: string, password: string): Promise<string | 
   const yearQuery = selectedStartYear ? `?ra=${selectedStartYear}` : "";
   const requestOptions = {
     headers: { Cookie: `PHPSESSID=${phpSessionId}` },
-    redirect: "manual" as const,
   };
   const testHtml = await fetchDecoded(
     `${BASE_URL}/predmety_s.php${yearQuery}`,
@@ -103,7 +105,8 @@ async function getPhpSession(email: string, password: string): Promise<string | 
   );
 
   if (!isAuthenticatedAivsHtml(testHtml)) {
-    return null; // Still on login page — auth failed
+    if (isAivsLoginHtml(testHtml)) return null;
+    throw new Error("AIVS_UNAVAILABLE");
   }
 
   // Inject pre-fetched results directly into PAGE_CACHE
@@ -185,7 +188,7 @@ async function fetchPage(sessionId: string, page: string, force = false): Promis
     });
 
     // Restore an expired upstream session from the encrypted credential cookie when configured.
-    if (html.includes('name="heslo"') || html.includes('<title>Prihlásenie</title>')) {
+    if (isAivsLoginHtml(html)) {
       const cookieStore = await cookies();
       const newSessionId = await restoreExpiredSession(sessionId);
       if (newSessionId) {
@@ -202,6 +205,7 @@ async function fetchPage(sessionId: string, page: string, force = false): Promis
           PAGE_CACHE.set(`${newSessionId}_${page}`, { html, timestamp: Date.now() });
           return html;
         }
+        if (!isAivsLoginHtml(html)) throw new Error("AIVS_UNAVAILABLE");
       }
 
       cookieStore.delete("uniza_phpsessid");
@@ -219,6 +223,10 @@ async function fetchPage(sessionId: string, page: string, force = false): Promis
       await clearStravaSession();
       throw new Error("AIVS_RECONNECT_REQUIRED");
     } else {
+      // An HTTP 200 maintenance/error page must not become a cached empty list.
+      if (!isAuthenticatedAivsHtml(html) && !/id=["']id-tabulka-inf-list-predmetu["']/i.test(html)) {
+        throw new Error("AIVS_UNAVAILABLE");
+      }
       // Prevent memory leaks
       if (PAGE_CACHE.size > 500) PAGE_CACHE.clear();
       PAGE_CACHE.set(cacheKey, { html, timestamp: Date.now() });
@@ -303,26 +311,10 @@ async function getStudyAcademicYears(
   }
 
   const request = (async () => {
-    const available: AcademicYearOption[] = [];
-    let foundStudyYear = false;
-    const ordered = selection.options.toSorted((left, right) => right.startYear - left.startYear);
-
-    // Most students only need the current and one or two previous years.
-    // Probe in small parallel batches and stop after the first empty year below
-    // their study range instead of requesting the entire AIVS archive.
-    for (let index = 0; index < ordered.length; index += 3) {
-      const batch = ordered.slice(index, index + 3);
-      const results = await Promise.all(batch.map(async (year) => {
-        const html = await fetchPage(sessionId, `predmety_s.php?ra=${year.startYear}`, force);
-        const parsed = parseAivsSubjects(html);
-        return { year, hasSubjects: parsed.winter.length + parsed.summer.length > 0 };
-      }));
-
-      const yearsWithSubjects = results.filter((result) => result.hasSubjects);
-      if (yearsWithSubjects.length > 0) foundStudyYear = true;
-      available.push(...yearsWithSubjects.map((result) => result.year));
-      if (foundStudyYear && results.at(-1)?.hasSubjects === false) break;
-    }
+    // The results page contains every study year, including years before a gap.
+    // Reuse that one cumulative page instead of probing the enrollment archive.
+    const html = await fetchPage(sessionId, "svysledky.php", force);
+    const available: AcademicYearOption[] = parseAivsResultsSummary(html).years.map(({ startYear, label }) => ({ startYear, label }));
 
     const fallback = selection.options.find(
       (year) => year.startYear === selection.selectedStartYear,
@@ -344,10 +336,9 @@ async function getStudyAcademicYears(
 async function resolveStudyAcademicYear(
   sessionId: string,
   requestedStartYear?: number,
-  force = false,
 ): Promise<AcademicPeriodData> {
-  const publicSelection = await getAcademicYearOptions(force);
-  const academicYears = await getStudyAcademicYears(sessionId, force);
+  const publicSelection = await getAcademicYearOptions();
+  const academicYears = await getStudyAcademicYears(sessionId);
   const requested = Number(requestedStartYear);
   const preferred = publicSelection.selectedStartYear;
   const selectedStartYear = Number.isInteger(requested) &&
@@ -437,9 +428,8 @@ export async function login(formData: FormData) {
     });
   }
   const cateringConnected = await storeStravaSession(stravaSession);
-  // Mail uses IMAP/SMTP and therefore needs the UNIZA password for each server-side
-  // request. Keep it only in the authenticated encrypted cookie. Without "remember"
-  // the browser discards this cookie at the end of the session.
+  // Recovery of AIVS/WebKredit sessions uses the encrypted credential cookie.
+  // Without "remember" it is discarded at the end of the browser session.
   const credentialsStored = await saveCredentials(
     { email, password },
     { persistent: remember },
@@ -505,8 +495,8 @@ export async function checkDashboardSession(): Promise<DashboardSessionState> {
   try {
     const html = await fetchPage(sessionId, "index.php", true);
     return isAuthenticatedAivsHtml(html) ? "authenticated" : "unauthenticated";
-  } catch {
-    return "unavailable";
+  } catch (error) {
+    return error instanceof Error && error.message === "AIVS_RECONNECT_REQUIRED" ? "unauthenticated" : "unavailable";
   }
 }
 
@@ -518,7 +508,7 @@ export async function getIntegrationStatus() {
   return {
     education: Boolean(cookieStore.get("uniza_phpsessid")?.value),
     catering: Boolean(cateringSession),
-    mail: Boolean(savedCredentials?.email.toLowerCase().endsWith("@stud.uniza.sk")),
+    mail: false,
     passwordStored: Boolean(savedCredentials),
   };
 }
@@ -544,6 +534,7 @@ export type Grade = {
   date: string;
   type: string;
   points: string;
+  semesterPoints?: string;
   academicYearStart: number | null;
 };
 
@@ -592,11 +583,12 @@ export async function getUserInfo(
   const year = await resolveAcademicYear();
   const yearQuery = `?ra=${year.selectedStartYear}`;
   const sessionId = explicitSessionId || await getSession();
+  if (!sessionId) throw new Error("AIVS_RECONNECT_REQUIRED");
   if (sessionId) {
     try {
       const [indexHtml, svysledkyHtml, predmetyHtml] = await Promise.all([
         fetchPage(sessionId, `index.php${yearQuery}`, force),
-        fetchPage(sessionId, `svysledky.php${yearQuery}`, force),
+        fetchPage(sessionId, "svysledky.php", force),
         fetchPage(sessionId, `predmety_s.php${yearQuery}`, force),
       ]);
 
@@ -634,6 +626,7 @@ export async function getUserInfo(
 
     } catch (e) {
       console.error("Error fetching user info details:", e);
+      throw e;
     }
   }
 
@@ -641,12 +634,6 @@ export async function getUserInfo(
   if (faculty === "Žilinská univerzita v Žiline") {
     if (group.toUpperCase().includes("ZYI") || group.toUpperCase().includes("ZI")) {
       faculty = "Fakulta riadenia a informatiky (FRI)";
-    }
-  }
-
-  if (program === "Neznámy program") {
-    if (group.toUpperCase().includes("ZYI") || group.toUpperCase().includes("ZI")) {
-      program = "Informatika / Manažment";
     }
   }
 
@@ -673,7 +660,7 @@ export async function getSubjects(
   if (!sessionId) {
     throw new Error("AIVS_RECONNECT_REQUIRED");
   }
-  const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
+  const year = await resolveStudyAcademicYear(sessionId, requestedStartYear);
 
   try {
     const html = await fetchPage(
@@ -699,6 +686,7 @@ export async function getSubjects(
     return { winter, summer, ...year };
   } catch (e) {
     console.error("Error parsing subjects:", e);
+    if (e instanceof Error && e.message === "AIVS_RECONNECT_REQUIRED") throw e;
     throw new Error("AIVS_SUBJECTS_UNAVAILABLE");
   }
 }
@@ -710,18 +698,18 @@ export async function getSubjects(
 export async function getGrades(
   requestedStartYear?: number,
   force = false,
-): Promise<{ winter: Grade[]; summer: Grade[]; accountKey: string } & AcademicPeriodData> {
+): Promise<{ winter: Grade[]; summer: Grade[]; accountKey: string; official: ReturnType<typeof parseAivsResultsSummary> } & AcademicPeriodData> {
   const sessionId = await getSession();
   if (!sessionId) {
     throw new Error("AIVS_RECONNECT_REQUIRED");
   }
-  const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
+  const year = await resolveStudyAcademicYear(sessionId, requestedStartYear);
 
   try {
     const [html, subjectsHtml] = await Promise.all([
       fetchPage(
         sessionId,
-        `svysledky.php?ra=${year.selectedStartYear}`,
+        "svysledky.php",
         force,
       ),
       fetchPage(
@@ -812,6 +800,7 @@ export async function getGrades(
         date: result.date,
         type,
         points: points || "—",
+        semesterPoints: $(tds[3]).text().trim(),
         // The upstream results table is cumulative and identical for multiple
         // selected years. Dates are authoritative for completed courses; the
         // selected subject list identifies still-ungraded courses.
@@ -827,9 +816,10 @@ export async function getGrades(
     const accountEmail = (await cookies()).get("uniza_email")?.value;
     if (!accountEmail) throw new Error("AIVS_RECONNECT_REQUIRED");
     const accountKey = createHash("sha256").update(accountEmail.trim().toLowerCase()).digest("hex");
-    return { winter, summer, accountKey, ...year };
+    return { winter, summer, accountKey, official: parseAivsResultsSummary(html), ...year };
   } catch (e) {
     console.error("Error parsing grades:", e);
+    if (e instanceof Error && e.message === "AIVS_RECONNECT_REQUIRED") throw e;
     throw new Error("AIVS_GRADES_UNAVAILABLE");
   }
 }
@@ -843,7 +833,7 @@ async function getExamTermsInternal(
     const year = await resolveAcademicYear(requestedStartYear);
     return { terms: [], loadStatus: "unauthenticated", ...year };
   }
-  const year = await resolveStudyAcademicYear(sessionId, requestedStartYear, force);
+  const year = await resolveStudyAcademicYear(sessionId, requestedStartYear);
   try {
     return { terms: await loadExamTermsForYear(sessionId, year.selectedStartYear, force), loadStatus: "ready", ...year };
   } catch (error) {
@@ -1188,16 +1178,15 @@ export type SubjectInfo = {
   guarantor: string;
 };
 
-export async function getSubjectInfo(infoUrl: string): Promise<SubjectInfo | null> {
+export async function getSubjectInfo(infoUrl: string, force = false): Promise<SubjectInfo | null> {
   const sessionId = await getSession();
-  if (!sessionId) return null;
+  if (!sessionId) throw new Error("AIVS_RECONNECT_REQUIRED");
 
   try {
     const url = resolveSubjectInfoUrl(infoUrl);
     if (!url) return null;
-    const html = await fetchDecoded(url, {
-      headers: { Cookie: `PHPSESSID=${sessionId}` },
-    });
+    const resolved = new URL(url);
+    const html = await fetchPage(sessionId, `${resolved.pathname.slice("/vzdelavanie/".length)}${resolved.search}`, force);
 
     const $ = cheerio.load(html);
     const table = $("#id-tabulka-inf-list-predmetu");
@@ -1260,7 +1249,7 @@ export async function getSubjectInfo(infoUrl: string): Promise<SubjectInfo | nul
     return info;
   } catch (e) {
     console.error("Error parsing subject info:", e);
-    return null;
+    throw e;
   }
 }
 

@@ -40,3 +40,18 @@ export function gradeSummary(items: GradeIdentity[]) {
   }
   return { credits, passed, average: scoredCredits ? (weighted / scoredCredits).toFixed(2) : "—" };
 }
+
+export function displayedGradeSummary(
+  items: (GradeIdentity & { localOverride?: boolean })[],
+  official?: { average: number | null; credits: number | null },
+) {
+  const calculated = gradeSummary(items);
+  const personal = items.some((item) => item.localOverride);
+  const officialAverage = !personal && official?.average != null;
+  return {
+    ...calculated,
+    credits: !personal && official?.credits != null ? official.credits : calculated.credits,
+    average: officialAverage ? official.average!.toFixed(2) : calculated.average,
+    source: officialAverage ? "aivs" as const : personal ? "personal" as const : "graded" as const,
+  };
+}

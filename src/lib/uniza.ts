@@ -1,6 +1,6 @@
 export const UNIZA_URLS = {
   education: "https://vzdelavanie.uniza.sk/vzdelavanie/",
-  moodle: "https://vzdelavanie.uniza.sk/moodle/",
+  moodle: "https://moodle.uniza.sk/",
   catering: "https://strava.uniza.sk/WebKredit/",
   diningMenu: "https://menza.uniza.sk/jedalny-listok",
   academicCalendar: "https://www.uniza.sk/index.php/studenti/vseobecne-informacie/akademicky-kalendar",
@@ -10,6 +10,7 @@ export const UNIZA_URLS = {
   news: "https://www.uniza.sk/index.php",
   studentMail: "https://webmail.stud.uniza.sk/",
   library: "https://ukzu.uniza.sk/",
+  libraryCatalogue: "https://kniznica4.uniza.sk/",
 } as const;
 
 const AIVS_ORIGIN = new URL(UNIZA_URLS.education).origin;

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendMail } from "@/lib/mail";
+import { INTERNAL_MAIL_ENABLED } from "@/lib/features";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  if (!INTERNAL_MAIL_ENABLED) return NextResponse.json({ error: "MAIL_DISABLED" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   try {
     await sendMail(await request.formData());
     return NextResponse.json(

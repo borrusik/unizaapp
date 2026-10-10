@@ -8,7 +8,8 @@ import { getBratislavaDayIndex, getScheduleTiming } from "@/lib/schedule-timing"
 import { useTranslation, type Lang } from "@/hooks/useTranslation";
 import { AppIcon, type AppIconName } from "@/components/AppIcon";
 import { useGradeOverrides } from "@/hooks/useGradeOverrides";
-import { applyGradeOverrides, gradeSummary } from "@/lib/grade-overrides";
+import { applyGradeOverrides, displayedGradeSummary } from "@/lib/grade-overrides";
+import { GradeAverageLabel } from "@/components/GradeAverageLabel";
 import { IntegrationErrorNotice } from "@/components/IntegrationErrorNotice";
 
 const SCHEDULE_DAYS = ["", "Pondelok", "Utorok", "Streda", "Štvrtok", "Piatok", "Sobota"];
@@ -79,8 +80,8 @@ export default function HomePage() {
   // Academic calculations
   const allGrades = applyGradeOverrides(gradesData ? [...gradesData.winter, ...gradesData.summer] : [], overrides);
   const currentYearGrades = allGrades.filter((grade) => grade.academicYearStart === gradesData?.selectedStartYear);
-  const { credits: totalCredits, average: avgGrade } = gradeSummary(currentYearGrades);
-  const lifetime = gradeSummary(allGrades);
+  const { credits: totalCredits, average: avgGrade, source: averageSource } = displayedGradeSummary(currentYearGrades, gradesData?.official.years.find((year) => year.startYear === gradesData.selectedStartYear)?.total);
+  const lifetime = displayedGradeSummary(allGrades, gradesData?.official.total);
 
   const dateFormatted = new Intl.DateTimeFormat(LOCALES[lang] || "sk-SK", {
     weekday: "long",
@@ -90,10 +91,9 @@ export default function HomePage() {
 
   const shortcuts: Array<{ href: string; icon: AppIconName; title: string }> = [
     { href: "/dashboard/schedule", icon: "calendar", title: t("nav_schedule") },
-    { href: "/dashboard/subjects", icon: "book", title: t("nav_subjects") },
-    { href: "/dashboard/grades", icon: "award", title: t("nav_grades") },
+    { href: "/dashboard/subjects", icon: "book", title: t("nav_study") },
     { href: "/dashboard/food", icon: "restaurant", title: t("nav_food") },
-    { href: "/dashboard/mail", icon: "mail", title: t("services_mail") },
+    { href: "/dashboard/exams", icon: "clipboard", title: t("home_exams") },
     { href: "/dashboard/services", icon: "building", title: t("home_services") },
   ];
 
@@ -242,7 +242,7 @@ export default function HomePage() {
           </Link>
 
           {/* ECTS & GPA Card */}
-          <Link prefetch={false} href="/dashboard/grades" className="bento-card">
+          <Link prefetch={false} href="/dashboard/subjects" className="bento-card">
             <div>
               <div className="bento-card-header">
                 <span className="bento-card-title">
@@ -250,7 +250,7 @@ export default function HomePage() {
                   {t("nav_study")}
                 </span>
                 <span className="badge badge-credits">
-                  {avgGrade !== "—" ? `GPA ${avgGrade}` : t("grades_title")}
+                  {avgGrade !== "—" ? <><GradeAverageLabel source={averageSource} /> {avgGrade}</> : t("grades_title")}
                 </span>
               </div>
               <div className="bento-stat-val">
@@ -259,7 +259,7 @@ export default function HomePage() {
               <div className="bento-stat-sub">
                 {gradesData?.academicYear} · {t("grades_year_credits")} ({totalCredits} / 60 ECTS)
               </div>
-              {gradesData ? <div className="bento-stat-sub">{lang === "ru" ? "За всё обучение" : lang === "uk" ? "За все навчання" : lang === "sk" ? "Za celé štúdium" : "All study years"}: {lifetime.credits} ECTS · GPA {lifetime.average}</div> : null}
+              {gradesData ? <div className="bento-stat-sub">{lang === "ru" ? "За всё обучение" : lang === "uk" ? "За все навчання" : lang === "sk" ? "Za celé štúdium" : "All study years"}: {lifetime.credits} ECTS · <GradeAverageLabel source={lifetime.source} /> {lifetime.average}</div> : null}
               <div className="bento-progress-track">
                 <div
                   className="bento-progress-fill"

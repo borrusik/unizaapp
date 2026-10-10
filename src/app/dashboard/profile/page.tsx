@@ -13,7 +13,9 @@ import { AppIcon } from "@/components/AppIcon";
 import { BrowserNotifications } from "./BrowserNotifications";
 import { IntegrationErrorNotice } from "@/components/IntegrationErrorNotice";
 import { useGradeOverrides } from "@/hooks/useGradeOverrides";
-import { applyGradeOverrides, gradeSummary } from "@/lib/grade-overrides";
+import { applyGradeOverrides, displayedGradeSummary } from "@/lib/grade-overrides";
+import { GradeAverageLabel } from "@/components/GradeAverageLabel";
+import { UNIZA_URLS } from "@/lib/uniza";
 
 export default function ProfilePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -58,7 +60,7 @@ export default function ProfilePage() {
   };
 
   const allGrades = applyGradeOverrides([...grades.winter, ...grades.summer], overrides);
-  const { credits: totalCredits, average: avgGrade, passed: passedSubjects } = gradeSummary(allGrades);
+  const { credits: totalCredits, average: avgGrade, passed: passedSubjects, source: averageSource } = displayedGradeSummary(allGrades, data?.grades.official.total);
   const totalSubjects = allGrades.length;
 
   const copyProfileValue = async (field: string, value: string) => {
@@ -115,7 +117,7 @@ export default function ProfilePage() {
           </div>
           <div className="profile-stat">
             <strong>{avgGrade}</strong>
-            <span><ClientText n="profile_avg" /></span>
+            <span><GradeAverageLabel source={averageSource} /></span>
           </div>
           <div className="profile-stat">
             <strong>{passedSubjects}/{totalSubjects}</strong>
@@ -150,7 +152,7 @@ export default function ProfilePage() {
         <div className="profile-open-group" style={{ marginBottom: "12px" }}>
           <div className="profile-open-row"><span className="profile-system-name"><AppIcon name="book" size={19} />AIVS</span><span className={`badge ${integration.education ? "badge-credits" : "badge-neutral"}`}>{integration.education ? t("integration_connected") : t("integration_reconnect")}</span></div>
           <div className="profile-open-row"><span className="profile-system-name"><AppIcon name="restaurant" size={19} />WebKredit</span><span className={`badge ${integration.catering ? "badge-credits" : "badge-neutral"}`}>{integration.catering ? t("integration_connected") : t("integration_reconnect")}</span></div>
-          <Link prefetch={false} href="/dashboard/mail" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="mail" size={19} />{t("services_mail")}</span><span className={`badge ${integration.mail ? "badge-credits" : "badge-neutral"}`}>{integration.mail ? t("integration_connected") : t("integration_reconnect")}</span></Link>
+          <a href={UNIZA_URLS.studentMail} target="_blank" rel="noopener noreferrer" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="mail" size={19} />{t("services_mail")}</span><AppIcon name="external-link" size={17} /></a>
           <Link prefetch={false} href="/dashboard/services" className="profile-open-row" style={{ textDecoration: "none" }}><span className="profile-system-name"><AppIcon name="building" size={19} />{t("services_title")}</span><AppIcon name="chevron-right" size={17} /></Link>
         </div>
         <p className="text-xs" style={{ margin: "0 4px 24px" }}>
