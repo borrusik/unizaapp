@@ -40,6 +40,8 @@ export default function StravaPage() {
 
   useEffect(() => {
     const stored = Number(window.localStorage.getItem(CANTEEN_STORAGE_KEY));
+    // localStorage is only readable after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (Number.isInteger(stored) && stored > 0 && stored < 1_000) setCanteenId(stored);
     setPreferencesReady(true);
   }, []);

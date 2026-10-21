@@ -11,7 +11,10 @@ const WINDOW_MS = 60 * 1000; // 1 minute window
 // requests. Keep the general ceiling high enough for normal multi-page use;
 // login and scanner traffic have stricter limits below.
 const MAX_REQUESTS_PER_MINUTE = 240;
-const MAX_LOGIN_PER_MINUTE = 5;
+// Students on dormitory, eduroam or mobile-carrier NAT share one public IP, so
+// the per-IP login ceiling only stops bulk abuse. Per-account attempts are
+// limited separately in the login action.
+const MAX_LOGIN_PER_MINUTE = 30;
 const BLOCK_WINDOW_MS = 10 * 60 * 1000; // 10 minute block for repeated offenders
 
 const loginAttempts = new Map<string, { count: number; resetTime: number }>();
@@ -148,8 +151,9 @@ export function proxy(request: NextRequest) {
   } catch {
     return new NextResponse("Bad Request", { status: 400 });
   }
+  // Reject the request only: blocking the whole IP here would lock out every
+  // student behind the same NAT because of one odd link.
   if (SUSPICIOUS_PATTERNS.some((p) => fullUrl.includes(p))) {
-    blockedIPs.set(ip, Date.now() + BLOCK_WINDOW_MS);
     return new NextResponse("Bad Request", { status: 400 });
   }
 
@@ -178,15 +182,13 @@ export function proxy(request: NextRequest) {
   if (pathname === "/" && request.method === "POST") {
     const loginLimited = checkRate(loginAttempts, ip, MAX_LOGIN_PER_MINUTE, WINDOW_MS);
     if (loginLimited) {
-      // Block IP for 10 minutes after too many login attempts
-      blockedIPs.set(ip, Date.now() + BLOCK_WINDOW_MS);
       return new NextResponse(
-        JSON.stringify({ error: "Too many login attempts. Blocked for 10 minutes." }),
+        JSON.stringify({ error: "Too many login attempts. Please try again in a minute." }),
         {
           status: 429,
           headers: {
             "Content-Type": "application/json",
-            "Retry-After": "600",
+            "Retry-After": "60",
           },
         }
       );

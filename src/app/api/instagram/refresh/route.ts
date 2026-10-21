@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createPublicKey, verify } from "node:crypto";
+import { createPublicKey, timingSafeEqual, verify } from "node:crypto";
 import {
   ingestInstagramDailyMenus,
   readInstagramDailyMenuSnapshot,
@@ -16,6 +16,14 @@ const SIGNATURE_MAX_AGE_MS = 5 * 60_000;
 const MENZA_INGEST_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEA8lwVVj5dACW6yNsfNwOjCAPFbOmEZuswYo7FV2IziaU=
 -----END PUBLIC KEY-----`;
+
+function isAuthorizedCronRequest(request: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const received = Buffer.from(request.headers.get("authorization") ?? "");
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}
 
 function reportResponse(report: Awaited<ReturnType<typeof refreshInstagramDailyMenus>>) {
   if (report.error) {
@@ -54,6 +62,14 @@ export async function GET(request: NextRequest) {
 
   if (request.nextUrl.searchParams.get("status") === "1") {
     return reportResponse(await readInstagramDailyMenuSnapshot());
+  }
+  // A forced refresh scrapes Instagram, so only the scheduled job may trigger
+  // it. Fails closed when CRON_SECRET is not configured.
+  if (!isAuthorizedCronRequest(request)) {
+    return NextResponse.json(
+      { status: "unauthorized" },
+      { status: 401, headers: { "Cache-Control": "no-store" } },
+    );
   }
   const posts = request.nextUrl.searchParams.getAll("post").slice(0, 3);
   const report = await refreshInstagramDailyMenus(posts);
