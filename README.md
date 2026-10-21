@@ -11,7 +11,7 @@ This project was born out of the need to unify the most important student system
 *   **📅 Schedule** — A clear list of lectures, practicals, and labs divided by day. No complex tables, just what's ahead of you today.
 *   **🎓 Grades and Subjects** — Quick overview of evaluations, earned credits (ECTS), and grade point average, including previous academic years exposed by AIVS.
 *   **🍔 Canteen (Strava)** — Public menus for multiple days and every WebKredit canteen/serving point, plus authenticated ISIC balance and transaction history.
-*   **✉️ Student Mail** — Integrated IMAP inbox and folders, search, safe message rendering, attachments, flags, and SMTP composition without opening Roundcube.
+*   **✉️ Student Mail** — Integrated IMAP inbox and folders, search, safe message rendering, attachments, flags, and SMTP composition without opening Roundcube. *Temporarily disabled (`INTERNAL_MAIL_ENABLED` in `src/lib/features.ts`) while it is being optimized; students use the official webmail meanwhile.*
 *   **📱 PWA (Progressive Web App)** — Add the app to your phone's home screen (iOS and Android) and use it like a native application.
 *   **🌍 Multilingual** — Slovak, English, Ukrainian, and Russian interfaces.
 *   **🌙 Dark Mode** — The interface automatically adapts to your device's system appearance settings.
@@ -33,6 +33,8 @@ Create `.env.local` for local development and configure the same variable in the
 ```dotenv
 UNIZA_SESSION_SECRET=replace-with-at-least-32-random-characters
 ```
+
+Optionally set `CRON_SECRET` to allow the scheduled forced refresh of Instagram menus (`GET /api/instagram/refresh`); without it that endpoint only answers the read-only `?status=1` check and signed POST ingests.
 
 Use a cryptographically random value and do not commit it. Rotating the value safely invalidates all saved automatic-login cookies. The repository includes `.env.example` as a template.
 

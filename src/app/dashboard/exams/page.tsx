@@ -39,6 +39,8 @@ export default function ExamsPage() {
 
   useEffect(() => {
     const stored = Number(window.localStorage.getItem("uniza:academic-year:v1"));
+    // localStorage is only readable after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (Number.isInteger(stored) && stored > 2000) setAcademicYearStart(stored);
     setPreferencesReady(true);
   }, []);
