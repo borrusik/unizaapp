@@ -9,6 +9,7 @@ export const ru: TranslationDictionary = {
   nav_food: "Столовая",
   nav_mail: "Почта",
   nav_profile: "Профиль",
+  nav_services: "Сервисы",
   common_refresh: "Обновить данные",
   common_back: "Назад",
   common_academic_year: "Академический год",
@@ -192,4 +193,6 @@ export const ru: TranslationDictionary = {
   subject_literature: "Литература",
   subject_teacher: "Преподаватель",
   subject_guarantor: "Гарант предмета",
+  demo_banner: "Демо-режим: все данные выдуманы.",
+  demo_exit: "Войти",
 };

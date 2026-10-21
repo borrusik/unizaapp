@@ -39,14 +39,25 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     screenshots: [
       {
-        src: '/screenshot-1.svg',
+        src: '/screenshot-home.png',
         sizes: '1080x1920',
-        type: 'image/svg+xml',
+        type: 'image/png',
+        form_factor: 'narrow',
+        label: 'Domov s aktuálnou hodinou a zostatkom ISIC',
       },
       {
-        src: '/screenshot-2.svg',
+        src: '/screenshot-schedule.png',
         sizes: '1080x1920',
-        type: 'image/svg+xml',
+        type: 'image/png',
+        form_factor: 'narrow',
+        label: 'Rozvrh na deň',
+      },
+      {
+        src: '/screenshot-wide.png',
+        sizes: '1920x1080',
+        type: 'image/png',
+        form_factor: 'wide',
+        label: 'Prehľad na počítači',
       },
     ],
   }

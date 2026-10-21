@@ -3615,3 +3615,20 @@ select {
   .study-compact .semester-slider-count { display: none; }
   .study-compact .semester-slider button { padding-inline: 6px; }
 }
+
+.login-demo-button { display: block; width: 100%; min-height: 48px; margin-top: 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: transparent; color: var(--text-primary); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.login-demo-button:hover:not(:disabled) { background: var(--surface-secondary); }
+.login-demo-button:disabled { opacity: 0.6; cursor: default; }
+.demo-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; background: var(--primary-light); color: var(--text-primary); font-size: 13px; font-weight: 600; }
+.demo-banner a { color: var(--primary); white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Keep page content off the sticky header's bottom border. */
+.top-bar + .container { padding-top: 16px; }
+
+.study-compact .academic-year-select select { padding-right: 32px; font-variant-numeric: tabular-nums; }
+.study-compact .academic-year-select > span { right: 12px; }
+
+/* The sidebar already lists every section on wide screens. */
+@media (min-width: 768px) {
+  .home-shortcuts-section { display: none; }
+}

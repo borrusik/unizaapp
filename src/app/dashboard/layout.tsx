@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation, type TranslationKey } from "@/hooks/useTranslation";
 import { AppIcon, type AppIconName } from "@/components/AppIcon";
 import { BrowserNotificationScheduler } from "./profile/BrowserNotifications";
@@ -23,6 +23,13 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const { t } = useTranslation();
+  const [isDemo, setIsDemo] = useState(false);
+
+  useEffect(() => {
+    // The demo cookie is only readable after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsDemo(document.cookie.split("; ").includes("uniza_demo=1"));
+  }, []);
 
   useEffect(() => {
     window.history.scrollRestoration = "manual";
@@ -36,7 +43,7 @@ export default function DashboardLayout({
     { href: "/dashboard/schedule", labelKey: "nav_schedule", icon: "calendar" },
     { href: "/dashboard/subjects", labelKey: "nav_study", icon: "book" },
     { href: "/dashboard/food", labelKey: "nav_food", icon: "restaurant" },
-    { href: "/dashboard/services", labelKey: "home_services", icon: "building" },
+    { href: "/dashboard/services", labelKey: "nav_services", icon: "building" },
   ];
 
   // Desktop sidebar navigation links
@@ -93,6 +100,12 @@ export default function DashboardLayout({
 
       {/* Main Content Area */}
       <div className="dashboard-main">
+        {isDemo ? (
+          <div className="demo-banner" role="status">
+            <span>{t("demo_banner")}</span>
+            <Link href="/" prefetch={false}>{t("demo_exit")}</Link>
+          </div>
+        ) : null}
         <main>{children}</main>
       </div>
 

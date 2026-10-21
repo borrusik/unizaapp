@@ -2,7 +2,7 @@
 
 import { Suspense, useTransition, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { login } from "@/lib/scraper";
+import { login, startDemo } from "@/lib/scraper";
 import { useTranslation } from "@/hooks/useTranslation";
 import { KharkivEasterEgg } from "@/components/KharkivEasterEgg";
 import { safeDashboardReturnPath } from "@/lib/auth-state";
@@ -15,11 +15,24 @@ function LoginContent() {
   const { t, lang } = useTranslation();
   const sessionExpired = searchParams.get("reason") === "session_expired";
   const copy = {
-    ru: { lead: "Всё для учёбы в одном месте", remember: "Запомнить вход", privacy: "Как сохраняется вход?", help: "Не получается войти?", support: "Написать в поддержку", helpText: "Используй университетскую почту и пароль e-Vzdelávanie. Если вход не работает, проверь доступ к университетскому аккаунту.", independent: "Неофициальный студенческий проект", expired: "Сессия закончилась. Войди снова — вернём тебя на прежнюю страницу.", show: "Показать", hide: "Скрыть", unavailable: "Не удалось подключиться. Попробуй ещё раз." },
-    uk: { lead: "Усе для навчання в одному місці", remember: "Запам’ятати вхід", privacy: "Як зберігається вхід?", help: "Не вдається увійти?", support: "Написати в підтримку", helpText: "Використовуй університетську пошту та пароль e-Vzdelávanie. Якщо вхід не працює, перевір доступ до університетського акаунта.", independent: "Неофіційний студентський проєкт", expired: "Сеанс завершився. Увійди знову — повернемо тебе на попередню сторінку.", show: "Показати", hide: "Сховати", unavailable: "Не вдалося підключитися. Спробуй ще раз." },
-    sk: { lead: "Všetko pre štúdium na jednom mieste", remember: "Zapamätať prihlásenie", privacy: "Ako sa ukladá prihlásenie?", help: "Nedarí sa prihlásiť?", support: "Napísať podpore", helpText: "Použi univerzitný e-mail a heslo do e-Vzdelávania. Ak prihlásenie nefunguje, over prístup k univerzitnému účtu.", independent: "Neoficiálny študentský projekt", expired: "Prihlásenie vypršalo. Prihlás sa znova a vrátime ťa na predchádzajúcu stránku.", show: "Zobraziť", hide: "Skryť", unavailable: "Pripojenie zlyhalo. Skús to znova." },
-    en: { lead: "Everything for your studies, in one place", remember: "Remember sign-in", privacy: "How is sign-in saved?", help: "Trouble signing in?", support: "Contact support", helpText: "Use your university email and e-Vzdelávanie password. If sign-in fails, check access to your university account.", independent: "Unofficial student project", expired: "Your session expired. Sign in again to return to where you stopped.", show: "Show", hide: "Hide", unavailable: "Could not connect. Please try again." },
+    ru: { lead: "Всё для учёбы в одном месте", remember: "Запомнить вход", privacy: "Как сохраняется вход?", help: "Не получается войти?", support: "Написать в поддержку", helpText: "Используй университетскую почту и пароль e-Vzdelávanie. Если вход не работает, проверь доступ к университетскому аккаунту.", independent: "Неофициальный студенческий проект", expired: "Сессия закончилась. Войди снова — вернём тебя на прежнюю страницу.", show: "Показать", hide: "Скрыть", unavailable: "Не удалось подключиться. Попробуй ещё раз.", demo: "Посмотреть демо без входа" },
+    uk: { lead: "Усе для навчання в одному місці", remember: "Запам’ятати вхід", privacy: "Як зберігається вхід?", help: "Не вдається увійти?", support: "Написати в підтримку", helpText: "Використовуй університетську пошту та пароль e-Vzdelávanie. Якщо вхід не працює, перевір доступ до університетського акаунта.", independent: "Неофіційний студентський проєкт", expired: "Сеанс завершився. Увійди знову — повернемо тебе на попередню сторінку.", show: "Показати", hide: "Сховати", unavailable: "Не вдалося підключитися. Спробуй ще раз.", demo: "Переглянути демо без входу" },
+    sk: { lead: "Všetko pre štúdium na jednom mieste", remember: "Zapamätať prihlásenie", privacy: "Ako sa ukladá prihlásenie?", help: "Nedarí sa prihlásiť?", support: "Napísať podpore", helpText: "Použi univerzitný e-mail a heslo do e-Vzdelávania. Ak prihlásenie nefunguje, over prístup k univerzitnému účtu.", independent: "Neoficiálny študentský projekt", expired: "Prihlásenie vypršalo. Prihlás sa znova a vrátime ťa na predchádzajúcu stránku.", show: "Zobraziť", hide: "Skryť", unavailable: "Pripojenie zlyhalo. Skús to znova.", demo: "Vyskúšať ukážku bez prihlásenia" },
+    en: { lead: "Everything for your studies, in one place", remember: "Remember sign-in", privacy: "How is sign-in saved?", help: "Trouble signing in?", support: "Contact support", helpText: "Use your university email and e-Vzdelávanie password. If sign-in fails, check access to your university account.", independent: "Unofficial student project", expired: "Your session expired. Sign in again to return to where you stopped.", show: "Show", hide: "Hide", unavailable: "Could not connect. Please try again.", demo: "Try the demo without signing in" },
   }[lang];
+
+  const handleDemo = () => {
+    if (isPending) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await startDemo();
+        window.location.replace("/dashboard");
+      } catch {
+        setError(copy.unavailable);
+      }
+    });
+  };
 
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -90,6 +103,7 @@ function LoginContent() {
           {error ? <p role="alert" className="login-error">{error}</p> : null}
           <button type="submit" className="btn-primary" disabled={isPending}>{isPending ? t("login_loading") : t("login_button")}</button>
         </form>
+        <button type="button" className="login-demo-button" onClick={handleDemo} disabled={isPending}>{copy.demo}</button>
         <details className="minimal-help">
           <summary>{copy.help}</summary>
           <p>{copy.helpText}</p>
