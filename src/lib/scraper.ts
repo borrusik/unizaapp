@@ -22,6 +22,7 @@ import { getAivsScheduleSourceState, isAivsScheduleContinuation } from "@/lib/ai
 import { getAivsResultsTableYear, parseAivsResultsSummary, selectAivsGradeResult } from "@/lib/aivs-grades";
 import { readSharedSchedule, writeSharedSchedule } from "@/lib/schedule-cache";
 import { isAuthenticatedAivsHtml, isAivsLoginHtml } from "@/lib/auth-state";
+import { DEMO_COOKIE, demoExamTerms, demoGrades, demoOperationResult, demoSchedule, demoSubjectInfo, demoSubjects, demoUserInfo, isDemoSession } from "@/lib/demo";
 
 const BASE_URL = "https://vzdelavanie.uniza.sk/vzdelavanie";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -390,6 +391,7 @@ export async function login(formData: FormData) {
   cookieStore.delete("uniza_email");
   cookieStore.delete(SCHEDULE_GROUP_COOKIE);
   cookieStore.delete(REAUTH_COOKIE);
+  cookieStore.delete(DEMO_COOKIE);
   await clearCredentials();
   await clearStravaSession();
 
@@ -453,8 +455,23 @@ export async function logout() {
   cookieStore.delete("uniza_email");
   cookieStore.delete(SCHEDULE_GROUP_COOKIE);
   cookieStore.delete(REAUTH_COOKIE);
+  cookieStore.delete(DEMO_COOKIE);
   await clearCredentials();
   await clearStravaSession();
+  return { success: true };
+}
+
+/** Sign out of any real session and open the app with invented demo data. */
+export async function startDemo() {
+  await logout();
+  const cookieStore = await cookies();
+  // Readable by the client so the dashboard can label the demo.
+  cookieStore.set(DEMO_COOKIE, "1", {
+    httpOnly: false,
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
   return { success: true };
 }
 
@@ -484,6 +501,7 @@ export async function getSession(): Promise<string | null> {
 export type DashboardSessionState = "authenticated" | "unauthenticated" | "unavailable";
 
 export async function checkDashboardSession(): Promise<DashboardSessionState> {
+  if (await isDemoSession()) return "authenticated";
   let sessionId: string | null;
   try {
     sessionId = await getSession();
@@ -501,6 +519,7 @@ export async function checkDashboardSession(): Promise<DashboardSessionState> {
 }
 
 export async function getIntegrationStatus() {
+  if (await isDemoSession()) return { education: true, catering: true, mail: false, passwordStored: false };
   const cookieStore = await cookies();
   const cateringSession = await getStoredStravaSession();
   const savedCredentials = canPersistCredentials() ? await readCredentials() : null;
@@ -569,6 +588,7 @@ export async function getUserInfo(
   explicitEmail?: string,
   force = false,
 ) {
+  if (await isDemoSession()) return demoUserInfo();
   const cookieStore = await cookies();
   const email = explicitEmail || cookieStore.get("uniza_email")?.value || "student@stud.uniza.sk";
 
@@ -656,6 +676,7 @@ export async function getSubjects(
   requestedStartYear?: number,
   force = false,
 ): Promise<{ winter: Subject[]; summer: Subject[] } & AcademicPeriodData> {
+  if (await isDemoSession()) return demoSubjects(requestedStartYear);
   const sessionId = await getSession();
   if (!sessionId) {
     throw new Error("AIVS_RECONNECT_REQUIRED");
@@ -699,6 +720,7 @@ export async function getGrades(
   requestedStartYear?: number,
   force = false,
 ): Promise<{ winter: Grade[]; summer: Grade[]; accountKey: string; official: ReturnType<typeof parseAivsResultsSummary> } & AcademicPeriodData> {
+  if (await isDemoSession()) return demoGrades(requestedStartYear);
   const sessionId = await getSession();
   if (!sessionId) {
     throw new Error("AIVS_RECONNECT_REQUIRED");
@@ -863,6 +885,7 @@ export async function getExamTerms(
   requestedStartYear?: number,
   force = false,
 ): Promise<{ terms: ExamTerm[]; loadStatus: "ready" | "unauthenticated" | "unavailable" } & AcademicPeriodData> {
+  if (await isDemoSession()) return demoExamTerms(requestedStartYear);
   const result = await getExamTermsInternal(requestedStartYear, force);
   if (result.loadStatus !== "ready") throw new Error("AIVS_EXAMS_UNAVAILABLE");
   return {
@@ -873,6 +896,7 @@ export async function getExamTerms(
 
 export async function getExamTermsForYear(academicYearStart: number): Promise<ExamTerm[]> {
   if (!Number.isInteger(academicYearStart) || academicYearStart < 2000 || academicYearStart > 2200) return [];
+  if (await isDemoSession()) return demoExamTerms(academicYearStart).terms;
   const sessionId = await getSession();
   if (!sessionId) return [];
   const selection = await getAcademicYearOptions();
@@ -919,6 +943,7 @@ async function changeExamRegistration(
   academicYearStart: number,
   action: "register" | "cancel",
 ): Promise<IntegrationOperationResult<ExamTerm>> {
+  if (await isDemoSession()) return demoOperationResult<ExamTerm>();
   if (process.env.ENABLE_AIVS_EXAM_ACTIONS !== "true") {
     return examOperationResult("disabled", "actions_disabled", "Prihlasovanie na termíny je dočasne vypnuté.");
   }
@@ -989,6 +1014,7 @@ export async function cancelExam(termId: string, academicYearStart: number) {
 
 
 export async function getScheduleData(force = false): Promise<ScheduleData> {
+  if (await isDemoSession()) return demoSchedule();
   const sessionId = await getSession();
   if (!sessionId) return { items: [], status: "unauthenticated" };
 
@@ -1179,6 +1205,7 @@ export type SubjectInfo = {
 };
 
 export async function getSubjectInfo(infoUrl: string, force = false): Promise<SubjectInfo | null> {
+  if (await isDemoSession()) return demoSubjectInfo(infoUrl);
   const sessionId = await getSession();
   if (!sessionId) throw new Error("AIVS_RECONNECT_REQUIRED");
 

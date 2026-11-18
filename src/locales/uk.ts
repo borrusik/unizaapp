@@ -9,6 +9,7 @@ export const uk: TranslationDictionary = {
   nav_food: "Їдальня",
   nav_mail: "Пошта",
   nav_profile: "Профіль",
+  nav_services: "Сервіси",
   common_refresh: "Оновити дані",
   common_back: "Назад",
   common_academic_year: "Академічний рік",
@@ -192,4 +193,6 @@ export const uk: TranslationDictionary = {
   subject_literature: "Література",
   subject_teacher: "Викладач",
   subject_guarantor: "Гарант предмету",
+  demo_banner: "Демо-режим: усі дані вигадані.",
+  demo_exit: "Увійти",
 };

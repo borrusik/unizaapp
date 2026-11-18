@@ -16,6 +16,10 @@ This project was born out of the need to unify the most important student system
 *   **🌍 Multilingual** — Slovak, English, Ukrainian, and Russian interfaces.
 *   **🌙 Dark Mode** — The interface automatically adapts to your device's system appearance settings.
 
+## 👀 Demo Mode
+
+The **Try the demo** button on the sign-in page opens the app with invented data (timetable, grades, exams, canteen menu and balance). Demo mode never contacts AIVS or WebKredit, and changes such as exam registration or meal orders are not sent. It is also how the PWA store screenshots in `public/screenshot-*.png` are produced.
+
 ## 🔐 Privacy and Security
 
 The security of your sensitive data is the top priority. The application is designed to protect your information:

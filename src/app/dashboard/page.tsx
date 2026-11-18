@@ -228,7 +228,7 @@ export default function HomePage() {
                 <span className="badge badge-credits">WebKredit</span>
               </div>
               <div className="bento-stat-val">
-                {stravaInfo ? `${stravaInfo.balance.toFixed(2)} €` : "— €"}
+                {stravaInfo ? `${stravaInfo.balance.toFixed(2).replace(".", ",")} €` : "— €"}
               </div>
               <div className="bento-stat-sub">
                 {t("food_balance")} (ISIC)
@@ -324,7 +324,7 @@ export default function HomePage() {
         )}
 
         {/* Shortcuts */}
-        <div style={{ marginTop: "24px" }}>
+        <div className="home-shortcuts-section" style={{ marginTop: "24px" }}>
           <div style={{ fontSize: "13px", fontWeight: 750, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>
             {t("home_services")}
           </div>

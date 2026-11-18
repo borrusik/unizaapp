@@ -1,6 +1,7 @@
 "use server";
 
 import { createDirectorySearch, type DirectoryPerson } from "@/lib/directory-search";
+import { demoDirectory, isDemoSession } from "@/lib/demo";
 export type { DirectoryPerson } from "@/lib/directory-search";
 
 const searchDirectory = createDirectorySearch(async (query) => {
@@ -11,5 +12,6 @@ const searchDirectory = createDirectorySearch(async (query) => {
 });
 
 export async function searchUnizaDirectory(query: string): Promise<DirectoryPerson[]> {
+  if (await isDemoSession()) return demoDirectory(query);
   return searchDirectory(query);
 }

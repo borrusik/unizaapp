@@ -7,6 +7,7 @@ export const sk = {
   nav_food: "Jedáleň",
   nav_mail: "Pošta",
   nav_profile: "Profil",
+  nav_services: "Služby",
   common_refresh: "Obnoviť údaje",
   common_back: "Späť",
   common_academic_year: "Akademický rok",
@@ -199,6 +200,8 @@ export const sk = {
   subject_literature: "Odporúčaná literatúra",
   subject_teacher: "Vyučujúci",
   subject_guarantor: "Garant predmetu",
+  demo_banner: "Ukážkový režim: všetky údaje sú vymyslené.",
+  demo_exit: "Prihlásiť sa",
 } as const;
 
 export type TranslationKey = keyof typeof sk;

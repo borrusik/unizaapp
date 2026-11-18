@@ -9,6 +9,7 @@ export const en: TranslationDictionary = {
   nav_food: "Canteen",
   nav_mail: "Mail",
   nav_profile: "Profile",
+  nav_services: "Services",
   common_refresh: "Refresh data",
   common_back: "Back",
   common_academic_year: "Academic year",
@@ -192,4 +193,6 @@ export const en: TranslationDictionary = {
   subject_literature: "Literature",
   subject_teacher: "Teacher",
   subject_guarantor: "Guarantor",
+  demo_banner: "Demo mode: all data is made up.",
+  demo_exit: "Sign in",
 };

@@ -4,6 +4,7 @@ import { parseWebKreditHistory, type StravaHistoryItem } from "@/lib/webkredit-h
 export type { StravaHistoryItem } from "@/lib/webkredit-history";
 
 import { createHash } from "node:crypto";
+import { demoOperationResult, demoStravaDashboard, demoStravaHistory, isDemoSession } from "@/lib/demo";
 import { clearStravaSession, getStoredStravaSession, restoreStravaSession } from "@/lib/strava-session";
 import {
   getBratislavaDateKey,
@@ -74,6 +75,7 @@ async function loadStravaInfo(sessionCookies: string[]): Promise<StravaInfo | nu
 }
 
 export async function getStravaInfo(force = false): Promise<StravaInfo | null> {
+  if (await isDemoSession()) return demoStravaDashboard().info;
   const sessionCookies = await getStravaSession();
   if (!sessionCookies) return null;
 
@@ -103,6 +105,7 @@ export async function getStravaInfo(force = false): Promise<StravaInfo | null> {
 }
 
 export async function getStravaHistory(force = false): Promise<StravaHistoryItem[]> {
+  if (await isDemoSession()) return demoStravaHistory();
   const sessionCookies = await getStravaSession();
   if (!sessionCookies) throw new Error("STRAVA_RECONNECT_REQUIRED");
 
@@ -272,6 +275,7 @@ export async function getStravaOrders(
  * three HTTP round trips even when the client wraps them in Promise.all().
  */
 export async function getStravaDashboard(canteenId = 1, force = false) {
+  if (await isDemoSession()) return demoStravaDashboard(canteenId);
   const { getInstagramDailyMenus } = await import("@/lib/instagram");
   const initialSession = await getStravaSession();
   const [info, initialMenu, initialOrders, instagramMenus] = await Promise.all([
@@ -353,6 +357,7 @@ function validOrderInput(input: PlaceStravaOrderInput) {
 export async function placeStravaOrder(
   input: PlaceStravaOrderInput,
 ): Promise<IntegrationOperationResult<WebKreditOrder>> {
+  if (await isDemoSession()) return demoOperationResult<WebKreditOrder>();
   if (!webKreditActionsEnabled()) return operationResult("disabled", "actions_disabled", "Objednávanie je dočasne vypnuté.");
   if (!validOrderInput(input)) return operationResult("rejected", "invalid_input", "Neplatné údaje objednávky.");
 
@@ -408,6 +413,7 @@ export async function placeStravaOrder(
 export async function changeStravaOrder(
   input: ChangeStravaOrderInput,
 ): Promise<IntegrationOperationResult<WebKreditOrder>> {
+  if (await isDemoSession()) return demoOperationResult<WebKreditOrder>();
   if (!webKreditActionsEnabled()) return operationResult("disabled", "actions_disabled", "Zmeny objednávok sú dočasne vypnuté.");
   if (!/^\d+$/.test(input.id) || !Number.isInteger(input.alternative) || !Number.isInteger(input.canteenId)) {
     return operationResult("rejected", "invalid_input", "Neplatná zmena objednávky.");
@@ -453,6 +459,7 @@ export async function changeStravaOrder(
 export async function cancelStravaOrder(
   orderId: string,
 ): Promise<IntegrationOperationResult<null>> {
+  if (await isDemoSession()) return demoOperationResult<null>();
   if (!webKreditActionsEnabled()) return operationResult("disabled", "actions_disabled", "Rušenie objednávok je dočasne vypnuté.");
   if (!/^\d+$/.test(orderId)) return operationResult("rejected", "invalid_input", "Neplatná objednávka.");
   const sessionCookies = await getStravaSession();

@@ -102,11 +102,11 @@ function SubjectInfoContent() {
             </div>
           )}
         </div>
+        {url ? <button type="button" className="icon-button" disabled={refreshing} aria-label={t("common_refresh")} onClick={() => void refresh()}><AppIcon name="refresh" size={20} className={refreshing ? "spin" : ""} /></button> : null}
       </div>
 
       <div className="container" style={{ marginTop: "24px" }}>
         <IntegrationErrorNotice error={error || refreshError} hasData={Boolean(info)} retry={() => void refresh()} />
-        {url ? <button type="button" className="icon-button" disabled={refreshing} aria-label={t("common_refresh")} onClick={() => void refresh()}><AppIcon name="refresh" size={20} className={refreshing ? "spin" : ""} /></button> : null}
         {loading ? (
           <div className="fullscreen-loader">
             <div className="spinner"></div>
